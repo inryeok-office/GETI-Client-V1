@@ -167,6 +167,18 @@ Issue와 Pull Request는 `{emoji} {label-name}` 형식의 라벨을 사용합니
 - `✅ done` 라벨은 Issue Close 상태와 중복되므로 만들지 않습니다.
 - 백엔드와 공유하는 도메인 영역(`auth`, `job`, `search` 등)은 이름을 동일하게 유지하고, 프론트엔드 전용 영역(`ui`, `routing`, `state`, `responsive`, `a11y`)을 추가로 사용합니다.
 
+## AI 기반 개발
+
+Claude Code, Codex 등 AI 개발 도구를 사용할 때는 [`AGENTS.md`](./AGENTS.md)와 [`docs/ai`](./docs/ai/README.md)의 규칙을 따릅니다.
+
+- [`AGENTS.md`](./AGENTS.md) — 모든 AI Agent 공통 최상위 지침. Codex는 이 파일을 자동으로 읽습니다.
+- [`CLAUDE.md`](./CLAUDE.md) — Claude Code 진입 문서. `@AGENTS.md` Import로 공통 규칙을 함께 로드합니다.
+- [`docs/ai/`](./docs/ai/README.md) — Workflow, 코딩 컨벤션, Git, 테스트, 보안, 완료 판단 세부 정책
+- `.claude/commands/` — `/start-issue`, `/implement`, `/fix-bug`, `/review`, `/verify`, `/prepare-pr` Slash Command
+- `.claude/settings.json` — 읽기 전용 명령 허용, 파괴적 명령 차단. 개인 설정은 `.claude/settings.local.json`(gitignore 대상)에 작성합니다.
+
+이 컨벤션 문서가 AI 규칙의 원본입니다. 컨벤션을 바꿀 때는 이 README를 먼저 수정하고 `AGENTS.md`와 `docs/ai/`를 함께 갱신합니다.
+
 ## 하지 말 것
 
 - FSD 레이어 규칙 위반 (하위가 상위 import)
