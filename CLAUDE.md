@@ -1,116 +1,127 @@
 # CLAUDE.md
 
-Claude Code가 이 저장소에서 작업을 시작할 때 가장 먼저 참고하는 진입 문서다. 모든 AI Agent 공통 규칙은 이 문서가 아니라 [`AGENTS.md`](./AGENTS.md)에 있으며, 이 문서는 그 내용을 반복하지 않는다.
+The first document Claude Code reads when starting work in this repository. Rules shared by every AI agent live in [`AGENTS.md`](./AGENTS.md), not here, and this document does not repeat them.
 
-Claude Code는 `CLAUDE.md`를 자동으로 로드하지만 `AGENTS.md`는 자동으로 읽지 않는다. 세션 시작 시 공통 규칙이 항상 함께 로드되도록 아래 Import를 사용한다.
+Claude Code loads `CLAUDE.md` automatically but does not read `AGENTS.md` on its own. The import below makes sure the shared rules load with every session.
 
 @AGENTS.md
 
-## 프로젝트 안내
+## Project notes
 
-- 프로젝트: GETI-Client, Next.js Frontend 프로젝트
-- GitHub 협업 기반과 AI 하네스만 갖춘 **초기 구축 단계**다. `package.json`과 소스 코드가 아직 없다.
-- Issue와 명세를 기준으로 작업하고, 확인되지 않은 기능이나 Architecture를 추측해서 구현하지 않는다.
-- 코드를 수정하기 전에 기존 코드와 문서를 먼저 분석한다.
-- 프론트엔드 컨벤션(기술 스택, FSD, 네이밍, 상태 관리)의 원본은 [`README.md`](./README.md)다.
+- Project: GETI-Client, a Next.js frontend
+- Only the GitHub collaboration setup and this AI harness exist — the repository is in an **early scaffolding stage**. There is no `package.json` and no source code yet.
+- Work from the Issue and its specification. Do not guess at unconfirmed features or architecture.
+- Read the existing code and documents before changing anything.
+- The original frontend convention (stack, FSD, naming, state management) is the repository [`README.md`](./README.md), which is written in Korean.
 
-## 필수 문서 읽기 순서
+## Required reading order
 
 ```text
-1. AGENTS.md (위 Import로 자동 로드됨)
-2. README.md 의 프론트엔드 컨벤션
+1. AGENTS.md (loaded automatically by the import above)
+2. The frontend convention in README.md
 3. docs/ai/README.md
-4. 현재 Issue와 작업 명세
-5. 관련 코드와 테스트
+4. The current Issue and its specification
+5. The relevant code and tests
 ```
 
-`CLAUDE.md`의 내용은 `AGENTS.md`의 공통 규칙을 대체하지 않는다. 규칙이 서로 다르게 보이면 `AGENTS.md`의 우선순위 규칙을 따른다.
+Nothing in `CLAUDE.md` replaces the shared rules in `AGENTS.md`. If two rules appear to differ, follow the precedence order in `AGENTS.md`.
 
-## 작업 시작 체크리스트
+## Start-of-work checklist
 
-작업을 시작하기 전에 확인한다.
+Confirm these before starting.
 
 ```text
 - git status
-- 현재 Branch
-- 현재 Issue
-- 완료 조건
-- 제외 범위
-- 관련 코드
-- 관련 테스트
-- 기존 구현 패턴
-- 사용자 미커밋 변경
+- Current branch
+- Current Issue
+- Acceptance criteria
+- Out-of-scope items
+- Relevant code
+- Relevant tests
+- Existing implementation patterns
+- The user's uncommitted changes
 ```
 
-## 핵심 행동 규칙
+## Core behavior rules
 
-- `AGENTS.md`를 모든 AI 공통 규칙의 기준으로 사용한다.
-- 현재 Issue 범위를 벗어나지 않는다.
-- 코드 수정 전에 관련 구현과 테스트를 탐색한다.
-- 관련 없는 Refactoring을 수행하지 않는다.
-- 기존 사용자의 변경 사항을 삭제하지 않는다.
-- 확정되지 않은 Architecture를 임의로 도입하지 않는다.
-- FSD 레이어 방향과 Public API 규칙을 지킨다.
-- 로딩 · 에러 · 빈 상태를 함께 구현한다.
-- `any`와 `console.log`를 남기지 않는다.
-- 새 패키지를 팀 합의 없이 추가하지 않는다.
-- 테스트와 Build 없이 완료했다고 보고하지 않는다.
-- Commit Type은 영문, 설명은 한글로 작성한다.
-- 사용자가 요청한 경우에만 Commit, Push, PR을 수행한다.
-- 사용자의 요청 없이 Merge하지 않는다.
-- Force Push하지 않는다.
-- Secret, Token, Password, Private Key를 출력하거나 Commit하지 않는다. `NEXT_PUBLIC_` 변수에 Secret을 넣지 않는다.
-- 실행하지 않은 작업을 완료했다고 보고하지 않는다.
+- Treat `AGENTS.md` as the authority for all shared AI rules.
+- Stay inside the current Issue's scope.
+- Explore the related implementation and tests before changing code.
+- Do not perform unrelated refactoring.
+- Do not delete the user's existing changes.
+- Do not introduce unconfirmed architecture.
+- Respect the FSD layer direction and the Public API rule.
+- Implement loading, error, and empty states together.
+- Do not leave `any` or `console.log` behind.
+- Do not add a new package without team agreement.
+- Do not report work as complete without tests and a build.
+- Keep the commit type in English and write the subject in Korean.
+- Commit, push, and open PRs only when the user asks.
+- Do not merge without the user's request.
+- Do not force push.
+- Do not print or commit secrets, tokens, passwords, or private keys. Never put a secret in a `NEXT_PUBLIC_` variable.
+- Do not report work you did not actually perform.
 
-## 프로젝트 명령
+## Project commands
 
-**현재 `package.json`이 없어 실행할 수 있는 스크립트가 없다.** 명령을 추측해서 실행하지 않는다.
+**There is no `package.json`, so there are no scripts to run.** Do not guess at a command.
 
-Next.js 프로젝트 생성 Issue가 완료되면 이 섹션에 실제 스크립트(`dev`, `build`, `lint`, `typecheck`, `test`)와 확정된 패키지 매니저를 기록한다. 그때까지 검증은 아래 범위로 한정한다.
+Once the Next.js project creation Issue lands, record the real scripts (`dev`, `build`, `lint`, `typecheck`, `test`) and the chosen package manager in this section. Until then, verification is limited to:
 
 ```bash
 git status
 git diff
 ```
 
-## Slash Commands
+## Commands and skills
 
-`.claude/commands/`의 각 Markdown 파일은 Claude Code가 `/파일이름` 형태의 Slash Command로 등록한다.
+- **Command** (`.claude/commands/*.md`) — a short execution procedure the user invokes as `/name`
+- **Skill** (`.claude/skills/*/SKILL.md`) — the detailed criteria. Consulted automatically during related work, and referenced by the commands
 
-| Command | 목적 |
+Criteria live only in the skills and are not copied into the commands. To change a rule, edit the skill.
+
+| Command | Purpose |
 | --- | --- |
-| [`/start-issue`](./.claude/commands/start-issue.md) | Issue 기반 작업 시작 (develop 최신화, Branch 생성, 상태 Label 전환) |
-| [`/implement`](./.claude/commands/implement.md) | 현재 Issue의 기능/설정/문서 변경 구현 |
-| [`/fix-bug`](./.claude/commands/fix-bug.md) | 버그 재현 및 원인 수정 |
-| [`/review`](./.claude/commands/review.md) | 코드 리뷰 (기본적으로 수정 없음) |
-| [`/verify`](./.claude/commands/verify.md) | 타입 · 린트 · 테스트 · 빌드 · Secret 종합 검증 |
-| [`/prepare-pr`](./.claude/commands/prepare-pr.md) | Commit, Push, Draft PR 준비 (명시적 요청 시에만) |
+| [`/start-issue`](./.claude/commands/start-issue.md) | Start Issue-based work (refresh develop, create branch, switch status label) |
+| [`/implement`](./.claude/commands/implement.md) | Implement the feature, config, or doc change for the current Issue |
+| [`/fix-bug`](./.claude/commands/fix-bug.md) | Reproduce a bug and fix its root cause |
+| [`/review`](./.claude/commands/review.md) | Review code (makes no changes by default) |
+| [`/verify`](./.claude/commands/verify.md) | Run type check, lint, tests, build, and secret checks |
+| [`/prepare-pr`](./.claude/commands/prepare-pr.md) | Prepare commit, push, and draft PR (only when explicitly requested) |
 
-권장 흐름: `/start-issue` → `/implement` 또는 `/fix-bug` → `/verify` → `/review` → `/prepare-pr`
+| Skill | Purpose |
+| --- | --- |
+| [`commit`](./.claude/skills/commit/SKILL.md) | Type selection, Korean subject, staging scope, commit splitting, Korean encoding on Windows |
+| [`pull-request`](./.claude/skills/pull-request/SKILL.md) | PR title, base selection, stacked PRs, body, checklist, labels, screenshots |
+| [`issue-workflow`](./.claude/skills/issue-workflow/SKILL.md) | Issue analysis, branch naming, status label flow, stop conditions |
+| [`fsd-change`](./.claude/skills/fsd-change/SKILL.md) | FSD layer decisions, state placement, server/client boundary, quality bar |
+| [`code-review`](./.claude/skills/code-review/SKILL.md) | The seven review lenses, review vocabulary, report format |
 
-어떤 Command도 사용자가 요청한 범위를 벗어나 Commit, Push, PR, Merge를 임의로 수행하지 않는다.
+Suggested flow: `/start-issue` → `/implement` or `/fix-bug` → `/verify` → `/review` → `/prepare-pr`
 
-## 권한 설정
+No command and no skill may commit, push, open a PR, or merge beyond what the user asked for. The `commit` and `pull-request` skills describe **how to do the work correctly once requested** — they are not permission to do it.
 
-`.claude/settings.json`은 저장소 전체에 공유되는 설정이다.
+## Permissions
 
-- `allow`: `git status`, `git diff`, `git log`, `gh issue view` 등 읽기 전용 명령. 매번 승인받지 않는다.
-- `deny`: `git push --force`, `git reset --hard`, `rm -rf` 등 파괴적 명령. 필요하면 사용자가 직접 실행한다.
+`.claude/settings.json` is shared across the repository.
 
-개인 환경에서만 필요한 설정은 `.claude/settings.local.json`에 작성한다. 이 파일은 `.gitignore`에 등록되어 있어 Commit되지 않는다.
+- `allow`: read-only commands such as `git status`, `git diff`, `git log`, and `gh issue view`. No approval prompt each time.
+- `deny`: destructive commands such as `git push --force`, `git reset --hard`, and `rm -rf`. The user runs these directly if needed.
 
-## 완료 보고
+Put machine-specific settings in `.claude/settings.local.json`. That file is listed in `.gitignore` and is never committed.
 
-작업 완료 시 다음을 보고한다.
+## Completion report
+
+Report the following when work is done.
 
 ```text
-- 분석 결과
-- 변경 내용
-- 변경 파일
-- 실행한 검증
-- 검증 결과
-- Commit 및 Push 상태
-- 남은 문제와 가정
+- Analysis
+- What changed
+- Files changed
+- Verification performed
+- Verification results
+- Commit and push state
+- Remaining problems and assumptions
 ```
 
-자세한 완료 판단 기준은 [`docs/ai/completion-policy.md`](./docs/ai/completion-policy.md)를 따른다.
+See [`docs/ai/completion-policy.md`](./docs/ai/completion-policy.md) for how completion is judged.

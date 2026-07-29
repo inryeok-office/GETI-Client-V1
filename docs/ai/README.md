@@ -1,92 +1,110 @@
-# AI 개발 문서
+# AI development docs
 
-이 디렉터리는 Claude Code, Codex 등 AI 개발 도구가 GETI-Client 저장소에서 작업할 때 따라야 하는 세부 정책을 모아둔다.
+Detailed policies that AI development tools — Claude Code, Codex, and others — must follow when working in the GETI-Client repository.
 
-## 목적
+## Purpose
 
-- 서로 다른 AI 도구가 동일한 핵심 규칙을 따르도록 한다.
-- 도구마다 Git, 테스트, 보안 정책이 달라져 발생하는 혼선을 방지한다.
-- 사람 협업자에게도 AI가 어떤 기준으로 작업하는지 투명하게 공개한다.
-- 백엔드([GETI-Server](https://github.com/inryeok-office/GETI-Server))와 동일한 문서 구조를 유지해 두 저장소를 오갈 때 규칙을 다시 익히지 않게 한다.
+- Make different AI tools follow the same core rules.
+- Prevent the confusion that arises when each tool applies its own Git, testing, and security policy.
+- Make it transparent to human collaborators what standards the AI is working to.
+- Keep the same document structure as the backend ([GETI-Server](https://github.com/inryeok-office/GETI-Server)) so moving between repositories does not mean relearning the rules.
 
-## 문서 계층
+## Document layers
 
-| 위치 | 역할 | 적용 대상 |
-| --- | --- | --- |
-| [`README.md`](../../README.md) | 프론트엔드 컨벤션 원본 (기술 스택, FSD, 네이밍, 상태 관리, Git Flow, Commit, 라벨) | 사람 + AI |
-| [`AGENTS.md`](../../AGENTS.md) | 모든 AI Agent 공통 최상위 지침. 핵심 규칙과 링크만 담고 세부 내용을 반복하지 않는다 | 모든 AI 도구 |
-| `docs/ai/*` | `AGENTS.md`가 요약한 규칙의 근거와 세부 판단 기준 | 모든 AI 도구 |
-| [`CLAUDE.md`](../../CLAUDE.md), `.claude/` | Claude Code 전용 진입 문서, Slash Command, 권한 설정 | Claude Code |
+| Location | Role | Applies to | Language |
+| --- | --- | --- | --- |
+| [`README.md`](../../README.md) | The original frontend convention (stack, FSD, naming, state management, Git Flow, commits, labels) | Humans + AI | Korean |
+| [`AGENTS.md`](../../AGENTS.md) | Top-level rules for every AI agent. Core rules and links only, no repetition of details | All AI tools | English |
+| `docs/ai/*` | The reasoning and detailed criteria behind the rules `AGENTS.md` summarizes | All AI tools | English |
+| [`CLAUDE.md`](../../CLAUDE.md), `.claude/` | Claude Code entry document, slash commands, skills, permissions | Claude Code | English |
 
-도구별 설정은 공통 규칙을 대체하지 않으며, 공통 규칙 위에서 도구에 특화된 사용 방법만 추가한다.
+Tool-specific configuration never replaces the shared rules; it only adds tool-specific usage on top of them.
 
-## 문서 읽기 순서
+The repository `README.md` and the GitHub Issue/PR templates stay in Korean because they are read by the whole team on GitHub. The AI-facing documents are in English. **Commit subjects and PR titles are written in Korean** regardless of the document language — see [`git-conventions.md`](./git-conventions.md).
+
+## Reading order
 
 ```text
 1. AGENTS.md
-2. 저장소 README.md 의 프론트엔드 컨벤션
-3. docs/ai/README.md (이 문서)
+2. The frontend convention in the repository README.md
+3. docs/ai/README.md (this document)
 4. docs/ai/workflow.md
-5. 작업 유형에 맞는 세부 정책
-6. 도구별 진입 문서 (Claude Code는 CLAUDE.md, Codex는 AGENTS.md 자체)
+5. The detailed policy matching the type of work
+6. The tool entry document (CLAUDE.md for Claude Code, AGENTS.md itself for Codex)
 ```
 
-## 문서별 책임
+## Responsibility per document
 
-| 문서 | 책임 |
+| Document | Responsibility |
 | --- | --- |
-| [`workflow.md`](./workflow.md) | 작업을 시작해서 끝낼 때까지의 표준 절차, Issue 기반 작업 방식 |
-| [`coding-conventions.md`](./coding-conventions.md) | FSD 레이어 · 상태 관리 · 컴포넌트 작성 원칙과 변경 범위 기준 |
-| [`git-conventions.md`](./git-conventions.md) | Branch, Commit, PR 등 AI 관점의 Git 규칙 |
-| [`testing-policy.md`](./testing-policy.md) | 테스트 작성·유지·실행 기준과 검증 정책 |
-| [`security-policy.md`](./security-policy.md) | Secret 관리, `NEXT_PUBLIC_` 노출, 위험한 명령 제한 |
-| [`completion-policy.md`](./completion-policy.md) | 작업을 "완료"로 판단하는 기준과 보고 형식 |
+| [`workflow.md`](./workflow.md) | The standard procedure from start to finish, and how Issue-based work runs |
+| [`coding-conventions.md`](./coding-conventions.md) | FSD layers, state management, component principles, and change-scope criteria |
+| [`git-conventions.md`](./git-conventions.md) | Branch, commit, and PR rules from the AI's perspective |
+| [`testing-policy.md`](./testing-policy.md) | Writing, maintaining, and running tests, and the verification policy |
+| [`security-policy.md`](./security-policy.md) | Secret handling, `NEXT_PUBLIC_` exposure, dangerous-command limits |
+| [`completion-policy.md`](./completion-policy.md) | How "complete" is judged, and the reporting format |
 
-## 규칙 우선순위
+## Rule precedence
 
-`AGENTS.md`에 정의된 우선순위를 그대로 따른다.
+The same order defined in `AGENTS.md`.
 
 ```text
-1. 사용자의 현재 명시적 요청
-2. 현재 Issue와 작업 명세
+1. The user's explicit request in the current message
+2. The current Issue and its specification
 3. AGENTS.md
-4. 도구별 지침
-5. docs/ai 세부 정책
-6. 저장소 README.md 의 프론트엔드 컨벤션
-7. 기존 코드의 일관된 패턴
+4. Tool-specific instructions
+5. docs/ai detailed policies
+6. The frontend convention in the repository README.md
+7. Consistent patterns in the existing code
 ```
 
-## Claude Code 전용 설정
+## Claude Code configuration
 
-Claude Code는 저장소 Root의 [`CLAUDE.md`](../../CLAUDE.md)를 세션 시작 시 자동으로 로드한다. `CLAUDE.md`는 `@AGENTS.md` Import로 공통 규칙이 항상 함께 로드되도록 하고, 그 위에 Claude Code 전용 안내(문서 읽기 순서, 작업 시작 체크리스트, 핵심 행동 규칙, Slash Command 목록, 권한 설정)를 추가한다.
+Claude Code discovers and loads [`CLAUDE.md`](../../CLAUDE.md) at the repository root when a session starts. `CLAUDE.md` imports the shared rules with `@AGENTS.md` so they always load together, then adds Claude Code specific guidance on top: reading order, start-of-work checklist, core behavior rules, the command and skill list, and permissions.
 
-`.claude/commands/`의 각 Markdown 파일은 `/파일이름` 형태의 Slash Command로 등록된다.
+Each Markdown file in `.claude/commands/` is registered as a `/filename` slash command. `.claude/skills/*/SKILL.md` is the skill structure Claude Code recognizes.
 
-| Command | 목적 |
+- **Command** — a short execution procedure the user invokes directly
+- **Skill** — the detailed criteria. Referenced by the commands and consulted automatically during related work
+
+Criteria live only in the skills and are not copied into the commands. Writing the same rule in two places means one of them eventually goes stale.
+
+| Command | Purpose |
 | --- | --- |
-| [`start-issue`](../../.claude/commands/start-issue.md) | Issue 기반 작업 시작 |
-| [`implement`](../../.claude/commands/implement.md) | 기능/설정/문서 변경 구현 |
-| [`fix-bug`](../../.claude/commands/fix-bug.md) | 버그 재현 및 원인 수정 |
-| [`review`](../../.claude/commands/review.md) | 코드 리뷰 |
-| [`verify`](../../.claude/commands/verify.md) | 타입 · 린트 · 테스트 · 빌드 · Secret 검증 |
-| [`prepare-pr`](../../.claude/commands/prepare-pr.md) | Commit/Push/Draft PR 준비 |
+| [`start-issue`](../../.claude/commands/start-issue.md) | Start Issue-based work |
+| [`implement`](../../.claude/commands/implement.md) | Implement a feature, config, or doc change |
+| [`fix-bug`](../../.claude/commands/fix-bug.md) | Reproduce a bug and fix its root cause |
+| [`review`](../../.claude/commands/review.md) | Review code |
+| [`verify`](../../.claude/commands/verify.md) | Type check, lint, tests, build, secret checks |
+| [`prepare-pr`](../../.claude/commands/prepare-pr.md) | Prepare commit, push, and draft PR |
 
-권장 흐름: `start-issue` → `implement` 또는 `fix-bug` → `verify` → `review` → `prepare-pr`
+| Skill | Purpose |
+| --- | --- |
+| [`commit`](../../.claude/skills/commit/SKILL.md) | Type selection, Korean subject, staging scope, commit splitting, Korean encoding |
+| [`pull-request`](../../.claude/skills/pull-request/SKILL.md) | PR title, base selection, stacked PRs, body, checklist, labels, screenshots |
+| [`issue-workflow`](../../.claude/skills/issue-workflow/SKILL.md) | Issue analysis, branch naming, status label flow, stop conditions |
+| [`fsd-change`](../../.claude/skills/fsd-change/SKILL.md) | FSD layer decisions, state placement, server/client boundary, quality bar |
+| [`code-review`](../../.claude/skills/code-review/SKILL.md) | The seven review lenses, review vocabulary, report format |
 
-`.claude/settings.json`은 저장소 공유 설정으로, 읽기 전용 명령을 `allow`에, 파괴적 명령을 `deny`에 둔다. 개인 전용 설정은 `.claude/settings.local.json`(gitignore 대상)에 작성한다.
+Suggested flow: `start-issue` → `implement` or `fix-bug` → `verify` → `review` → `prepare-pr`
 
-## 만들지 않은 것과 그 이유
+The `commit` and `pull-request` skills describe **how to do the work correctly once requested** — they are not permission to do it. Both open with the premise that nothing happens unless the user explicitly asks.
 
-백엔드 저장소에는 `.claude/rules/`, `.claude/skills/`, `.codex/`가 있으나 이 저장소에는 두지 않았다.
+`.claude/settings.json` is the shared repository configuration: read-only commands in `allow`, destructive commands in `deny`. Machine-specific settings belong in `.claude/settings.local.json`, which is gitignored.
 
-- `.claude/rules/` : Claude Code가 이 경로를 자동으로 로드하는 기능은 없다. 규칙을 항상 로드하는 확실한 방법은 `CLAUDE.md`의 `@` Import이므로, 별도 디렉터리 없이 `AGENTS.md` 하나로 모으고 `CLAUDE.md`에서 Import한다.
-- `.claude/skills/` : Command에 담을 판단 기준과 내용이 거의 같아 두 곳을 동시에 갱신해야 하는 중복이 생긴다. Command 본문에 판단 기준을 직접 담고, 프로젝트가 커져 Command가 감당하지 못할 때 도입한다.
-- `.codex/` : Codex CLI는 저장소의 `AGENTS.md`를 별도 설정 없이 읽는다. `.codex/prompts/`는 자동 등록되는 기능이 아니어서(백엔드 문서에도 같은 내용이 기록되어 있다) 복사해서 쓰는 템플릿 모음에 그친다. 실제로 필요해지면 별도 Issue에서 추가한다.
+## What was deliberately not created
 
-Hook, MCP 서버 설정, `.claude/agents/`(Subagent)도 이번 범위에서 제외했다. 반복 작업이 실제로 확인된 뒤 도입한다.
+The backend repository has `.claude/rules/` and `.codex/`; this repository does not.
 
-## 프로젝트 현재 상태
+- `.claude/rules/` — Claude Code has no feature that auto-loads this path. The reliable way to always load a rule is the `@` import in `CLAUDE.md`, so the rules are consolidated into `AGENTS.md` and imported from `CLAUDE.md` instead of living in a separate directory.
+- `.codex/` — the Codex CLI reads the repository's `AGENTS.md` without any extra configuration. `.codex/prompts/` is not an auto-registered feature (the backend docs record the same finding), so it amounts to a collection of templates you copy by hand. It can be added in a separate Issue if it turns out to be needed.
 
-- `package.json`과 소스 코드가 아직 없다. 빌드·테스트·린트 명령이 존재하지 않는다.
-- 따라서 AI가 "빌드 통과", "테스트 통과"를 보고할 수 있는 상태가 아니다. 명령을 추측해서 실행하거나 실행하지 않은 검증을 보고하지 않는다.
-- Next.js 프로젝트 생성과 도구 도입이 완료되면 [`CLAUDE.md`](../../CLAUDE.md)의 "프로젝트 명령"과 [`testing-policy.md`](./testing-policy.md)를 함께 갱신한다.
+Among the skills, there is no equivalent of the backend's `test-and-verify`. With no `package.json` and no test environment, writing one now would be guesswork. The verification criteria live in [`testing-policy.md`](./testing-policy.md) and the [`/verify`](../../.claude/commands/verify.md) command; whether to promote them to a skill is decided in the test-environment Issue.
+
+Hooks, MCP server configuration, and `.claude/agents/` (subagents) are also out of scope for now. They can be adopted once a repetitive task is actually observed.
+
+## Current project state
+
+- There is no `package.json` and no source code. No build, test, or lint command exists.
+- The AI therefore cannot report "build passed" or "tests passed". Do not guess at a command and do not report verification you did not run.
+- Once the Next.js project is created and tooling is adopted, update the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md) and [`testing-policy.md`](./testing-policy.md) together.

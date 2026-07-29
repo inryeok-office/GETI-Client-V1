@@ -175,6 +175,7 @@ Claude Code, Codex 등 AI 개발 도구를 사용할 때는 [`AGENTS.md`](./AGEN
 - [`CLAUDE.md`](./CLAUDE.md) — Claude Code 진입 문서. `@AGENTS.md` Import로 공통 규칙을 함께 로드합니다.
 - [`docs/ai/`](./docs/ai/README.md) — Workflow, 코딩 컨벤션, Git, 테스트, 보안, 완료 판단 세부 정책
 - `.claude/commands/` — `/start-issue`, `/implement`, `/fix-bug`, `/review`, `/verify`, `/prepare-pr` Slash Command
+- `.claude/skills/` — 상세 판단 기준 (`commit`, `pull-request`, `issue-workflow`, `fsd-change`, `code-review`)
 - `.claude/settings.json` — 읽기 전용 명령 허용, 파괴적 명령 차단. 개인 설정은 `.claude/settings.local.json`(gitignore 대상)에 작성합니다.
 
 이 컨벤션 문서가 AI 규칙의 원본입니다. 컨벤션을 바꿀 때는 이 README를 먼저 수정하고 `AGENTS.md`와 `docs/ai/`를 함께 갱신합니다.

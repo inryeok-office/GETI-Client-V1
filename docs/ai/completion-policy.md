@@ -1,75 +1,75 @@
-# 완료 판단 및 결과 보고 정책 (AI 작업 원칙)
+# Completion judgment and reporting policy (AI working principles)
 
-AI Agent가 작업을 "완료"라고 표현하기 전에 확인해야 하는 기준과, 결과를 보고하는 형식을 다룬다.
+What an AI agent must confirm before calling work "complete", and the format for reporting the result.
 
-## 최소 완료 조건
+## Minimum bar for completion
 
-다음을 모두 만족해야 "완료"로 표현할 수 있다.
+All of these must hold before you can say "complete".
 
-- 요청 또는 Issue의 요구사항을 충족했다.
-- Issue에 명시된 제외 범위를 넘어서는 변경을 포함하지 않았다.
-- 타입 체크가 통과한다.
-- 린트가 통과한다.
-- 변경과 관련된 테스트가 성공한다.
-- 가능한 범위에서 전체 테스트를 실행했다.
-- 빌드가 성공한다.
-- 데이터를 다루는 UI라면 로딩 · 에러 · 빈 상태를 구현했다.
-- 변경 사항의 Diff를 직접 확인했다.
-- Secret이나 민감정보가 포함되지 않았는지 확인했다. `NEXT_PUBLIC_` 변수를 확인했다.
-- `console.log`, `any`, 주석 처리된 코드가 남지 않았는지 확인했다.
-- 관련 없는 파일이 포함되지 않았는지 확인했다.
-- 문서 갱신이 필요한 변경이라면 문서도 함께 갱신했는지 확인했다.
-- 최종 `git status`로 저장소 상태를 확인했다.
-- 실제로 수행한 내용을 정확하게 보고했다.
+- The request's or Issue's requirements are met.
+- No change exceeds the out-of-scope list stated in the Issue.
+- The type check passes.
+- Lint passes.
+- The tests related to the change pass.
+- The full test suite was run as far as possible.
+- The build succeeds.
+- For UI that handles data, the loading, error, and empty states are implemented.
+- You read the diff of the change yourself.
+- You confirmed no secrets or sensitive data are included, and checked the `NEXT_PUBLIC_` variables.
+- You confirmed no `console.log`, `any`, or commented-out code was left behind.
+- You confirmed no unrelated files are included.
+- If the change requires a documentation update, the documentation was updated too.
+- You checked the repository state with a final `git status`.
+- You reported accurately what you actually did.
 
-**빌드·테스트 명령이 아직 없는 현재 단계에서는** 해당 항목을 "실행 가능한 명령 없음"으로 명시하고, 나머지 항목만으로 판단한다. 없는 명령을 실행했다고 보고하지 않는다.
+**At the current stage, where no build or test command exists,** mark those items as "no runnable command" and judge on the rest. Do not report running a command that does not exist.
 
-## "완료"로 표현하지 않는 경우
+## When not to say "complete"
 
-다음 중 하나라도 해당하면 "완료"라고 표현하지 않는다.
+If any of these apply, do not describe the work as complete.
 
-- 테스트가 실패했다.
-- 타입 오류나 린트 오류가 남아 있다.
-- 빌드를 아직 실행하지 않았다.
-- 요구사항 중 일부만 구현했다.
-- 환경 문제로 검증을 수행할 수 없었다.
-- 사용자가 요청한 Commit 또는 Push가 실패했다.
-- 핵심 요구사항 자리에 TODO나 Placeholder가 남아 있다.
-- UI를 만들었지만 실제 화면을 확인하지 못했다. (이 경우 "구현 완료, 화면 확인 필요"로 표현한다)
-- 요청 범위와 관련 없는 변경이 섞여 있다.
+- A test failed.
+- A type error or lint error remains.
+- The build has not been run yet.
+- Only part of the requirements is implemented.
+- An environment problem prevented verification.
+- A commit or push the user asked for failed.
+- A TODO or placeholder stands in for a core requirement.
+- You built UI but could not see the actual screen. (Report this as "implemented, screen confirmation needed".)
+- Changes unrelated to the request are mixed in.
 
-## 상태 표현
+## Status wording
 
-작업 결과는 다음 네 가지 중 하나로 명확히 표현한다.
-
-```text
-완료      : 최소 완료 조건을 모두 만족함
-부분 완료 : 요구사항 중 일부만 충족했거나, 후속 작업이 남아 있음
-검증 불가 : 환경/권한 등의 이유로 검증을 수행하지 못함
-실패      : 요구사항을 충족하지 못했거나 시도가 성공하지 못함
-```
-
-## 결과 보고 형식
-
-최종 보고에는 다음 항목을 포함한다. 해당 작업에서 의미가 없는 항목은 생략하되, 임의로 지어내지 않는다.
+State the outcome clearly as one of four.
 
 ```text
-1. 분석 결과
-2. 구현 내용
-3. 변경 파일
-4. 주요 판단과 가정
-5. 실행한 검증
-6. 검증 결과
-7. 실행하지 못한 검증
-8. Commit 상태
-9. Push 및 PR 상태
-10. 남은 작업과 위험 요소
+Complete       Every item on the minimum bar is satisfied
+Partial        Only some requirements are met, or follow-up work remains
+Unverified     Verification could not be performed for environment or permission reasons
+Failed         The requirements were not met, or the attempt did not succeed
 ```
 
-## 원칙
+## Report format
 
-- 실제로 생성하거나 수행하지 않은 Issue, Commit, Push, Pull Request, Test를 완료했다고 보고하지 않는다.
-- 실행하지 못한 검증은 "생략했다" 또는 "확인하지 못했다"라고 명시하고, 그 이유(권한 없음, 환경 미구성 등)와 사용자가 직접 실행할 수 있는 명령을 함께 안내한다.
-- AI는 브라우저에서 화면을 직접 볼 수 없다. 시각적 결과, 반응형 레이아웃, 애니메이션, 접근성 실제 동작은 "확인하지 못한 항목"으로 보고하고 사용자에게 확인을 요청한다.
-- PR에 스크린샷을 첨부해야 하는데 첨부할 수 없다면, 자리를 비워 두고 사용자에게 요청한다. 첨부한 것처럼 표현하지 않는다.
-- 작업 중 발견했지만 이번 범위에서 다루지 않은 문제는 임의로 수정하지 않고 후속 Issue 후보로 보고한다.
+The final report includes these items. Omit an item that is meaningless for the work at hand, but never invent one.
+
+```text
+1. Analysis
+2. What was implemented
+3. Files changed
+4. Key decisions and assumptions
+5. Verification performed
+6. Verification results
+7. Verification not performed
+8. Commit state
+9. Push and PR state
+10. Remaining work and risks
+```
+
+## Principles
+
+- Never report an Issue, commit, push, pull request, or test as complete if you did not actually create or run it.
+- For verification you could not perform, say plainly that it was "skipped" or "not confirmed", give the reason (no permission, environment not set up), and include the command the user can run themselves.
+- The AI cannot see a screen in a browser. Report the visual result, responsive layout, animation, and real accessibility behavior as unconfirmed items and ask the user to check them.
+- If a PR needs a screenshot you cannot attach, leave the slot empty and ask the user. Do not phrase it as attached.
+- If you find a problem during the work that falls outside the current scope, do not fix it on your own. Report it as a candidate for a follow-up Issue.

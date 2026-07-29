@@ -1,65 +1,65 @@
-# 테스트 및 검증 정책 (AI 작업 원칙)
+# Testing and verification policy (AI working principles)
 
-**현재 GETI-Client에는 `package.json`과 테스트 환경이 없다.** 실행할 수 있는 빌드·린트·테스트 명령이 존재하지 않는다. 이 문서는 도구가 도입된 뒤에도 유지될 원칙과, 그때까지의 예외 처리를 다룬다.
+**GETI-Client currently has no `package.json` and no test environment.** There is no runnable build, lint, or test command. This document covers the principles that survive once tooling is adopted, plus how to handle the gap until then.
 
-## 현재 단계에서 지켜야 할 것
+## What applies right now
 
-- 명령을 추측해서 실행하지 않는다. `npm test`, `pnpm build` 같은 명령이 있을 것이라 가정하지 않는다.
-- 실행하지 않은 검증을 통과했다고 보고하지 않는다. 문서·설정 변경만 있는 작업은 "실행 가능한 검증 없음"을 명시한다.
-- 문서 변경이라면 문서 내 상대 링크가 실제 파일을 가리키는지, 코드 블록 문법이 맞는지 직접 확인한다.
-- JSON/YAML 설정을 추가하면 파싱이 되는지 확인한다.
-- 검증 환경이 없다는 사실을 완료 보고의 "실행하지 못한 검증"에 적는다.
+- Do not guess at a command and run it. Do not assume commands like `npm test` or `pnpm build` exist.
+- Do not report verification you did not run. For doc-only or config-only work, state explicitly that there is no runnable verification.
+- For documentation changes, check by hand that relative links resolve to real files and that code fences are well-formed.
+- When adding JSON or YAML configuration, confirm it parses.
+- Record the absence of a verification environment under "Verification not performed" in the completion report.
 
-## 원칙 (도구 도입 후에도 유지)
+## Principles (still apply after tooling lands)
 
-- 변경한 동작에 대응하는 테스트를 작성하거나 갱신한다. 기능 변경 없이 테스트만 추가하는 작업도 동일한 기준을 따른다.
-- 기존에 통과하던 테스트를 근거 없이 삭제하거나 수정하지 않는다.
-- 정상 경로뿐 아니라 의미 있는 예외/실패 경로도 함께 검토한다. 다만 억지로 모든 경우의 수를 테스트로 만들지는 않는다.
-- 테스트가 실패하면 원인을 분석한다. 코드 문제인지, 테스트 자체의 문제인지, 로컬 환경 문제인지 구분해서 보고한다.
-- 테스트를 통과시키기 위해 테스트를 삭제하거나 비활성화하지 않는다. `.skip`, `.todo`, `it.only`로 우회하지 않는다. 정말 비활성화가 필요하다면 사유를 명시하고 사용자에게 확인받는다.
-- 관련 테스트를 먼저 실행하고, 마지막에 전체 검증(타입 → 린트 → 테스트 → 빌드)을 수행한다.
-- 환경 문제(도구 미설치, Node 버전 불일치 등)와 코드 문제를 구분해서 보고하고, 실행한 명령과 결과를 기록한다.
-- 의미 없이 통과만 하는 테스트(빈 assertion, `expect(true).toBe(true)`, 렌더링만 확인하고 아무것도 검증하지 않는 테스트)를 만들지 않는다.
-- 내부 구현 세부사항에 결합된 테스트를 피한다. 컴포넌트 테스트는 사용자가 실제로 보고 조작하는 것(화면에 보이는 텍스트, role, label)을 기준으로 검증하고, 내부 state나 클래스 이름에 의존하지 않는다.
-- 시간, 실행 순서, 네트워크에 따라 결과가 달라지는 비결정적 테스트를 만들지 않는다. API 호출은 실제 서버가 아니라 MSW 등의 Mock으로 대체한다.
-- 데이터를 다루는 컴포넌트는 로딩 · 에러 · 빈 상태도 함께 검증한다.
-- 실행하지 못한 테스트나 검증 항목은 완료 보고에 명확히 남긴다 ([`completion-policy.md`](./completion-policy.md) 참고).
+- Write or update the tests matching the behavior you changed. Work that only adds tests follows the same bar.
+- Do not delete or modify passing tests without a reason.
+- Review the meaningful failure paths as well as the happy path. Do not force every possible case into a test.
+- When a test fails, analyze the cause. Report whether it is a code problem, a problem with the test itself, or a local environment problem.
+- Do not delete or disable a test to make it pass. Do not work around it with `.skip`, `.todo`, or `it.only`. If disabling is genuinely necessary, state the reason and get the user's confirmation.
+- Run the related tests first, then full verification last (types → lint → tests → build).
+- Distinguish environment problems (missing tooling, Node version mismatch) from code problems, and record the commands you ran and their output.
+- Do not write tests that only pass without asserting anything — empty assertions, `expect(true).toBe(true)`, or a test that renders and checks nothing.
+- Avoid tests coupled to internal implementation details. Test components through what the user actually sees and operates (visible text, role, label), not internal state or class names.
+- Do not write non-deterministic tests that depend on time, execution order, or the network. Replace API calls with a mock such as MSW rather than hitting a real server.
+- For components that handle data, also verify the loading, error, and empty states.
+- Clearly record any test or verification you could not run in the completion report (see [`completion-policy.md`](./completion-policy.md)).
 
-## 검증 순서 (도구 도입 후)
-
-```text
-1. 타입 체크
-2. 린트
-3. 관련 테스트
-4. 전체 테스트
-5. 빌드
-```
-
-실제 스크립트 이름과 패키지 매니저는 프로젝트 생성 Issue에서 확정된 뒤 [`CLAUDE.md`](../../CLAUDE.md)의 "프로젝트 명령"에 기록된다. 그 문서를 확인하고 사용한다.
-
-## 수동 확인이 필요한 항목
-
-자동 테스트로 대체할 수 없는 항목이다. AI가 실행할 수 없으면 "확인하지 못했다"고 보고하고 사용자가 확인할 항목으로 안내한다.
+## Verification order (once tooling lands)
 
 ```text
-실제 화면의 시각적 결과
-반응형 레이아웃 (데스크톱 / 모바일)
-애니메이션과 전환
-키보드 조작과 스크린리더 동작
-브라우저별 차이
+1. Type check
+2. Lint
+3. Related tests
+4. Full test suite
+5. Build
 ```
 
-## 아직 도입하지 않은 도구
+The actual script names and the package manager get settled in the project creation Issue and recorded in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md). Read that document and use what it says.
 
-다음 도구는 이 저장소에 아직 없다. 관련 작업이 아니라면 필수로 요구하거나 임의로 도입하지 않는다.
+## Items requiring manual confirmation
+
+These cannot be replaced by automated tests. If the AI cannot run them, report them as not confirmed and hand them to the user.
+
+```text
+The actual visual result on screen
+Responsive layout (desktop / mobile)
+Animation and transitions
+Keyboard operation and screen reader behavior
+Cross-browser differences
+```
+
+## Tooling not yet adopted
+
+The following do not exist in this repository. Unless the work is specifically about them, do not require them and do not introduce them on your own.
 
 ```text
 Vitest
 Testing Library
 MSW
-Playwright 등 E2E
+Playwright or another E2E tool
 Storybook
-Visual Regression Test
+Visual regression testing
 ```
 
-위 도구는 추후 테스트 환경 구성 PR에서 필요에 따라 도입되고, 이 문서도 함께 갱신될 예정이다.
+These get adopted as needed in the test-environment PR, and this document gets updated with them.

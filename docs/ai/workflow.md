@@ -1,94 +1,94 @@
-# AI 표준 작업 Workflow
+# Standard AI workflow
 
-AI Agent가 GETI-Client 저장소에서 작업을 수행할 때 따르는 표준 절차다. [`AGENTS.md`](../../AGENTS.md)의 "필수 작업 순서"를 단계별로 구체화한다.
+The standard procedure an AI agent follows when doing work in the GETI-Client repository. This expands the "Required work order" in [`AGENTS.md`](../../AGENTS.md) step by step.
 
-## 전체 흐름
+## Overall flow
 
 ```text
-요구사항 확인
-→ Git 상태 확인
-→ 관련 코드와 문서 탐색
-→ 영향 범위 분석
-→ 구현 계획 수립
-→ 최소 범위 변경
-→ 관련 테스트
-→ 전체 검증
-→ Diff 리뷰
+Confirm requirements
+→ Check Git state
+→ Explore relevant code and docs
+→ Analyze blast radius
+→ Form an implementation plan
+→ Make the minimum change
+→ Run related tests
+→ Run full verification
+→ Review the diff
 → Commit
-→ Push 또는 PR
-→ 완료 보고
+→ Push or open a PR
+→ Report the result
 ```
 
-## 단계별 기준
+## Step criteria
 
-### 1. 요구사항 확인
+### 1. Confirm requirements
 
-- 할 일: 사용자 요청, 연결된 Issue 본문, 완료 조건, 제외 범위를 정확히 읽는다. UI 작업이면 디자인 참고 자료(Figma 링크, 스크린샷)를 먼저 확인한다.
-- 하지 말 것: 요청에 없는 내용을 짐작해서 작업 범위에 포함시키지 않는다. 디자인을 확인하지 않고 화면을 상상해서 만들지 않는다.
+- Do: read the user's request, the linked Issue body, the acceptance criteria, and the out-of-scope list carefully. For UI work, check the design reference (Figma link, screenshot) first.
+- Don't: pull things into scope that were not asked for. Don't imagine a screen without looking at the design.
 
-### 2. Git 상태 확인
+### 2. Check Git state
 
-- 할 일: `git status`, `git branch --show-current`, `git log --oneline -10`으로 현재 위치와 미커밋 변경 사항을 파악한다.
-- 하지 말 것: 현재 Branch를 확인하지 않고 바로 파일을 수정하지 않는다.
+- Do: run `git status`, `git branch --show-current`, and `git log --oneline -10` to establish where you are and what is uncommitted.
+- Don't: start editing files without checking the current branch.
 
-### 3. 관련 코드와 문서 탐색
+### 3. Explore relevant code and docs
 
-- 할 일: 관련 기존 컴포넌트, 훅, 유틸, 타입, 테스트를 먼저 읽는다. `shared`에 이미 있는 공통 요소를 먼저 찾는다.
-- 하지 말 것: 기존 구현을 확인하지 않고 새로 작성하지 않는다. 몇 파일 옆에 있는 유틸을 다시 만들지 않는다.
+- Do: read the existing components, hooks, utilities, types, and tests first. Look in `shared` for common pieces before writing new ones.
+- Don't: write something new without checking for an existing implementation. Don't rebuild a utility that lives a few files over.
 
-### 4. 영향 범위 분석
+### 4. Analyze blast radius
 
-- 할 일: 변경이 어떤 슬라이스, 어떤 페이지, 어떤 Public API에 영향을 주는지 파악한다. 공통 컴포넌트나 `shared` 변경이면 사용처 전체를 확인한다.
-- 하지 말 것: 영향 범위가 불확실한 상태로 바로 구현에 들어가지 않는다. 버그를 신고된 화면에서만 막고 같은 함수를 쓰는 다른 화면을 방치하지 않는다.
+- Do: identify which slices, pages, and public APIs the change touches. If you are changing a shared component or anything in `shared`, check every call site.
+- Don't: start implementing while the blast radius is still unclear. Don't fix a bug only on the screen named in the ticket and leave the sibling screens using the same function broken.
 
-### 5. 구현 계획 수립
+### 5. Form an implementation plan
 
-- 할 일: 무엇을, 왜, 어떤 순서로 바꿀지 정리한다. 어떤 FSD 레이어에 넣을지 먼저 결정한다. 범위가 크면 논리적 단계로 나눈다.
-- 하지 말 것: 계획 없이 여러 관심사를 한 번에 뒤섞어 수정하지 않는다. 레이어를 정하지 않은 채 파일을 만들지 않는다.
+- Do: write down what changes, why, and in what order. Decide which FSD layer each piece belongs to first. Split large scope into logical steps.
+- Don't: mix several concerns into one unplanned edit. Don't create files before deciding on the layer.
 
-### 6. 최소 범위 변경
+### 6. Make the minimum change
 
-- 할 일: Issue와 요청에 필요한 최소한의 변경만 수행한다. 데이터를 다루는 UI라면 로딩 · 에러 · 빈 상태를 함께 만든다.
-- 하지 말 것: 관련 없는 Refactoring, 불필요한 컴포넌트 분리, 사용처가 하나뿐인 추상화를 함께 하지 않는다.
+- Do: implement only what the Issue and the request require. If the UI handles data, build the loading, error, and empty states with it.
+- Don't: bundle unrelated refactoring, unnecessary component splitting, or an abstraction with a single call site.
 
-### 7. 관련 테스트
+### 7. Run related tests
 
-- 할 일: 변경한 범위에 대응하는 테스트를 먼저 실행하거나 작성한다.
-- 하지 말 것: 테스트를 건너뛰고 바로 전체 Build로 넘어가지 않는다.
+- Do: run or write the tests matching the change first.
+- Don't: skip tests and jump straight to the full build.
 
-### 8. 전체 검증
+### 8. Run full verification
 
-- 할 일: 타입 체크, 린트, 테스트, 빌드를 순서대로 실행한다. 실행 가능한 명령이 무엇인지는 [`CLAUDE.md`](../../CLAUDE.md)의 "프로젝트 명령"에서 확인한다.
-- 하지 말 것: 부분 검증만으로 전체가 통과했다고 가정하지 않는다. 명령이 아직 없는 단계에서 통과했다고 보고하지 않는다.
+- Do: run type check, lint, tests, and build in that order. Check which commands actually exist in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md).
+- Don't: assume partial verification means everything passed. Don't report a pass at a stage where the command does not yet exist.
 
-### 9. Diff 리뷰
+### 9. Review the diff
 
-- 할 일: `git diff`, `git diff --staged`로 실제 변경 내용을 직접 확인한다. Secret, `console.log`, `any`, 불필요한 파일 포함 여부를 확인한다.
-- 하지 말 것: Diff를 확인하지 않고 바로 Commit하지 않는다.
+- Do: read the actual change with `git diff` and `git diff --staged`. Check for secrets, `console.log`, `any`, and unwanted files.
+- Don't: commit without reading the diff.
 
 ### 10. Commit
 
-- 할 일: 관련된 파일만 Stage하고, [`git-conventions.md`](./git-conventions.md)의 한글 Commit 규칙을 따른다.
-- 하지 말 것: 관련 없는 변경을 같은 Commit에 섞지 않는다. 락파일 변경을 기능 Commit에 끼워 넣지 않는다.
+- Do: stage only the related files and follow the Korean commit rules in [`git-conventions.md`](./git-conventions.md).
+- Don't: mix unrelated changes into one commit. Don't slip a lockfile change into a feature commit.
 
-### 11. Push 또는 PR
+### 11. Push or open a PR
 
-- 할 일: 사용자가 명시적으로 요청한 경우에만 Push하거나 PR을 생성/갱신한다. UI 변경이면 PR에 스크린샷/GIF를 첨부할 수 있도록 사용자에게 안내한다.
-- 하지 말 것: 요청 없이 임의로 Push, Merge, Force Push하지 않는다. 스크린샷을 첨부한 것처럼 보고하지 않는다.
+- Do: push or create/update a PR only when the user explicitly asks. For UI changes, tell the user that a screenshot or GIF needs to be attached to the PR.
+- Don't: push, merge, or force push on your own initiative. Don't report a screenshot as attached.
 
-### 12. 완료 보고
+### 12. Report the result
 
-- 할 일: [`completion-policy.md`](./completion-policy.md) 형식에 따라 실제로 수행한 내용만 보고한다.
-- 하지 말 것: 실행하지 않은 검증이나 Push를 완료했다고 표현하지 않는다.
+- Do: report only what you actually did, in the format from [`completion-policy.md`](./completion-policy.md).
+- Don't: describe verification or a push you did not perform as complete.
 
-## Issue 기반 작업에서 추가로 확인할 사항
+## Additional checks for Issue-based work
 
-- Issue 제목과 본문을 확인해 작업 목적을 파악한다.
-- 완료 조건(Acceptance Criteria)을 확인해 무엇을 만족해야 끝나는지 파악한다.
-- 제외 범위를 확인해 이번 작업에 포함하지 않을 항목을 파악한다.
-- 현재 Branch가 해당 Issue 번호를 포함한 올바른 작업 Branch인지 확인한다.
-- Commit이나 PR 본문에서 관련 Issue를 번호로 연결한다.
-- Issue의 상태 Label을 작업 흐름에 맞게 변경한다 ([`git-conventions.md`](./git-conventions.md)의 상태 흐름 참고).
-- 진행 상황을 알릴 필요가 있는 시점(단계 완료, 중간 Commit, 방향 전환 등)에는 Issue에 진행 댓글을 남긴다. 사소한 중간 상태까지 매번 댓글을 남기지 않는다.
-- 이번 작업이 다른 PR이나 Issue의 완료를 전제로 한다면, 선행 작업이 실제로 Merge되었는지 먼저 확인한다.
-- 백엔드 API가 필요한 작업이면 해당 API가 실제로 구현되어 있는지 [GETI-Server](https://github.com/inryeok-office/GETI-Server)에서 확인한다. 없다면 응답 형태를 추측해서 구현하지 않고 사용자에게 확인한다.
+- Read the Issue title and body to understand the purpose of the work.
+- Read the acceptance criteria to know what must be true for the work to be finished.
+- Read the out-of-scope list to know what this round excludes.
+- Confirm the current branch is the correct work branch containing the Issue number.
+- Link the related Issue by number in the commit or PR body.
+- Move the Issue's status label along with the workflow (see the status flow in [`git-conventions.md`](./git-conventions.md)).
+- Leave a progress comment on the Issue at points worth reporting: a completed step, an intermediate commit, a change of direction. Do not comment on every minor intermediate state.
+- If this work depends on another PR or Issue being finished, confirm that the prerequisite was actually merged first.
+- If the work needs a backend API, confirm that API actually exists in [GETI-Server](https://github.com/inryeok-office/GETI-Server). If it does not, do not guess the response shape — ask the user.
