@@ -1,53 +1,47 @@
 ---
-description: 현재 Issue 범위의 기능·설정·문서 변경을 구현한다 (Commit, Push 없음)
-argument-hint: [추가 지시사항]
+description: Implement the feature, config, or doc change in scope for the current Issue (no commit, no push)
+argument-hint: [extra instructions]
 ---
 
-## 목적
+## Purpose
 
-현재 Branch와 Issue 범위 내에서 요구된 변경을 구현한다. Commit, Push, PR은 하지 않는다.
+Implement the requested change within the current branch and Issue scope. **No commit, no push, no PR.**
 
-## 추가 지시사항
+## Extra instructions
 
 `$ARGUMENTS`
 
-## 참조
+## Reference
 
-[`AGENTS.md`](../../AGENTS.md), [`docs/ai/coding-conventions.md`](../../docs/ai/coding-conventions.md), [`docs/ai/workflow.md`](../../docs/ai/workflow.md), 저장소 [`README.md`](../../README.md)의 프론트엔드 컨벤션을 따른다.
+Layer decisions, state placement, the server/client boundary, and the quality bar follow the [`fsd-change` skill](../skills/fsd-change/SKILL.md). For Issue analysis, see the [`issue-workflow` skill](../skills/issue-workflow/SKILL.md).
 
-## 수행 절차
+## Procedure
 
-1. `git status`, `git branch --show-current`로 현재 위치를 확인한다. `main`이나 `develop`이면 중단하고 `/start-issue`를 안내한다.
-2. `gh issue view <번호>`로 현재 Issue의 요구사항, 완료 조건, 제외 범위를 확인한다.
-3. 관련 기존 코드를 탐색한다. `shared`에 이미 있는 공통 UI·유틸·타입을 먼저 찾는다. 이미 구현된 기능을 중복 생성하지 않는다.
-4. 변경할 파일이 어떤 FSD 레이어에 속하는지 결정한다. 판단이 애매하면 임의로 정하지 않고 사용자에게 확인한다.
-5. 영향 범위를 분석한다. `shared`나 공통 컴포넌트를 수정하면 사용처 전체를 확인한다.
-6. 구현 계획을 제시한다. 범위가 크면 논리적 단계로 나눈다.
-7. 최소 범위로 구현한다.
-8. 데이터를 다루는 UI라면 로딩 · 에러 · 빈 상태를 함께 구현한다.
-9. 접근성 기본을 확인한다. 클릭 요소는 `<button>`/`<a>`, 이미지는 `alt`, 폼 요소는 label 연결.
-10. `git diff`로 변경 내용을 직접 검토한다. `console.log`, `any`, 주석 처리된 코드, Secret이 남지 않았는지 확인한다.
-11. 실행 가능한 검증 명령이 있으면 실행한다. 없으면 없다고 보고한다.
+1. Check `git status` and `git branch --show-current`. If you are on `main` or `develop`, stop and point the user at `/start-issue`.
+2. Run `gh issue view <number>` and read the requirements, acceptance criteria, and out-of-scope list.
+3. Explore the existing code. Look in `shared` for common UI, utilities, and types first.
+4. Decide which FSD layer each changed file belongs to. If it is ambiguous, ask the user instead of picking arbitrarily.
+5. Analyze the blast radius. If you touch `shared` or a shared component, check every call site.
+6. Present an implementation plan. Split large scope into logical steps.
+7. Implement the minimum scope. If the UI handles data, build the loading, error, and empty states with it.
+8. Check the accessibility basics.
+9. Read the change with `git diff`. Confirm no `console.log`, `any`, commented-out code, or secrets were left behind.
+10. Run any verification command that actually exists. If none exists, say so.
 
-## 금지 사항
+## Prohibited
 
-- Issue 범위를 벗어난 기능 추가
-- 관련 없는 Refactoring
-- FSD 레이어 방향 위반 (하위가 상위 import)
-- 다른 슬라이스의 내부 파일 직접 import
-- 서버 상태를 전역 스토어나 `useState`에 복사
-- 컴포넌트에서 axios 직접 호출
-- 팀 합의 없는 새 패키지 추가
-- 사용처가 하나뿐인 추상화 생성
-- `any`, `@ts-ignore`, `eslint-disable`로 오류 덮기
-- 핵심 요구사항 자리에 TODO 남기고 완료 처리
-- 사용자 요청 없는 Commit, Push, PR
+- Adding features outside the Issue scope
+- Unrelated refactoring
+- Marking work complete with a TODO standing in for a core requirement
+- **Committing, pushing, or opening a PR without the user's request**
 
-## 결과 보고
+The remaining prohibitions — layer violations, bypassing a public API, copying server state, calling axios directly, adding packages without agreement, overusing `any` — are in the [`fsd-change` skill](../skills/fsd-change/SKILL.md).
 
-- 구현 내용과 변경 파일
-- FSD 레이어 배치와 그 근거
-- 주요 판단과 가정
-- 실행한 검증과 결과
-- 실행하지 못한 검증 (화면 확인, 반응형 등)
-- 남은 작업
+## Report
+
+- What was implemented and which files changed
+- FSD layer placement and the reasoning
+- Key decisions and assumptions
+- Verification performed and its results
+- Verification not performed (screen confirmation, responsive layout, and so on)
+- Remaining work

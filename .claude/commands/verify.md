@@ -1,72 +1,72 @@
 ---
-description: 타입 · 린트 · 테스트 · 빌드 · Secret을 종합 검증한다 (실행하지 못한 항목 명시)
+description: Run type check, lint, tests, build, and secret checks, and state what could not be run
 ---
 
-## 목적
+## Purpose
 
-현재 변경 사항을 검증하고 결과를 사실대로 보고한다. 실행하지 못한 항목을 반드시 구분해서 남긴다.
+Verify the current changes and report the result truthfully. Always distinguish what you could not run.
 
-## 참조
+## Reference
 
-[`docs/ai/testing-policy.md`](../../docs/ai/testing-policy.md), [`docs/ai/completion-policy.md`](../../docs/ai/completion-policy.md), [`CLAUDE.md`](../../CLAUDE.md)의 "프로젝트 명령"
+[`docs/ai/testing-policy.md`](../../docs/ai/testing-policy.md), [`docs/ai/completion-policy.md`](../../docs/ai/completion-policy.md), and the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md).
 
-## 수행 절차
+## Procedure
 
-1. `git status`, `git branch --show-current`로 현재 상태를 확인한다.
-2. [`CLAUDE.md`](../../CLAUDE.md)의 "프로젝트 명령"에서 실제로 존재하는 스크립트를 확인한다. `package.json`이 있으면 `scripts`를 직접 읽는다.
-3. **존재하지 않는 명령을 추측해서 실행하지 않는다.** 없으면 없다고 보고한다.
-4. 존재하는 것만 순서대로 실행한다.
+1. Check the current state with `git status` and `git branch --show-current`.
+2. Read which scripts actually exist from the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md). If `package.json` exists, read its `scripts` directly.
+3. **Do not guess at a command that does not exist.** If there is none, say so.
+4. Run only what exists, in order.
 
 ```text
-1. 타입 체크
-2. 린트
-3. 관련 테스트
-4. 전체 테스트
-5. 빌드
+1. Type check
+2. Lint
+3. Related tests
+4. Full test suite
+5. Build
 ```
 
-5. `git diff --check`로 공백 오류와 충돌 표시를 확인한다.
-6. `git diff`에서 아래를 확인한다.
+5. Run `git diff --check` for whitespace errors and conflict markers.
+6. Check the `git diff` for the following.
 
 ```text
 console.log
 any / as unknown as / @ts-ignore
 eslint-disable
-주석 처리된 코드, TODO
-하드코딩된 Secret, Token, URL
-NEXT_PUBLIC_ 변수에 담긴 민감정보
-.env, 인증서, 키 파일
-빌드 산출물 (.next/, out/, coverage/)
+Commented-out code, TODO
+Hardcoded secrets, tokens, URLs
+Sensitive data in a NEXT_PUBLIC_ variable
+.env, certificates, key files
+Build output (.next/, out/, coverage/)
 ```
 
-7. 문서를 변경했다면 상대 링크가 실제 파일을 가리키는지 확인한다.
-8. JSON/YAML 설정을 변경했다면 파싱되는지 확인한다.
-9. Issue의 완료 조건과 대조한다.
+7. If you changed documentation, confirm the relative links resolve to real files.
+8. If you changed JSON or YAML configuration, confirm it parses.
+9. Compare against the Issue's acceptance criteria.
 
-## 실패 처리
+## Handling failures
 
-- 실패 원인을 코드 문제 / 테스트 문제 / 환경 문제로 구분한다.
-- 테스트를 삭제하거나 `.skip`으로 우회해서 통과시키지 않는다.
-- 경고를 오류처럼 과장하지 않고, 오류를 경고로 축소하지 않는다.
-- 오류 메시지는 원문 그대로 인용한다.
+- Classify the cause as a code problem, a test problem, or an environment problem.
+- Do not make a test pass by deleting it or skipping it.
+- Do not inflate warnings into errors, and do not downgrade errors into warnings.
+- Quote error messages verbatim.
 
-## AI가 확인할 수 없는 항목
+## What the AI cannot confirm
 
-아래는 실행할 수 없으므로 "확인하지 못함"으로 보고하고 사용자에게 확인을 요청한다.
+These cannot be run, so report them as unconfirmed and ask the user to check.
 
 ```text
-실제 화면의 시각적 결과
-반응형 레이아웃 (데스크톱 / 모바일)
-애니메이션과 전환
-키보드 조작과 스크린리더 동작
-브라우저별 차이
+The actual visual result on screen
+Responsive layout (desktop / mobile)
+Animation and transitions
+Keyboard operation and screen reader behavior
+Cross-browser differences
 ```
 
-## 결과 보고
+## Report
 
-- 실행한 명령과 각각의 결과
-- 실행하지 못한 명령과 그 이유
-- Diff 점검 결과
-- Issue 완료 조건 충족 여부
-- 사용자가 직접 확인해야 하는 항목
-- 최종 상태 (완료 / 부분 완료 / 검증 불가 / 실패)
+- Each command run and its result
+- Each command not run and why
+- Diff inspection results
+- Whether the Issue's acceptance criteria are met
+- Items the user needs to confirm directly
+- Final status (Complete / Partial / Unverified / Failed)

@@ -1,47 +1,47 @@
 ---
-description: 버그를 재현하고 근본 원인을 수정한다 (증상 덮기 금지)
-argument-hint: [버그 설명 또는 Issue 번호]
+description: Reproduce a bug and fix its root cause (no papering over symptoms)
+argument-hint: [bug description or Issue number]
 ---
 
-## 목적
+## Purpose
 
-보고된 버그의 재현 조건을 확인하고, 증상이 아니라 원인을 수정한다.
+Confirm how the reported bug reproduces, then fix the cause rather than the symptom.
 
-## 입력
+## Input
 
 `$ARGUMENTS`
 
-## 참조
+## Reference
 
-[`AGENTS.md`](../../AGENTS.md), [`docs/ai/coding-conventions.md`](../../docs/ai/coding-conventions.md), [`docs/ai/testing-policy.md`](../../docs/ai/testing-policy.md)
+Fix principles and the quality bar come from the [`fsd-change` skill](../skills/fsd-change/SKILL.md); the "Correctness" lens in the [`code-review` skill](../skills/code-review/SKILL.md) helps with root-cause analysis. Testing follows [`docs/ai/testing-policy.md`](../../docs/ai/testing-policy.md).
 
-## 수행 절차
+## Procedure
 
-1. `git status`, 현재 Branch를 확인한다.
-2. Issue 번호가 주어졌으면 `gh issue view <번호>`로 재현 절차, 기대 동작, 실제 동작, 실행 환경을 확인한다.
-3. 재현 조건을 정리한다. 재현 절차가 불명확하면 추측해서 고치지 않고 사용자에게 확인한다.
-4. 관련 코드를 읽고 원인을 찾는다. 증상이 나타나는 컴포넌트가 원인이 아닐 수 있다.
-5. **문제가 있는 함수/훅/컴포넌트의 사용처를 모두 확인한다.** 신고된 화면만 고치고 같은 코드를 쓰는 다른 화면을 방치하지 않는다. 공통 지점 한 곳을 고치는 것이 각 사용처를 따로 고치는 것보다 작고 정확하다.
-6. 원인을 보고한 뒤 최소 범위로 수정한다.
-7. 회귀 테스트를 추가한다. 테스트 환경이 아직 없다면 그 사실을 보고하고, 사용자가 확인할 재현 절차를 안내한다.
-8. `git diff`로 변경 내용을 검토한다.
-9. 실행 가능한 검증 명령이 있으면 실행한다.
+1. Check `git status` and the current branch.
+2. If an Issue number was given, run `gh issue view <number>` and read the reproduction steps, expected behavior, actual behavior, and environment.
+3. Write down the reproduction conditions. If the steps are unclear, do not guess at a fix — ask the user.
+4. Read the relevant code and find the cause. The component where the symptom appears may not be the cause.
+5. **Check every call site of the function, hook, or component at fault.** Do not fix only the reported screen and leave the others that use the same code broken. One guard at the shared point is a smaller diff than a guard in every caller.
+6. Report the cause, then fix the minimum scope.
+7. Add a regression test. If there is no test environment yet, say so and give the user reproduction steps to confirm with.
+8. Read the change with `git diff`.
+9. Run any verification command that actually exists.
 
-## 금지 사항
+## Prohibited
 
-- 원인 파악 없이 증상만 덮기 (`try/catch`로 삼키기, 옵셔널 체이닝 남발, 조건문으로 화면만 가리기)
-- `any`나 `@ts-ignore`로 타입 오류 회피
-- 버그와 무관한 Refactoring 동반
-- 실패하는 테스트를 삭제하거나 `.skip` 처리
-- 재현하지 못한 상태에서 "수정했다"고 보고
-- 사용자 요청 없는 Commit, Push
+- Covering the symptom without understanding the cause (swallowing in `try/catch`, sprinkling optional chaining, hiding the screen behind a condition)
+- Dodging type errors with `any` or `@ts-ignore`
+- Bundling refactoring unrelated to the bug
+- Deleting or `.skip`-ing a failing test
+- Reporting "fixed" without having reproduced it
+- Committing or pushing without the user's request
 
-## 결과 보고
+## Report
 
-- 재현 조건과 재현 여부
-- 근본 원인
-- 같은 원인의 영향을 받는 다른 사용처와 처리 여부
-- 수정 내용과 변경 파일
-- 추가한 테스트
-- 실행한 검증과 결과
-- 확인하지 못한 항목 (실제 화면 등)
+- Reproduction conditions and whether it reproduced
+- Root cause
+- Other call sites affected by the same cause, and whether they were handled
+- The fix and which files changed
+- Tests added
+- Verification performed and its results
+- Items not confirmed (the actual screen, and so on)
