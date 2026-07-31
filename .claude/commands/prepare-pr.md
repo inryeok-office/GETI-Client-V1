@@ -30,7 +30,8 @@ Verify the current work, then carry it through commit, push, and draft pull requ
 12. Following the `pull-request` skill, create a draft PR. Base selection, stacked-PR notes, body structure, and labels all come from that document.
 13. If there is a UI change, leave the screen section empty and ask the user to attach a screenshot or GIF.
 14. Change the Issue status label from `🚧 in progress` to `👀 review`.
-15. Report the result.
+15. Confirm the reviewers and assignee actually got set. `.github/CODEOWNERS` requests the reviewers and a workflow assigns the author, but CODEOWNERS is read from the base branch, so neither fires if the base branch does not have it yet. Check with `gh pr view <number> --json reviewRequests,assignees`; if it is empty, add them manually and say the automation did not fire.
+16. Report the result.
 
 ## Checklist rule
 

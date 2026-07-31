@@ -109,6 +109,31 @@ Run `gh label list`, read the real name including the emoji, and use the exact s
 
 After opening the PR, move the linked Issue's status label from `🚧 in progress` to `👀 review`.
 
+## Reviewers and assignee
+
+Both are automated, so do not set them by hand when the automation covers it.
+
+- **Reviewers** — `.github/CODEOWNERS` lists the frontend team, and GitHub requests review from all of them automatically. GitHub excludes the PR author on its own.
+- **Assignee** — `.github/workflows/pr-assign-author.yml` assigns the PR author. GitHub has no native setting for this, so a workflow handles it.
+
+**GitHub reads CODEOWNERS from the PR's base branch.** If the base branch does not have the file yet, no review is requested. After creating a PR, check whether the automation actually applied:
+
+```bash
+gh pr view <number> --json reviewRequests,assignees \
+  --jq '{reviewers: [.reviewRequests[].login], assignees: [.assignees[].login]}'
+```
+
+If it came back empty, add them manually and report that the automation did not fire.
+
+```bash
+gh pr edit <number> --add-assignee @me
+gh pr edit <number> --add-reviewer <login> --add-reviewer <login>
+```
+
+- Never request review from yourself. GitHub rejects it.
+- Do not edit `.github/CODEOWNERS` to change the reviewer list without the user asking. Changing who reviews is a team decision.
+- Adding reviewers sends notifications to those people. Do it as part of a PR the user asked for, not on an unrelated PR on your own initiative.
+
 ## Merging
 
 - Merge only when the user explicitly asks.
