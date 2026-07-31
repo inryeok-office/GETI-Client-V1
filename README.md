@@ -151,6 +151,17 @@ feat: 로그인 기능 추가함.
 - Squash Commit 메시지도 한글 규칙을 따릅니다. (예: `chore: 프론트엔드 협업 기반 설정 (#1)`)
 - 서로 관련 없는 도메인 변경을 한 PR에 섞지 않습니다. 대규모 리팩토링은 기능 개발과 분리합니다.
 
+### 리뷰어와 Assignee
+
+- **리뷰어**: [`.github/CODEOWNERS`](./.github/CODEOWNERS)에 적힌 프론트엔드 팀 전원에게 자동으로 요청됩니다. PR 작성자 본인은 GitHub이 자동으로 제외합니다. 팀원이 바뀌면 이 파일만 수정합니다.
+- **Assignee**: [`.github/workflows/pr-assign-author.yml`](./.github/workflows/pr-assign-author.yml)이 PR 작성자를 자동으로 등록합니다. Assignee 자동 등록은 GitHub 기본 기능이 없어 워크플로로 처리합니다.
+- CODEOWNERS는 PR의 **Base Branch에 있는 파일**을 읽습니다. 이 파일이 `develop`에 Merge된 뒤에 열리는 PR부터 자동 요청이 적용되며, 그 전에 열린 PR에는 수동으로 추가해야 합니다.
+- 자동 요청이 걸리지 않았다면 직접 추가합니다.
+
+  ```bash
+  gh pr edit <PR번호> --add-reviewer <아이디> --add-assignee @me
+  ```
+
 ## 리뷰 표현
 
 `[BLOCKER]` `[REQUEST]` `[SUGGESTION]` `[QUESTION]` `[PRAISE]`
