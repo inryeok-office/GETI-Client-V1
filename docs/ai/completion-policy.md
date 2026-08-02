@@ -22,7 +22,7 @@ All of these must hold before you can say "complete".
 - You checked the repository state with a final `git status`.
 - You reported accurately what you actually did.
 
-**At the current stage, where no build or test command exists,** mark those items as "no runnable command" and judge on the rest. Do not report running a command that does not exist.
+`npm run verify` covers the type check, lint, tests, and build in one command. Run it and report its actual output — never describe a command you did not run as passing.
 
 ## When not to say "complete"
 

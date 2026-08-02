@@ -13,7 +13,8 @@ Detailed policies that AI development tools — Claude Code, Codex, and others �
 
 | Location | Role | Applies to | Language |
 | --- | --- | --- | --- |
-| [`README.md`](../../README.md) | The original frontend convention (stack, FSD, naming, state management, Git Flow, commits, labels) | Humans + AI | Korean |
+| [`README.md`](../../README.md) | The original frontend convention (FSD, naming, state management, Git Flow, commits, labels) | Humans + AI | Korean |
+| [`docs/tech-stack.md`](../tech-stack.md) | The original technology decisions — what is installed, what is deferred with which trigger, what is still open | Humans + AI | Korean |
 | [`AGENTS.md`](../../AGENTS.md) | Top-level rules for every AI agent. Core rules and links only, no repetition of details | All AI tools | English |
 | `docs/ai/*` | The reasoning and detailed criteria behind the rules `AGENTS.md` summarizes | All AI tools | English |
 | [`CLAUDE.md`](../../CLAUDE.md), `.claude/` | Claude Code entry document, slash commands, skills, permissions | Claude Code | English |
@@ -99,12 +100,13 @@ The backend repository has `.claude/rules/` and `.codex/`; this repository does 
 - `.claude/rules/` — Claude Code has no feature that auto-loads this path. The reliable way to always load a rule is the `@` import in `CLAUDE.md`, so the rules are consolidated into `AGENTS.md` and imported from `CLAUDE.md` instead of living in a separate directory.
 - `.codex/` — the Codex CLI reads the repository's `AGENTS.md` without any extra configuration. `.codex/prompts/` is not an auto-registered feature (the backend docs record the same finding), so it amounts to a collection of templates you copy by hand. It can be added in a separate Issue if it turns out to be needed.
 
-Among the skills, there is no equivalent of the backend's `test-and-verify`. With no `package.json` and no test environment, writing one now would be guesswork. The verification criteria live in [`testing-policy.md`](./testing-policy.md) and the [`/verify`](../../.claude/commands/verify.md) command; whether to promote them to a skill is decided in the test-environment Issue.
+Among the skills, there is no equivalent of the backend's `test-and-verify`. The verification criteria live in [`testing-policy.md`](./testing-policy.md) and the [`/verify`](../../.claude/commands/verify.md) command, and `npm run verify` chains the whole sequence — a skill would add a third place to keep in sync. Promote it if the criteria grow beyond what those two hold.
 
 Hooks, MCP server configuration, and `.claude/agents/` (subagents) are also out of scope for now. They can be adopted once a repetitive task is actually observed.
 
 ## Current project state
 
-- There is no `package.json` and no source code. No build, test, or lint command exists.
-- The AI therefore cannot report "build passed" or "tests passed". Do not guess at a command and do not report verification you did not run.
-- Once the Next.js project is created and tooling is adopted, update the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md) and [`testing-policy.md`](./testing-policy.md) together.
+- The project is installed and building. `npm run verify` chains type check → lint → tests → build; the full script list is in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md).
+- **No domain features exist yet.** `src/views`, `src/widgets`, `src/features`, and `src/entities` are empty FSD skeletons. The only real code is the axios instance in `src/shared/api` and the TanStack Query provider in `src/app/providers.tsx`.
+- Do not invent a script that is not in `package.json`, and do not report verification you did not run.
+- When the stack changes, update [`../tech-stack.md`](../tech-stack.md) first, then [`CLAUDE.md`](../../CLAUDE.md) and [`testing-policy.md`](./testing-policy.md).

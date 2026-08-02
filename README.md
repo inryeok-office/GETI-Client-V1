@@ -5,29 +5,56 @@ GETI 서비스의 프론트엔드 저장소입니다. 백엔드는 [GETI-Server]
 > 개인 취향보다 프로젝트 전체의 일관성을 우선합니다.
 > Git Flow · Issue · PR 등 공통 규칙은 백엔드 컨벤션과 동일합니다.
 
+## 로컬 실행
+
+```bash
+npm install
+cp .env.example .env.local   # NEXT_PUBLIC_API_BASE_URL 설정
+npm run dev
+```
+
+Node는 `.nvmrc`에 고정되어 있고 패키지 매니저는 **npm**입니다. `pnpm`이나 `yarn`으로 설치하면 락파일이 갈라지므로 사용하지 않습니다.
+
+| 명령 | 용도 |
+| --- | --- |
+| `npm run dev` | 개발 서버 |
+| `npm run build` / `npm run start` | 프로덕션 빌드 / 실행 |
+| `npm run typecheck` | 타입 검사 |
+| `npm run lint` / `npm run lint:fix` | 린트 |
+| `npm run format` / `npm run format:check` | 포맷 |
+| `npm run test` / `npm run test:watch` | 테스트 |
+| `npm run verify` | 타입 → 린트 → 테스트 → 빌드 한 번에 |
+
+PR을 올리기 전에 `npm run verify`를 실행합니다. CI도 같은 단계에 `format:check`를 추가해 검증합니다.
+
 ## 기술 스택
 
-- **핵심**: Next.js (App Router) · TypeScript · Tailwind · TanStack Query · axios · FSD
-- **테스트/CI**: Vitest · Testing Library · MSW · GitHub Actions
-- **도입 시**: shadcn/ui(공통 UI) · nuqs(URL 필터) · React Hook Form + Zod(폼) · Zustand(전역 상태)
+- **핵심**: Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · TanStack Query 5 · axios · FSD
+- **테스트/품질/CI**: Vitest · jsdom · React Testing Library · ESLint · Prettier · GitHub Actions
+- **도입 예정**: shadcn/ui(공통 UI) · nuqs(URL 필터) · React Hook Form + Zod(폼) · Zustand(전역 상태) · MSW(API Mocking)
 
-새 라이브러리는 팀 합의 후 추가합니다.
+선정 이유와 도입 시점, 아직 정하지 않은 항목은 [`docs/tech-stack.md`](./docs/tech-stack.md)에 있습니다. 기술 선택의 원본은 그 문서이며, 스택을 바꿀 때는 그 문서를 먼저 수정합니다.
+
+새 라이브러리는 팀 합의 후 추가합니다. 정해진 기술을 임의로 다른 것으로 바꾸지 않습니다.
 
 ## 폴더 구조 (FSD)
 
 ```text
 src/
-├── app/       # 전역 설정 (Provider, 스타일)
+├── app/       # Next 라우트 + 전역 설정 (layout, providers, globals.css)
 ├── views/     # 페이지 조합 (Next app/ 라우팅과 이름 충돌 → views 사용)
 ├── widgets/   # 독립적인 큰 UI 블록
 ├── features/  # 사용자 행동 (북마크 토글, 로그인)
 ├── entities/  # 도메인 모델 (job, member)
 └── shared/    # 공통 UI, 유틸, API 클라이언트
+    └── api/   # axios 인스턴스 (유일한 HTTP 진입점)
 ```
 
 - import는 **상위 → 하위 방향만** 가능합니다. (`app → views → widgets → features → entities → shared`)
 - 슬라이스는 `index.ts`(Public API)로만 외부에 노출합니다. 내부 파일 직접 import는 금지합니다.
 - Next `app/` 라우트는 얇게 유지하고 `views`를 렌더링만 합니다.
+- `views` · `widgets` · `features` · `entities`는 아직 비어 있습니다(`.gitkeep`만 있음). 첫 기능을 만들 때 해당 레이어에 슬라이스를 추가합니다.
+- TanStack Query Provider는 `src/app/providers.tsx`에 있고 `layout.tsx`에 이미 연결되어 있습니다. `QueryClient`를 새로 만들지 않습니다.
 
 ## 네이밍
 

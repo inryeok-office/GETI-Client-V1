@@ -9,8 +9,9 @@ Detailed policies live in [`docs/ai/`](./docs/ai/README.md). This document holds
 ## Project overview
 
 - Project: GETI-Client (Next.js frontend)
-- The stack will be Next.js (App Router) · TypeScript · Tailwind · TanStack Query · axios · FSD. Right now only the GitHub collaboration setup and this AI harness exist — the repository is in an **early scaffolding stage**.
-- **There is no `package.json` and no source code yet.** Installing the framework, creating the FSD folders, and adopting libraries are each handled in separate Issues.
+- Installed and building: Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · TanStack Query 5 · axios, with Vitest · React Testing Library · GitHub Actions for tests and CI. The package manager is **npm** and Node is pinned to >= 22 in `.nvmrc`.
+- **No domain features exist yet.** `src/views`, `src/widgets`, `src/features`, and `src/entities` are empty FSD skeletons; the only real code is the axios instance in `src/shared/api` and the TanStack Query provider in `src/app/providers.tsx`.
+- [`docs/tech-stack.md`](./docs/tech-stack.md) is the source of truth for technology decisions, including what is deferred and under which trigger. Do not substitute a decided technology, and do not adopt a deferred one before its trigger occurs — raise the trigger with the user instead.
 - Do not guess at unconfirmed features or architecture. Always work from the Issue and its specification, and read the existing code and documents before making changes.
 - The backend lives at [GETI-Server](https://github.com/inryeok-office/GETI-Server). Do not guess API contracts — confirm them in that repository or its Issues.
 
@@ -150,7 +151,7 @@ Some of these are blocked as `deny` entries in `.claude/settings.json`. Do not c
 - Run the tests matching the change first, then the full build last.
 - Do not inflate warnings into errors, and do not downgrade errors into warnings.
 
-**This repository currently has no `package.json`, so there are no runnable build or test commands.** Do not guess at a command and run it, and do not report verification you did not perform. Once the project is created, follow [`docs/ai/testing-policy.md`](./docs/ai/testing-policy.md) for the verification criteria.
+Run `npm run verify` (typecheck + lint + test + build) before reporting work complete. The full script list is in [`CLAUDE.md`](./CLAUDE.md); do not invent a script that is not there. See [`docs/ai/testing-policy.md`](./docs/ai/testing-policy.md) for the detailed criteria.
 
 ## Security
 
@@ -196,6 +197,10 @@ docs/ai/git-conventions.md      Git rules and the Korean commit convention
 docs/ai/testing-policy.md       Testing and verification policy
 docs/ai/security-policy.md      Security and dangerous-operation policy
 docs/ai/completion-policy.md    Completion judgment and reporting policy
+```
+
+```text
+docs/tech-stack.md              Technology decisions, deferral triggers, open questions
 ```
 
 Claude Code specific configuration lives in [`CLAUDE.md`](./CLAUDE.md) and `.claude/` (`commands/`, `skills/`, `settings.json`). Codex reads this `AGENTS.md` automatically, so it has no separate entry document.

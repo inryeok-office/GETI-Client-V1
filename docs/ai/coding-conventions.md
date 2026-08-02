@@ -65,21 +65,46 @@ app → views → widgets → features → entities → shared
 - Use inline `style` only for dynamic values Tailwind cannot express.
 - Do not add component-specific rules to global CSS.
 
-## Not yet settled
+## Installed
 
-The following have not been adopted in this repository. Do not enforce them as settled rules and do not introduce them on your own.
+[`../tech-stack.md`](../tech-stack.md) is the source of truth for technology choices. These are installed and in use — do not substitute an alternative.
 
 ```text
-Package manager (npm / pnpm / yarn)
-ESLint and Prettier configuration
-How much of the FSD folder structure actually gets created
-Common UI library (whether shadcn/ui is adopted)
-Form handling (whether React Hook Form + Zod is adopted)
-Global state (whether Zustand is adopted)
-URL state (whether nuqs is adopted)
-API error handling and the common response type
-Design tokens and Tailwind configuration
-Test environment (Vitest · Testing Library · MSW)
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4
+TanStack Query 5 · axios
+Vitest · jsdom · React Testing Library
+ESLint · Prettier · GitHub Actions
+npm (package manager) · Node >= 22 (pinned in .nvmrc)
 ```
 
-Each of these gets decided and documented in its own adoption PR. If you receive an Issue that needs one of them, implement the minimum until this document is updated, and do not document it as a settled rule.
+Two rules are enforced by ESLint rather than left to review: `@typescript-eslint/no-explicit-any` and `no-console` (only `console.warn` / `console.error` allowed).
+
+## Deferred until a trigger is met
+
+These are chosen but **not installed**. Do not introduce them until the trigger actually occurs, and when it does, use the technology named here rather than an alternative.
+
+| Technology | Trigger |
+| --- | --- |
+| shadcn/ui | Common components (modal, dropdown) are being reimplemented repeatedly |
+| nuqs | Filters and search need syncing to the URL (shareable, survives refresh) |
+| React Hook Form + Zod | Forms grow enough fields that validation gets complex |
+| Zustand | Client state genuinely shared across screens appears (auth and similar) |
+| MSW | Component tests need API calls replaced without a real server |
+
+If a global store is needed, the answer is Zustand — not Redux, and not a hand-rolled context. Bring the trigger to the user's attention rather than installing the package yourself.
+
+## Not yet settled
+
+These have no decision at all. Do not enforce them as settled rules and do not decide them on your own.
+
+```text
+ESLint and Prettier rule additions beyond the current minimum
+API error handling and the common response type (ApiErrorBody is provisional)
+Authentication approach — token storage and refresh; no token interceptor exists yet
+Design tokens and Tailwind configuration
+E2E testing, Storybook, visual regression
+Test coverage thresholds
+Deployment target
+```
+
+Each of these gets decided and documented in its own adoption PR. If you receive an Issue that needs one of them, implement the minimum until this document and `../tech-stack.md` are updated, and do not document it as a settled rule.

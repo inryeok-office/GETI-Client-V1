@@ -58,8 +58,8 @@ Confirm requirements
 
 ### 8. Run full verification
 
-- Do: run type check, lint, tests, and build in that order. Check which commands actually exist in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md).
-- Don't: assume partial verification means everything passed. Don't report a pass at a stage where the command does not yet exist.
+- Do: run `npm run verify`, which chains type check → lint → tests → build. The full script list is in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md).
+- Don't: assume partial verification means everything passed. Don't invent a script that is not in `package.json`, and don't report a pass you did not observe.
 
 ### 9. Review the diff
 
