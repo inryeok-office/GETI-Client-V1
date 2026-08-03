@@ -1,16 +1,23 @@
 # Testing and verification policy (AI working principles)
 
-**GETI-Client currently has no `package.json` and no test environment.** There is no runnable build, lint, or test command. This document covers the principles that survive once tooling is adopted, plus how to handle the gap until then.
+The test environment is installed: **Vitest** with **jsdom** and **React Testing Library**, plus `@testing-library/jest-dom` matchers. Config is in `vitest.config.mts`, setup in `vitest.setup.ts`.
 
-## What applies right now
+## Commands
 
-- Do not guess at a command and run it. Do not assume commands like `npm test` or `pnpm build` exist.
-- Do not report verification you did not run. For doc-only or config-only work, state explicitly that there is no runnable verification.
-- For documentation changes, check by hand that relative links resolve to real files and that code fences are well-formed.
-- When adding JSON or YAML configuration, confirm it parses.
-- Record the absence of a verification environment under "Verification not performed" in the completion report.
+```bash
+npm run verify        # typecheck + lint + test + build — run this before reporting complete
+npm run typecheck
+npm run lint
+npm run format:check  # CI runs this too
+npm run test          # single run
+npm run test:watch
+```
 
-## Principles (still apply after tooling lands)
+Do not invent a script that is not in `package.json`. Run `npm run verify` and report its actual output — do not report verification you did not run.
+
+Test files live next to what they test as `*.test.ts` / `*.test.tsx`, matching `src/**/*.{test,spec}.{ts,tsx}`.
+
+## Principles
 
 - Write or update the tests matching the behavior you changed. Work that only adds tests follows the same bar.
 - Do not delete or modify passing tests without a reason.
@@ -25,7 +32,7 @@
 - For components that handle data, also verify the loading, error, and empty states.
 - Clearly record any test or verification you could not run in the completion report (see [`completion-policy.md`](./completion-policy.md)).
 
-## Verification order (once tooling lands)
+## Verification order
 
 ```text
 1. Type check
@@ -35,7 +42,7 @@
 5. Build
 ```
 
-The actual script names and the package manager get settled in the project creation Issue and recorded in the "Project commands" section of [`CLAUDE.md`](../../CLAUDE.md). Read that document and use what it says.
+`npm run verify` runs all of it in that order. CI (`.github/workflows/ci.yml`) runs the same steps plus `npm run format:check` on every PR to `develop` and `main`.
 
 ## Items requiring manual confirmation
 
@@ -49,17 +56,21 @@ Keyboard operation and screen reader behavior
 Cross-browser differences
 ```
 
-## Tooling not yet adopted
-
-The following do not exist in this repository. Unless the work is specifically about them, do not require them and do not introduce them on your own.
+## Deferred until needed
 
 ```text
-Vitest
-Testing Library
-MSW
+MSW    When component tests need API calls replaced without a real server
+```
+
+MSW is chosen but not installed. Do not introduce it before that point, and when tests do need it, use MSW rather than hand-rolling a fetch stub. Until then, stub at the module boundary with `vi.mock`.
+
+## No decision yet
+
+```text
 Playwright or another E2E tool
 Storybook
 Visual regression testing
+Coverage thresholds
 ```
 
-These get adopted as needed in the test-environment PR, and this document gets updated with them.
+Unless the work is specifically about deciding one of these, do not require them and do not choose one on your own. Decisions get recorded in [`../tech-stack.md`](../tech-stack.md), and this document gets updated with them.

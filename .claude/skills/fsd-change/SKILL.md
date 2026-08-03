@@ -36,7 +36,8 @@ Decide where a file belongs before creating it.
 
 - Keep `app/` route files thin — they render a `views` component and nothing else.
 - No data loading, state, or UI logic in a route file.
-- Because the routing folder name collides with the FSD `app` layer, the FSD page-composition layer is called `views`. In this repository `src/app/` is the FSD `app` layer, and the Next routing location follows whatever is settled when the project is created.
+- Because the routing folder name collides with the FSD `app` layer, the FSD page-composition layer is called `views`. `src/app/` serves both roles: Next routes plus the global providers and styles (`layout.tsx`, `providers.tsx`, `globals.css`).
+- The TanStack Query provider lives in `src/app/providers.tsx` and is already wired into `layout.tsx`. Do not create a second `QueryClient`; in tests, wrap with the exported `Providers`.
 
 ## Where state lives
 
@@ -112,23 +113,44 @@ Props callbacks    onXxx
 - Before adding one, check whether an existing dependency or a native platform feature (CSS, a standard HTML input, a Web API) covers it.
 - Verify the package name exactly. The npm ecosystem contains malicious lookalike packages.
 
-## Not yet settled
+## Technology status
 
-The following do not exist in this repository. Do not enforce them as settled rules and do not introduce them on your own.
+`docs/tech-stack.md` is the source of truth. Three tiers, and each one changes what you may do.
+
+**Installed** — in use, do not substitute an alternative.
 
 ```text
-Package manager (npm / pnpm / yarn)
-ESLint and Prettier configuration
-How much of the FSD folder structure actually gets created
-Whether shadcn/ui is adopted
-Whether React Hook Form + Zod is adopted
-Whether Zustand is adopted
-Whether nuqs is adopted
-API error handling and the common response type
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4
+TanStack Query 5 · axios
+Vitest · jsdom · React Testing Library
+ESLint · Prettier · GitHub Actions
+npm · Node >= 22
+```
+
+**Deferred until a trigger** — chosen but not installed. Do not introduce these on your own. When the trigger occurs, use the named technology and raise it with the user first.
+
+| Technology | Trigger |
+| --- | --- |
+| shadcn/ui | Common components (modal, dropdown) are being reimplemented repeatedly |
+| nuqs | Filters and search need syncing to the URL |
+| React Hook Form + Zod | Forms grow enough fields that validation gets complex |
+| Zustand | Client state genuinely shared across screens appears (auth and similar) |
+| MSW | Component tests need API calls replaced without a real server |
+
+So when a global store is needed, the answer is Zustand — not Redux, and not a hand-rolled context.
+
+**No decision yet** — do not decide these on your own.
+
+```text
+ESLint and Prettier rule additions beyond the current minimum
+API error handling and the common response type (ApiErrorBody is provisional)
+Authentication approach — no token interceptor exists yet
 Design tokens and Tailwind configuration
-Test environment (Vitest · Testing Library · MSW)
+E2E testing, Storybook, visual regression
+Test coverage thresholds
+Deployment target
 ```
 
 ## Reference
 
-[`docs/ai/coding-conventions.md`](../../../docs/ai/coding-conventions.md) and the frontend convention in the repository [`README.md`](../../../README.md).
+`docs/tech-stack.md`, [`docs/ai/coding-conventions.md`](../../../docs/ai/coding-conventions.md), and the frontend convention in the repository [`README.md`](../../../README.md).

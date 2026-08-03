@@ -9,7 +9,8 @@ Claude Code loads `CLAUDE.md` automatically but does not read `AGENTS.md` on its
 ## Project notes
 
 - Project: GETI-Client, a Next.js frontend
-- Only the GitHub collaboration setup and this AI harness exist — the repository is in an **early scaffolding stage**. There is no `package.json` and no source code yet.
+- The project is installed and building: Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · TanStack Query 5 · axios, with Vitest and React Testing Library for tests. **No domain features exist yet** — `src/views`, `src/widgets`, `src/features`, and `src/entities` are empty FSD skeletons.
+- The technology tiers (decided / deferred with a trigger / still open) live in [`docs/tech-stack.md`](./docs/tech-stack.md).
 - Work from the Issue and its specification. Do not guess at unconfirmed features or architecture.
 - Read the existing code and documents before changing anything.
 - The original frontend convention (stack, FSD, naming, state management) is the repository [`README.md`](./README.md), which is written in Korean.
@@ -64,14 +65,25 @@ Confirm these before starting.
 
 ## Project commands
 
-**There is no `package.json`, so there are no scripts to run.** Do not guess at a command.
-
-Once the Next.js project creation Issue lands, record the real scripts (`dev`, `build`, `lint`, `typecheck`, `test`) and the chosen package manager in this section. Until then, verification is limited to:
+The package manager is **npm** (Node >= 22, pinned in `.nvmrc`). Use these scripts and do not invent others.
 
 ```bash
-git status
-git diff
+npm run dev            # Dev server
+npm run build          # Production build
+npm run start          # Serve the production build
+npm run typecheck      # tsc --noEmit
+npm run lint           # ESLint
+npm run lint:fix       # ESLint with --fix
+npm run format         # Prettier write
+npm run format:check   # Prettier check (what CI runs)
+npm run test           # Vitest, single run
+npm run test:watch     # Vitest, watch mode
+npm run verify         # typecheck + lint + test + build
 ```
+
+`npm run verify` is what to run before reporting work complete. CI runs the same steps plus `format:check`.
+
+Prettier only formats code (`.ts`, `.tsx`, `.css`, `.json`, `.mjs`, `.mts`). Markdown and `.github/` are in `.prettierignore` — Prettier aligns Markdown tables by character count, which misaligns them for double-width Korean text.
 
 ## Commands and skills
 

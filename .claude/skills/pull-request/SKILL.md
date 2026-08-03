@@ -80,11 +80,7 @@ Breaking Changes  "없음" if there are none
 
 **Tick only what you actually verified.** For anything unticked, explain why in the body.
 
-```markdown
-- [ ] 빌드가 성공했습니다.  ← if there is no package.json, leave it unticked and note "해당 없음"
-```
-
-Ticking an unverified box hands the reviewer false information. At a stage with no runnable command, state the fact, for example "해당 없음 (`package.json` 없음)".
+Ticking an unverified box hands the reviewer false information. Run `npm run verify` (typecheck + lint + test + build) and tick what actually passed. If something could not run, leave it unticked and state why in the body.
 
 ## UI screenshots
 
