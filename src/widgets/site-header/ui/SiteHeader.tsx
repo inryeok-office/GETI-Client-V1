@@ -61,12 +61,11 @@ export function SiteHeader({ activeNav = '채용 공고' }: SiteHeaderProps) {
           >
             <Icon name="bell" className="size-[19px]" />
           </button>
-          <button
-            type="button"
-            className="flex items-center gap-[10px] rounded-[8px] p-[8px]"
-          >
+          <button type="button" className="flex items-center gap-[10px] rounded-[8px] p-[8px]">
             <span className="size-[34px] rounded-full bg-[#f5f5f5]" aria-hidden="true" />
-            <span className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]">이름</span>
+            <span className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]">
+              이름
+            </span>
             <Icon name="chevronDown" className="h-[8px] w-[16px] text-[#525252]" />
           </button>
         </div>

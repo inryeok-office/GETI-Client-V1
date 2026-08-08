@@ -34,7 +34,9 @@ export async function JobListPage({ searchParams }: JobListPageProps) {
       <SiteHeader activeNav="채용 공고" />
 
       <main className="mx-auto max-w-[1280px] px-4 py-[40px]">
-        <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">채용 공고</h1>
+        <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
+          채용 공고
+        </h1>
         <p className="mt-[8px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
           다양한 채용 정보를 한곳에서 확인하고 나에게 맞는 공고를 찾아보세요.
         </p>

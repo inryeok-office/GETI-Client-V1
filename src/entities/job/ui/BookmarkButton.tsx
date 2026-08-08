@@ -15,7 +15,10 @@ interface BookmarkButtonProps {
  * 서버에 저장하는 로직은 아직 없고(북마크 기능은 FE5 담당), 클릭한 화면 안에서만 유지되는 로컬 UI 상태다.
  * 색상 · 크기는 Figma(node 500:1509)의 북마크 버튼 값을 그대로 옮겼다.
  */
-export function BookmarkButton({ isInitiallyBookmarked = false, variant = 'icon' }: BookmarkButtonProps) {
+export function BookmarkButton({
+  isInitiallyBookmarked = false,
+  variant = 'icon',
+}: BookmarkButtonProps) {
   const [isBookmarked, setIsBookmarked] = useState(isInitiallyBookmarked);
 
   if (variant === 'button') {

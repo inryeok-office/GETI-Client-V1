@@ -28,7 +28,8 @@ interface SchoolJobDetailPageProps {
  */
 export async function SchoolJobDetailPage({ jobId, searchParams }: SchoolJobDetailPageProps) {
   const { variant } = await searchParams;
-  const job = SCHOOL_JOB_DETAIL_VARIANTS[variant ?? 'default'] ?? SCHOOL_JOB_DETAIL_VARIANTS.default;
+  const job =
+    SCHOOL_JOB_DETAIL_VARIANTS[variant ?? 'default'] ?? SCHOOL_JOB_DETAIL_VARIANTS.default;
 
   const rows: ApplyInfoRow[] = [
     { label: '모집 기간', value: `${job.applyStartDate} ~ ${job.applyEndDate}` },

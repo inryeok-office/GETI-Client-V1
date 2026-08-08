@@ -28,22 +28,30 @@ export function AiAnalysisBox({ analysis }: AiAnalysisBoxProps) {
     <section className="flex flex-col gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white px-[24px] pt-[24px] pb-[32px]">
       <div className="flex flex-col gap-[8px]">
         <div className="flex items-start justify-between">
-          <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">AI 공고 분석</h2>
+          <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">
+            AI 공고 분석
+          </h2>
           <span
             className={`rounded-[16px] px-[12px] py-[6px] text-[12px] leading-[1.5] font-semibold tracking-[-0.12px] ${STATUS_BADGE_CLASSNAME[analysis.status]}`}
           >
             {analysis.statusLabel ?? STATUS_LABEL[analysis.status]}
           </span>
         </div>
-        <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">AI 분석 결과는 참고용입니다.</p>
+        <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+          AI 분석 결과는 참고용입니다.
+        </p>
       </div>
 
       {analysis.status === 'pending' && (
         <div className="flex items-center gap-[16px] rounded-[8px] bg-[#f6fbfc] p-[12px]">
           <Icon name="spinner" className="size-[20px] shrink-0 animate-spin text-[#17627a]" />
           <div className="flex flex-col gap-[4px]">
-            <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">{analysis.title}</p>
-            <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">{analysis.description}</p>
+            <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">
+              {analysis.title}
+            </p>
+            <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+              {analysis.description}
+            </p>
           </div>
         </div>
       )}
@@ -53,8 +61,12 @@ export function AiAnalysisBox({ analysis }: AiAnalysisBoxProps) {
           <div className="flex items-center gap-[16px]">
             <Icon name="alertCircle" className="size-[15px] shrink-0 text-[#ef4444]" />
             <div className="flex flex-col gap-[4px]">
-              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">{analysis.title}</p>
-              <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">{analysis.description}</p>
+              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">
+                {analysis.title}
+              </p>
+              <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+                {analysis.description}
+              </p>
             </div>
           </div>
           <button
@@ -84,7 +96,9 @@ export function AiAnalysisBox({ analysis }: AiAnalysisBoxProps) {
           {analysis.fitTags && analysis.fitTags.length > 0 && (
             <TagSection title="지원 적합성" items={analysis.fitTags} tone="brand" />
           )}
-          {analysis.difficulty && <TagSection title="난이도" items={[analysis.difficulty]} tone="neutral" />}
+          {analysis.difficulty && (
+            <TagSection title="난이도" items={[analysis.difficulty]} tone="neutral" />
+          )}
         </>
       )}
     </section>
@@ -105,7 +119,9 @@ function TagSection({
 
   return (
     <div className="flex flex-col gap-[12px]">
-      <p className="px-[4px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">{title}</p>
+      <p className="px-[4px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">
+        {title}
+      </p>
       <div className="flex flex-wrap items-center gap-[12px]">
         {items.map((item) => (
           <span

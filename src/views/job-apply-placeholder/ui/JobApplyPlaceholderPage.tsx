@@ -27,7 +27,9 @@ export function JobApplyPlaceholderPage({ backHref }: JobApplyPlaceholderPagePro
           </span>
           <div>
             <p className="text-sm font-medium text-gray-700">지원서 작성 화면은 준비 중입니다.</p>
-            <p className="mt-1 text-xs text-gray-400">지원서 작성·제출 폼 이슈에서 구현할 예정입니다.</p>
+            <p className="mt-1 text-xs text-gray-400">
+              지원서 작성·제출 폼 이슈에서 구현할 예정입니다.
+            </p>
           </div>
         </div>
       </main>

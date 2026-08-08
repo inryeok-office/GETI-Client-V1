@@ -10,7 +10,8 @@ const BASE_EXTERNAL_JOB_DETAIL: ExternalJobDetail = {
   source: 'external',
   title: '2026 AI 서비스 개발 인턴십 참가자 모집',
   organizationName: '네이버클라우드',
-  organizationDescription: '클라우드와 AI 기술을 기반으로 다양한 디지털 서비스를 제공하는 기업입니다.',
+  organizationDescription:
+    '클라우드와 AI 기술을 기반으로 다양한 디지털 서비스를 제공하는 기업입니다.',
   viewCount: 328,
   applyStartDate: '2026.07.20',
   applyEndDate: '2026.08.20',
@@ -31,7 +32,11 @@ const BASE_EXTERNAL_JOB_DETAIL: ExternalJobDetail = {
     '웹 프로젝트 경험',
   ],
   preferences: ['React 또는 Next.js 프로젝트 경험', '개인 포트폴리오 보유', 'AI API 활용 경험'],
-  workConditions: ['근무 형태: 체험형 인턴', '근무 지역: 경기도 성남시', '모집 기간: 2026.07.20 ~ 2026.08.20'],
+  workConditions: [
+    '근무 형태: 체험형 인턴',
+    '근무 지역: 경기도 성남시',
+    '모집 기간: 2026.07.20 ~ 2026.08.20',
+  ],
   hiringProcess: ['서류 심사', '면접', '최종 합격'],
   attachments: [
     { id: 'file-1', fileName: '2026_AI_인턴십_채용공고.pdf', fileType: 'PDF', fileSize: '1.8MB' },
@@ -39,7 +44,8 @@ const BASE_EXTERNAL_JOB_DETAIL: ExternalJobDetail = {
   ],
   aiAnalysis: {
     status: 'done',
-    keySummary: '웹서비스 개발 경험과 JavaScript 기본 역량을 중요하게 보는 신입·고졸 지원 가능 인턴 공고입니다.',
+    keySummary:
+      '웹서비스 개발 경험과 JavaScript 기본 역량을 중요하게 보는 신입·고졸 지원 가능 인턴 공고입니다.',
     requiredTools: ['JavaScript', 'Git', '웹 기본 지식'],
     preferredSkills: ['React', 'Next.js', 'AI API'],
     fitTags: ['고졸 지원 가능', '신입 지원 가능'],

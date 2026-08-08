@@ -27,7 +27,9 @@ export function JobDetailContent({
   return (
     <div className="flex flex-1 flex-col gap-[44px] rounded-[16px] border border-[#e5e5e5] bg-white px-[24px] pt-[24px] pb-[32px]">
       <Section title="공고 소개">
-        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#262626]">{introduction}</p>
+        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#262626]">
+          {introduction}
+        </p>
       </Section>
 
       <Section title="주요 업무">
@@ -50,8 +52,12 @@ export function JobDetailContent({
         <div className="flex flex-wrap items-center gap-[12px]">
           {hiringProcess.map((step, index) => (
             <div key={step} className="flex items-center gap-[12px]">
-              {index > 0 && <Icon name="chevronRight" className="h-[24px] w-[12px] text-[#262626]" />}
-              <span className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#262626]">{step}</span>
+              {index > 0 && (
+                <Icon name="chevronRight" className="h-[24px] w-[12px] text-[#262626]" />
+              )}
+              <span className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#262626]">
+                {step}
+              </span>
             </div>
           ))}
         </div>
@@ -63,7 +69,9 @@ export function JobDetailContent({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-[12px]">
-      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">{title}</h2>
+      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">
+        {title}
+      </h2>
       {children}
     </div>
   );

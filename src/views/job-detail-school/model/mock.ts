@@ -11,7 +11,8 @@ const BASE_SCHOOL_JOB_DETAIL: SchoolJobDetail = {
   unavailableReason: null,
   title: '2026 AI 개발 인턴 채용 (Vision AI 연구개발)',
   organizationName: '(주)터빈크루',
-  organizationDescription: 'AI와 친환경 에너지 기술을 기반으로 소프트웨어와 스마트 에너지 솔루션을 개발하는 기술 기업입니다.',
+  organizationDescription:
+    'AI와 친환경 에너지 기술을 기반으로 소프트웨어와 스마트 에너지 솔루션을 개발하는 기술 기업입니다.',
   viewCount: 328,
   applyStartDate: '2026.07.20',
   applyEndDate: '2026.08.21',

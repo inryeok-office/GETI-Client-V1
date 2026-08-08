@@ -19,7 +19,9 @@ interface ApplyInfoBoxProps {
 export function ApplyInfoBox({ rows, actions }: ApplyInfoBoxProps) {
   return (
     <section className="flex flex-col gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white px-[24px] pt-[24px] pb-[32px]">
-      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">지원 정보</h2>
+      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">
+        지원 정보
+      </h2>
       <dl className="flex flex-col gap-[16px] border-b border-[#e5e5e5] pb-[24px]">
         {rows.map((row) => (
           <div

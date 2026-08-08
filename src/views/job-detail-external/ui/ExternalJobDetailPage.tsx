@@ -27,7 +27,8 @@ interface ExternalJobDetailPageProps {
  */
 export async function ExternalJobDetailPage({ searchParams }: ExternalJobDetailPageProps) {
   const { variant } = await searchParams;
-  const job = EXTERNAL_JOB_DETAIL_VARIANTS[variant ?? 'default'] ?? EXTERNAL_JOB_DETAIL_VARIANTS.default;
+  const job =
+    EXTERNAL_JOB_DETAIL_VARIANTS[variant ?? 'default'] ?? EXTERNAL_JOB_DETAIL_VARIANTS.default;
 
   const rows: ApplyInfoRow[] = [
     { label: '모집 기간', value: `${job.applyStartDate} ~ ${job.applyEndDate}` },

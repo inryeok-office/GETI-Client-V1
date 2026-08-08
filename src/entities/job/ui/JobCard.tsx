@@ -22,7 +22,10 @@ export function JobCard({ job }: JobCardProps) {
     >
       <div className="flex items-center justify-between gap-[16px]">
         <div className="flex min-w-0 items-center gap-[16px]">
-          <span className="size-[32px] shrink-0 rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5]" aria-hidden="true" />
+          <span
+            className="size-[32px] shrink-0 rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5]"
+            aria-hidden="true"
+          />
           <span className="truncate text-[14px] leading-[1.4] font-bold tracking-[-0.14px] text-[#525252]">
             {job.companyName}
           </span>
@@ -68,7 +71,9 @@ export function JobCard({ job }: JobCardProps) {
           >
             {job.isClosed ? '마감' : job.dDay !== null ? `D-${job.dDay}` : ''}
           </span>
-          <span className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">{job.deadlineLabel}</span>
+          <span className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+            {job.deadlineLabel}
+          </span>
         </div>
       </div>
     </article>

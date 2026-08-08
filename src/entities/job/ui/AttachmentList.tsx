@@ -13,7 +13,9 @@ interface AttachmentListProps {
 export function AttachmentList({ attachments }: AttachmentListProps) {
   return (
     <section className="flex flex-col gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white px-[24px] pt-[24px] pb-[32px]">
-      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">첨부파일</h2>
+      <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">
+        첨부파일
+      </h2>
       {attachments.length === 0 ? (
         <p className="text-[14px] text-[#525252]">첨부된 파일이 없습니다.</p>
       ) : (
@@ -32,7 +34,11 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 </p>
               </div>
             </div>
-            <Icon name="download" className="size-[20px] shrink-0 text-[#404040]" aria-hidden="true" />
+            <Icon
+              name="download"
+              className="size-[20px] shrink-0 text-[#404040]"
+              aria-hidden="true"
+            />
           </div>
         ))
       )}
