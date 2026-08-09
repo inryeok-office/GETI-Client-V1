@@ -44,7 +44,7 @@ export function AiAnalysisBox({ analysis }: AiAnalysisBoxProps) {
 
       {analysis.status === 'pending' && (
         <div className="flex items-center gap-[16px] rounded-[8px] bg-[#f6fbfc] p-[12px]">
-          <Icon name="spinner" className="size-[20px] shrink-0 animate-spin text-[#17627a]" />
+          <Icon name="spinner" className="size-[20px] shrink-0 animate-spin text-black" />
           <div className="flex flex-col gap-[4px]">
             <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">
               {analysis.title}

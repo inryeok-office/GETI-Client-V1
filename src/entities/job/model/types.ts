@@ -72,12 +72,19 @@ export interface JobDetailBase {
   aiAnalysis: AiAnalysis;
 }
 
+/**
+ * 지원 가능 여부. 지원 정보 박스의 배지 색상 · 지원 버튼 활성화 여부 · 안내 문구를 함께 결정한다.
+ * beforePeriod는 안내 문구에 모집 시작일(`applyStartDate`)을 그대로 사용한다.
+ */
+export type ApplyEligibility =
+  'available' | 'ineligible' | 'beforePeriod' | 'closed' | 'alreadyApplied';
+
 export interface SchoolJobDetail extends JobDetailBase {
   source: 'school';
   /** 지원 대상(예: "OO고 3학년 재학생"). */
   applyTarget: string;
-  /** 지원 가능 여부 배지 문구(예: "지원 가능"). */
-  eligibilityLabel: string;
+  /** 지원 가능 여부. */
+  applyEligibility: ApplyEligibility;
   /** 공고를 확인할 수 없는 경우(비공개 · 삭제)의 사유. 정상 공고는 null. */
   unavailableReason: '비공개' | '삭제' | null;
 }
