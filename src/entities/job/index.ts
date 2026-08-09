@@ -4,6 +4,7 @@ export { AttachmentList } from './ui/AttachmentList';
 export { AiAnalysisBox } from './ui/AiAnalysisBox';
 export { ApplyInfoBox } from './ui/ApplyInfoBox';
 export type { ApplyInfoRow } from './ui/ApplyInfoBox';
+export { SchoolApplyInfoBox } from './ui/SchoolApplyInfoBox';
 export { OrganizationInfoBox } from './ui/OrganizationInfoBox';
 export { JobDetailHeader } from './ui/JobDetailHeader';
 export { JobDetailContent } from './ui/JobDetailContent';
@@ -15,6 +16,7 @@ export type {
   AiAnalysisStatus,
   AiAnalysis,
   JobDetailBase,
+  ApplyEligibility,
   SchoolJobDetail,
   ExternalJobDetail,
 } from './model/types';

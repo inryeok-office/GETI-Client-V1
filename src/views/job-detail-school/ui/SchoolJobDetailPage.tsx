@@ -2,13 +2,11 @@ import Link from 'next/link';
 
 import {
   AiAnalysisBox,
-  ApplyInfoBox,
   AttachmentList,
-  BookmarkButton,
   JobDetailContent,
   JobDetailHeader,
   OrganizationInfoBox,
-  type ApplyInfoRow,
+  SchoolApplyInfoBox,
 } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
 import { SiteHeader } from '@/widgets/site-header';
@@ -30,21 +28,6 @@ export async function SchoolJobDetailPage({ jobId, searchParams }: SchoolJobDeta
   const { variant } = await searchParams;
   const job =
     SCHOOL_JOB_DETAIL_VARIANTS[variant ?? 'default'] ?? SCHOOL_JOB_DETAIL_VARIANTS.default;
-
-  const rows: ApplyInfoRow[] = [
-    { label: '모집 기간', value: `${job.applyStartDate} ~ ${job.applyEndDate}` },
-    { label: '마감일', value: job.dDayLabel, valueClassName: 'font-medium text-amber-500' },
-    { label: '지원 유형', value: job.applyType },
-    { label: '지원 대상', value: job.applyTarget },
-    {
-      label: '지원 가능 여부',
-      value: (
-        <span className="rounded-[16px] bg-[#eaf6f9] px-[12px] py-[6px] text-[12px] leading-[1.5] font-semibold tracking-[-0.12px] text-[#17627a]">
-          {job.eligibilityLabel}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -94,20 +77,7 @@ export async function SchoolJobDetailPage({ jobId, searchParams }: SchoolJobDeta
               />
 
               <div className="flex w-full flex-col gap-[8px] lg:w-[411px] lg:shrink-0">
-                <ApplyInfoBox
-                  rows={rows}
-                  actions={
-                    <>
-                      <Link
-                        href={`/jobs/school/${jobId}/apply`}
-                        className="block w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
-                      >
-                        지원서 작성하기
-                      </Link>
-                      <BookmarkButton variant="button" />
-                    </>
-                  }
-                />
+                <SchoolApplyInfoBox job={job} applyHref={`/jobs/school/${jobId}/apply`} />
 
                 <AiAnalysisBox analysis={job.aiAnalysis} />
                 <OrganizationInfoBox

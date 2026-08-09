@@ -19,7 +19,7 @@ const BASE_SCHOOL_JOB_DETAIL: SchoolJobDetail = {
   dDayLabel: 'D-23',
   applyType: '교내 지원서 작성',
   applyTarget: '광주소프트웨어마이스터고 3학년 재학생',
-  eligibilityLabel: '지원 가능',
+  applyEligibility: 'available',
   introduction:
     '한국전자공업에서 AI 연구개발을 함께할 Vision AI 인턴을 모집합니다. 데이터 파이프라인 구축, AI 모델 개발 및 성능 최적화 등 다양한 업무를 경험할 수 있습니다.',
   responsibilities: [
@@ -63,5 +63,21 @@ export const SCHOOL_JOB_DETAIL_VARIANTS: Record<string, SchoolJobDetail> = {
   unavailable: {
     ...BASE_SCHOOL_JOB_DETAIL,
     unavailableReason: '삭제',
+  },
+  ineligible: {
+    ...BASE_SCHOOL_JOB_DETAIL,
+    applyEligibility: 'ineligible',
+  },
+  'before-period': {
+    ...BASE_SCHOOL_JOB_DETAIL,
+    applyEligibility: 'beforePeriod',
+  },
+  closed: {
+    ...BASE_SCHOOL_JOB_DETAIL,
+    applyEligibility: 'closed',
+  },
+  'already-applied': {
+    ...BASE_SCHOOL_JOB_DETAIL,
+    applyEligibility: 'alreadyApplied',
   },
 };
