@@ -96,14 +96,12 @@ export async function ExternalJobDetailPage({ searchParams }: ExternalJobDetailP
               actions={
                 <>
                   {!job.isClosed && job.originalUrl ? (
-                    <a
-                      href={job.originalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+                    <button
+                      type="button"
+                      className="w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
                     >
                       사이트에서 지원하기
-                    </a>
+                    </button>
                   ) : (
                     <button
                       type="button"
