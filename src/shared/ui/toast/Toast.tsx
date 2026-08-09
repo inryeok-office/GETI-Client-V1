@@ -35,7 +35,7 @@ export function Toast({ tone, message, onClose }: ToastProps) {
         >
           <div className="flex shrink-0 items-center gap-[16px]">
             {tone === 'loading' && (
-              <Icon name="spinner" className="size-[24px] shrink-0 animate-spin text-[#17627a]" />
+              <Icon name="spinner" className="size-[24px] shrink-0 animate-spin text-black" />
             )}
             {tone === 'success' && (
               <Icon name="checkCircleFilled" className="size-[24px] shrink-0 text-[#22c55e]" />
