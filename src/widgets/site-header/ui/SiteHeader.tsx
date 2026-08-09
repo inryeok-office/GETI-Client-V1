@@ -5,7 +5,7 @@ import { Icon } from '@/shared/ui/icon';
 const NAV_ITEMS = ['채용 공고', '기업 정보', 'AI 추천', '취업 프로그램', '포트폴리오'] as const;
 
 interface SiteHeaderProps {
-  activeNav?: (typeof NAV_ITEMS)[number];
+  activeNav?: (typeof NAV_ITEMS)[number] | null;
 }
 
 /**
@@ -14,7 +14,7 @@ interface SiteHeaderProps {
  * 디자인 단계라 로그인 사용자 정보 · 알림 개수는 목업 값을 쓴다.
  * 간격 · 색상은 Figma(node 500:1509)의 헤더 값을 그대로 옮겼다.
  */
-export function SiteHeader({ activeNav = '채용 공고' }: SiteHeaderProps) {
+export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
   return (
     <header className="border-b border-[#e5e5e5] bg-white">
       <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-4">
