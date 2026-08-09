@@ -13,11 +13,8 @@ interface MyApplicationListPageProps {
 }
 
 /**
- * 내 지원 목록 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * `variant` 쿼리 파라미터(?variant=empty)로 빈 상태를 수동으로 확인할 수 있다.
- * 로딩 · 에러 상태는 Figma에 캡처된 화면이 없어 API 연동 이슈에서 실제 요청 상태를 보고 다시 다룬다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
- * 간격 · 색상은 Figma(내 지원 500:1720)의 값을 그대로 옮겼다.
+ * 내 지원 목록 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용하고,
+ * `?variant=empty`로 빈 상태를 확인할 수 있다.
  */
 export async function MyApplicationListPage({ searchParams }: MyApplicationListPageProps) {
   const { variant } = await searchParams;

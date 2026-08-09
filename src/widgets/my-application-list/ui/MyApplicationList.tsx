@@ -14,9 +14,7 @@ interface MyApplicationListProps {
 
 /**
  * 내 지원 목록 위젯. "지원 내역 N건" 카운트 + 빈 · 카드 목록을 조합한다.
- * 디자인 단계라 `status`와 `applications`는 호출부에서 목업 값을 넘겨준다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
- * 간격 · 색상은 Figma(내 지원 500:1720 · 지원 내역 없음 592:15243)의 값을 그대로 옮겼다.
+ * `status`와 `applications`는 아직 API 연동 전이라 호출부에서 목업 값을 넘겨준다.
  */
 export function MyApplicationList({
   status,

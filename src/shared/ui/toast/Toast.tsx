@@ -6,10 +6,7 @@ interface ToastProps {
   tone: ToastTone;
   message: string;
   onClose: () => void;
-  /**
-   * 페이지 상단에서 얼마나 떨어진 위치(px)에 놓을지. Figma에서 헤더(72px)를 포함한 프레임 기준
-   * y좌표를 그대로 옮긴 값이라 페이지마다 다르다 — 기본값 188은 지원서 작성 화면 기준이다.
-   */
+  /** 페이지 상단에서 떨어진 위치(px). 페이지마다 달라 기본값(188, 지원서 작성 화면 기준)을 덮어쓸 수 있다. */
   top?: number;
 }
 

@@ -8,10 +8,7 @@ interface ApplicationListCardProps {
   detailHref: string;
 }
 
-/**
- * 내 지원 목록의 카드 한 줄. 클릭하면 지원 상세로 이동한다.
- * 간격 · 색상은 Figma(내 지원 500:1720)의 카드 값을 그대로 옮겼다.
- */
+/** 내 지원 목록의 카드 한 줄. 클릭하면 지원 상세로 이동한다. */
 export function ApplicationListCard({ application, detailHref }: ApplicationListCardProps) {
   return (
     <Link

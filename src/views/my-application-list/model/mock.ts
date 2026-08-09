@@ -1,10 +1,6 @@
 import type { ApplicationListItem } from '@/entities/my-application';
 
-/**
- * 디자인 확인용 목업 데이터.
- * API 연동 이슈에서 이 값을 `useQuery` 응답으로 교체한다.
- * 값은 Figma(내 지원 500:1720)에서 그대로 옮겼다.
- */
+/** 디자인 확인용 목업 데이터. API 연동 이슈에서 `useQuery` 응답으로 교체한다. */
 export const MOCK_APPLICATIONS: ApplicationListItem[] = [
   {
     id: 'application-1',

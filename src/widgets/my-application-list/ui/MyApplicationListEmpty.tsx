@@ -2,10 +2,7 @@ import Link from 'next/link';
 
 import { Icon } from '@/shared/ui/icon';
 
-/**
- * 지원 내역이 0건일 때의 빈 상태.
- * 간격 · 색상 · 문구는 Figma(node 592:15243 "내 지원 - 지원 내역 없음")의 값을 그대로 옮겼다.
- */
+/** 지원 내역이 0건일 때의 빈 상태. */
 export function MyApplicationListEmpty() {
   return (
     <div className="flex flex-col items-center justify-center gap-[24px] py-[128px] text-center">

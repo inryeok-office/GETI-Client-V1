@@ -1,11 +1,6 @@
 import type { ApplicationDetail } from '@/entities/my-application';
 
-/**
- * 디자인 확인용 목업 데이터.
- * API 연동 이슈에서 이 값을 `useQuery` 응답으로 교체한다.
- * 값은 Figma(지원 상세 500:2227 · 삭제된 공고 592:15828)에서 그대로 옮겼다.
- * 지원서 문항의 답변 입력란은 Figma에 빈 박스로 캡처되어 있어 answer도 빈 문자열로 둔다.
- */
+/** 디자인 확인용 목업 데이터. API 연동 이슈에서 `useQuery` 응답으로 교체한다. */
 const BASE_APPLICATION_DETAIL: ApplicationDetail = {
   id: 'application-1',
   companyName: '토스페이먼츠',

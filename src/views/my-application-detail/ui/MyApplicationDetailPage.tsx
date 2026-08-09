@@ -18,18 +18,13 @@ interface ToastState {
 export interface MyApplicationDetailPageProps {
   application: ApplicationDetail;
   listHref: string;
-  /** ?variant= 값. request-completed/request-failed는 진입 시 토스트를 바로 보여주기 위한 화면 확인용이다. */
+  /** ?variant= 값. 모달 · 토스트 상태를 화면 확인용으로 바로 띄운다. */
   variant?: string;
 }
 
 /**
- * 지원 상세 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * "지원 취소" 확인 모달과 "수정 권한 요청" 결과 토스트는 Figma에 실제로 캡처된 화면이라
- * `?variant=`로 확인할 수 있게 두었지만, 그 결과 화면 자체(취소 확정 후 동작 · 요청 성공/실패 판단)는
- * Figma에 없어 버튼에 실제 동작을 걸지 않았다 — API 연동 이슈에서 다룬다.
- * 지원한 공고가 삭제된 경우 안내 배너만 보이고 액션 버튼은 숨긴다.
- * 간격 · 색상은 Figma(지원 상세 500:2227 · 지원 취소 592:15379 · 삭제된 공고 592:15828 ·
- * 요청 완료 592:15538 · 요청 실패 592:15678)의 값을 그대로 옮겼다.
+ * 지원 상세 화면. 아직 API 연동 전이라 목업 데이터를 쓴다.
+ * "지원 취소"/"수정 권한 요청" 버튼은 결과 동작(API 호출)이 없어 모달 · 토스트만 뜬다.
  */
 export function MyApplicationDetailPage({
   application,

@@ -18,10 +18,7 @@ interface ApplicationStatusBadgeProps {
   status: ApplicationStatus;
 }
 
-/**
- * 지원 상태 배지. 내 지원 목록 카드 · 지원 상세 헤더 카드가 공통으로 쓴다.
- * 색상은 Figma(내 지원 500:1720)의 상태별 배지 값을 그대로 옮겼다.
- */
+/** 지원 상태 배지. 내 지원 목록 카드 · 지원 상세 헤더 카드가 공통으로 쓴다. */
 export function ApplicationStatusBadge({ status }: ApplicationStatusBadgeProps) {
   return (
     <span
