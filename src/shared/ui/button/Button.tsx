@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 import { Icon } from '@/shared/ui/icon';
 
-type ButtonVariant = 'primary' | 'outline';
+type ButtonVariant = 'neutral' | 'outline' | 'primary';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -11,6 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASS_NAMES: Record<ButtonVariant, string> = {
+  neutral:
+    'border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 active:bg-neutral-100 disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400',
   primary:
     'bg-primary-700 text-white hover:bg-primary-400 active:bg-primary-700 disabled:bg-neutral-100 disabled:text-neutral-400',
   outline:

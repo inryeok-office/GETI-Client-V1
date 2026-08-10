@@ -6,6 +6,7 @@ import { Dialog } from './dialog';
 import { PageState } from './page-state';
 import { SelectField } from './select-field';
 import { TextField } from './text-field';
+import { TextareaField } from './textarea-field';
 
 describe('Button', () => {
   it('로딩 중에는 비활성화하고 상태를 시각적으로 표시한다', () => {
@@ -57,6 +58,54 @@ describe('Dialog', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalledOnce();
+  });
+
+  it('열릴 때 첫 요소로 이동하고 닫히면 실행 버튼으로 포커스를 돌려준다', () => {
+    const handleClose = vi.fn();
+    const { rerender } = render(
+      <>
+        <button type="button">열기</button>
+        <Dialog isOpen={false} title="문의 등록" onClose={handleClose}>
+          <input aria-label="제목" />
+        </Dialog>
+      </>,
+    );
+
+    screen.getByRole('button', { name: '열기' }).focus();
+    rerender(
+      <>
+        <button type="button">열기</button>
+        <Dialog isOpen title="문의 등록" onClose={handleClose}>
+          <input aria-label="제목" />
+        </Dialog>
+      </>,
+    );
+
+    expect(screen.getByLabelText('제목')).toHaveFocus();
+
+    rerender(
+      <>
+        <button type="button">열기</button>
+        <Dialog isOpen={false} title="문의 등록" onClose={handleClose}>
+          <input aria-label="제목" />
+        </Dialog>
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: '열기' })).toHaveFocus();
+  });
+});
+
+describe('TextareaField', () => {
+  it('레이블과 오류 메시지를 입력에 연결한다', () => {
+    render(<TextareaField label="문의 내용" errorMessage="문의 내용을 입력해 주세요." />);
+
+    const textarea = screen.getByLabelText('문의 내용');
+    expect(textarea).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('문의 내용을 입력해 주세요.')).toHaveAttribute(
+      'id',
+      textarea.getAttribute('aria-describedby'),
+    );
   });
 });
 
