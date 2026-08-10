@@ -30,7 +30,10 @@ export function DeletedNotificationTargetDialog({
             해당 공고는 삭제되어 이동할 수 없습니다.
           </p>
         </div>
-        <Button onClick={onClose} className="border-0 bg-[#17627a]">
+        <Button
+          onClick={onClose}
+          className="border-0 bg-[#17627a] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17627a]"
+        >
           확인
         </Button>
       </div>
