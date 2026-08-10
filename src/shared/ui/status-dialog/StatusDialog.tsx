@@ -9,8 +9,10 @@ interface StatusDialogProps {
   actions?: ReactNode;
   /** 아이콘/문구 블록과 액션 사이 간격(px). 상태별로 Figma 값이 달라 호출부에서 지정한다. */
   actionsGap?: 8 | 24;
-  /** 카드 전체 너비(px). 버튼이 2개라 더 넓어야 하는 이탈 확인 모달은 380, 나머지는 320(기본값)이다. */
-  width?: 320 | 380;
+  /** 카드 전체 너비(px). 버튼이 2개인 모달은 380/480, 나머지는 320(기본값)이다. */
+  width?: 320 | 380 | 480;
+  /** 아이콘 · 문구 블록의 너비. 기본은 272px 고정, 카드 너비만큼 늘리려면 'full'. */
+  contentWidth?: 272 | 'full';
 }
 
 /**
@@ -25,7 +27,10 @@ export function StatusDialog({
   actions,
   actionsGap = 24,
   width = 320,
+  contentWidth = 272,
 }: StatusDialogProps) {
+  const widthClassName = width === 480 ? 'w-[480px]' : width === 380 ? 'w-[380px]' : 'w-[320px]';
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -33,9 +38,11 @@ export function StatusDialog({
       aria-modal="true"
     >
       <div
-        className={`flex flex-col items-center rounded-[16px] bg-white px-[24px] py-[32px] shadow-[0px_8px_12px_rgba(23,37,45,0.1)] ${width === 380 ? 'w-[380px]' : 'w-[320px]'} ${actionsGap === 8 ? 'gap-[8px]' : 'gap-[24px]'}`}
+        className={`flex flex-col items-center rounded-[16px] bg-white px-[24px] py-[32px] shadow-[0px_8px_12px_rgba(23,37,45,0.1)] ${widthClassName} ${actionsGap === 8 ? 'gap-[8px]' : 'gap-[24px]'}`}
       >
-        <div className="flex w-[272px] flex-col items-center gap-[16px]">
+        <div
+          className={`flex flex-col items-center gap-[16px] ${contentWidth === 'full' ? 'w-full' : 'w-[272px]'}`}
+        >
           {icon}
           <div className="flex flex-col items-center gap-[12px] text-center">
             <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-[#111]">

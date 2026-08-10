@@ -6,6 +6,8 @@ interface ToastProps {
   tone: ToastTone;
   message: string;
   onClose: () => void;
+  /** 페이지 상단에서 떨어진 위치(px). 페이지마다 달라 기본값(188, 지원서 작성 화면 기준)을 덮어쓸 수 있다. */
+  top?: number;
 }
 
 const TONE_CLASSNAME: Record<ToastTone, string> = {
@@ -19,15 +21,18 @@ const TONE_CLASSNAME: Record<ToastTone, string> = {
  * 페이지 상단(뒤로가기 링크 아래)에 뜨는 상태 토스트(임시저장 진행/성공/실패). 도메인 지식은 없다.
  * Figma가 보여준 그대로 페이지 안의 한 위치에 놓인 요소라 화면(뷰포트) 기준으로 고정된 채 계속 떠 있지
  * 않는다 — `absolute`로 배치해 스크롤하면 그 페이지 내용과 함께 화면 밖으로 지나간다.
- * `top-[188px]`는 Figma에서 헤더(72px)를 포함한 프레임 기준 y좌표를 그대로 옮긴 것이라, 이 요소를 렌더링하는
+ * `top`은 Figma에서 헤더(72px)를 포함한 프레임 기준 y좌표를 그대로 옮긴 것이라, 이 요소를 렌더링하는
  * 페이지 루트에 `relative`가 있어야 한다.
  * 가로 위치는 본문(`max-w-[1280px]`) 컨테이너의 오른쪽 끝에 맞춘다(Figma 원본이 그 컨테이너 우측 끝에 딱
  * 붙어 있었다).
  * 크기 · 간격 · 색상은 Figma(지원서 작성 - 임시 저장 중/성공/실패)의 토스트 값을 그대로 옮겼다.
  */
-export function Toast({ tone, message, onClose }: ToastProps) {
+export function Toast({ tone, message, onClose, top = 188 }: ToastProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[188px] z-50 flex justify-center">
+    <div
+      className="pointer-events-none absolute inset-x-0 z-50 flex justify-center"
+      style={{ top }}
+    >
       <div className="flex w-full max-w-[1280px] justify-end px-4">
         <div
           role="status"
