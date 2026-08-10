@@ -25,7 +25,8 @@ export type IconName =
   | 'clock'
   | 'people'
   | 'searchLarge'
-  | 'alertCircleOutline';
+  | 'alertCircleOutline'
+  | 'message';
 
 interface IconProps {
   name: IconName;
@@ -91,6 +92,7 @@ const VIEW_BOX: Record<Exclude<IconName, 'chevronDown'>, string> = {
   people: '0 0 72 72',
   searchLarge: '0 0 72 72',
   alertCircleOutline: '0 0 64 64',
+  message: '0 0 64 64',
 };
 
 function renderPath(name: Exclude<IconName, 'chevronDown'>) {
@@ -331,6 +333,21 @@ function renderPath(name: Exclude<IconName, 'chevronDown'>) {
           <path d="M26 12.6667V28.6667" transform="translate(6 6)" />
           <path d="M26 39.3333V39.36" transform="translate(6 6)" />
         </g>
+      );
+    case 'message':
+      return (
+        <>
+          <path
+            d="M32 6C17.64 6 6 16.75 6 30c0 5.2 1.8 10 4.8 13.9L9 55l11.1-3.7C23.7 53 27.7 54 32 54c14.36 0 26-10.75 26-24S46.36 6 32 6Z"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="22" cy="30" r="2.5" fill="currentColor" />
+          <circle cx="32" cy="30" r="2.5" fill="currentColor" />
+          <circle cx="42" cy="30" r="2.5" fill="currentColor" />
+        </>
       );
     default:
       return null;
