@@ -98,7 +98,7 @@ export function ProfileOnboardingPage() {
               </div>
               <button
                 type="button"
-                className="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-900 hover:bg-neutral-50"
+                className="flex h-9 w-30 items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-900 hover:bg-neutral-50"
               >
                 <Image src="/icons/profile-upload.svg" alt="" width={20} height={20} />
                 사진 등록
