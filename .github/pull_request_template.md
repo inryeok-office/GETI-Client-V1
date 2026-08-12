@@ -1,7 +1,15 @@
 <!--
-PR 제목은 `[도메인] 작업 내용` 형식으로 작성해 주세요.
-예) [Job] 공고 목록 페이지 구현 / [Auth] 로그인 폼 검증 추가
-    [Shared] axios 인스턴스 분리 / [Chore] 프론트엔드 협업 기반 설정
+PR 제목은 `[TYPE] 작업 내용` 형식으로 작성해 주세요.
+TYPE은 작업 브랜치 접두사를 그대로 따릅니다.
+
+  feature/  -> [FEAT]      예) [FEAT] 공고 목록 페이지 구현
+  fix/      -> [FIX]       예) [FIX] 북마크 토글 롤백 오류 수정
+  refactor/ -> [REFACTOR]  예) [REFACTOR] api 클라이언트 분리
+  chore/    -> [CHORE]     예) [CHORE] 프론트엔드 협업 기반 설정
+  docs/     -> [DOCS]      예) [DOCS] FSD 레이어 가이드 추가
+  hotfix/   -> [HOTFIX]    예) [HOTFIX] 로그인 500 오류 긴급 수정
+
+도메인([Job], [Admin] 등)은 제목 태그로 쓰지 않습니다. 설명과 area 라벨로 표현합니다.
 -->
 
 ## 연관 Issue

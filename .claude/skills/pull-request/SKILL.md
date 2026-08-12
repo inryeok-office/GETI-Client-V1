@@ -24,17 +24,25 @@ If one exists, update its body instead of creating another.
 ## Title
 
 ```text
-[Domain] 작업 내용
+[TYPE] 작업 내용
 ```
 
-```text
-[Job] 공고 목록 페이지 구현
-[Auth] 로그인 폼 검증 추가
-[Shared] axios 인스턴스 분리
-[Chore] AI 개발 하네스 구성
-```
+**The tag comes from the work branch's prefix**, so the branch and the PR always agree. Read the branch name and map it — do not invent a tag and do not use a domain name.
 
-The domain goes in brackets in English; the description is written in Korean. Do not put a commit type (`feat:`) in the title.
+| Branch prefix | Tag | Example |
+| --- | --- | --- |
+| `feature/` | `[FEAT]` | `[FEAT] 공고 목록 페이지 구현` |
+| `fix/` | `[FIX]` | `[FIX] 북마크 토글 롤백 오류 수정` |
+| `refactor/` | `[REFACTOR]` | `[REFACTOR] api 클라이언트 분리` |
+| `chore/` | `[CHORE]` | `[CHORE] PR 작성 규칙 정리` |
+| `docs/` | `[DOCS]` | `[DOCS] FSD 레이어 가이드 추가` |
+| `hotfix/` | `[HOTFIX]` | `[HOTFIX] 로그인 500 오류 긴급 수정` |
+
+- `feature/` maps to `[FEAT]`, not `[FEATURE]` — it matches the `feat` commit type.
+- The tag is uppercase English; the description is Korean.
+- Do not use a domain name (`[Job]`, `[Admin]`) as the tag. The domain belongs in the description and in the `area:` label.
+- Do not put a commit type with a colon (`feat:`) in the title. That format is for commits.
+- If the branch has no recognized prefix, the branch name is wrong — fix the branch rather than inventing a tag.
 
 ## Base branch
 
