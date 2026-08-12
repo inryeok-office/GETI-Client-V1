@@ -51,7 +51,7 @@ const INQUIRY_STATUS_FILTER_OPTIONS: Array<{
 const EDITABLE_INQUIRY_STATUSES: InquiryStatus[] = ['IN_PROGRESS', 'RECEIVED', 'ANSWERED'];
 
 function formatTableDate(date: string | null) {
-  if (!date) return '—';
+  if (!date) return 'ㅡ';
 
   const parsedDate = new Date(date);
   const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
@@ -79,6 +79,20 @@ interface InquiryFilterSelectProps<T extends string> {
   options: Array<{ label: string; value: T }>;
   placeholder: string;
   value: T;
+}
+
+function SelectChevron({ isOpen = false }: { isOpen?: boolean }) {
+  return (
+    <span className="flex h-2.5 w-5 shrink-0 items-center justify-center overflow-hidden">
+      <Image
+        src="/icons/inquiry-type-select-chevron.svg"
+        alt=""
+        width={10}
+        height={20}
+        className={`h-5 w-2.5 transition-transform ${isOpen ? 'rotate-[270deg]' : 'rotate-90'}`}
+      />
+    </span>
+  );
 }
 
 function InquiryFilterSelect<T extends string>({
@@ -126,9 +140,7 @@ function InquiryFilterSelect<T extends string>({
         className="focus:border-primary-300 flex h-14 w-full items-center justify-between rounded-lg border border-neutral-200 bg-white py-4 pr-2 pl-4 text-left text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-700 outline-none"
       >
         <span>{value === 'ALL' ? placeholder : selectedOption?.label}</span>
-        <span className="flex h-2.5 w-5 shrink-0 items-center justify-center">
-          <Icon name="chevronDown" className="size-3 text-neutral-700" />
-        </span>
+        <SelectChevron isOpen={isOpen} />
       </button>
 
       {isOpen ? (
@@ -215,10 +227,7 @@ function InquiryStatusSelect({ onChange, value }: InquiryStatusSelectProps) {
       >
         <span>{INQUIRY_STATUS_LABELS[value]}</span>
         <span className="flex h-3 w-6 shrink-0 items-center justify-center">
-          <Icon
-            name="chevronDown"
-            className={`size-3 text-neutral-700 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          />
+          <SelectChevron isOpen={isOpen} />
         </span>
       </button>
 
@@ -339,15 +348,23 @@ export function AdminInquiryManagement({
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="flex h-20 items-center justify-between border-b border-neutral-200 bg-white px-10">
-        <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900">문의 관리</p>
-        <div className="flex items-center gap-3 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
+        <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">문의 관리</p>
+        <div className="flex items-center gap-3 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
           <span className="bg-primary-100 size-8 rounded-full" aria-hidden="true" />
           <span>개발자 · 외 1개</span>
-          <Icon name="chevronDown" className="size-5" />
+          <span className="flex h-3 w-6 items-center justify-center overflow-hidden">
+            <Image
+              src="/icons/inquiry-type-select-chevron.svg"
+              alt=""
+              width={12}
+              height={24}
+              className="h-6 w-3 rotate-90"
+            />
+          </span>
         </div>
       </header>
 
-      <div className="min-w-[1180px] px-10 pt-10 pb-20">
+      <div className="min-w-0 px-10 pt-10 pb-20">
         <div>
           <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-neutral-900">
             문의 관리
@@ -357,7 +374,7 @@ export function AdminInquiryManagement({
           </p>
         </div>
 
-        <div className="mt-6 flex gap-4">
+        <div className="mt-8 flex gap-4">
           <label className="focus-within:border-primary-300 flex h-14 min-w-0 flex-1 items-center gap-4 rounded-lg border border-neutral-200 bg-white px-4">
             <span className="sr-only">문의 검색</span>
             <Icon name="search" className="size-5 shrink-0 text-neutral-600" />
@@ -432,17 +449,22 @@ interface AdminInquiryTableProps {
 
 function AdminInquiryTable({ inquiries, onSelectInquiry }: AdminInquiryTableProps) {
   return (
-    <div className="mt-6 overflow-hidden rounded-lg bg-white">
-      <table className="w-full table-fixed border-collapse text-left">
+    <div
+      role="region"
+      aria-label="문의 목록"
+      tabIndex={0}
+      className="mt-6 overflow-x-auto overflow-y-hidden rounded-lg bg-white"
+    >
+      <table className="w-full min-w-[1620px] table-fixed border-collapse text-left">
         <caption className="sr-only">사용자 문의 목록</caption>
         <colgroup>
-          <col className="w-[22%]" />
-          <col className="w-[12%]" />
-          <col className="w-[13%]" />
-          <col className="w-[11%]" />
-          <col className="w-[14%]" />
-          <col className="w-[14%]" />
-          <col className="w-[14%]" />
+          <col className="w-[350px]" />
+          <col className="w-[190px]" />
+          <col className="w-[210px]" />
+          <col className="w-[180px]" />
+          <col className="w-[220px]" />
+          <col className="w-[220px]" />
+          <col />
         </colgroup>
         <thead className="bg-neutral-50 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-700">
           <tr>
@@ -485,19 +507,21 @@ function AdminInquiryTableSkeleton() {
   return (
     <div role="status" aria-label="문의 목록을 불러오는 중" className="animate-pulse">
       <div className="h-5 w-24 rounded bg-neutral-200" />
-      <div className="mt-6 overflow-hidden rounded-lg bg-white">
-        <div className="h-[52px] bg-neutral-100" />
-        {Array.from({ length: 4 }, (_, index) => (
-          <div
-            key={index}
-            className="flex h-[60px] items-center gap-8 border-t border-neutral-200 px-6"
-          >
-            <div className="h-4 w-1/4 rounded bg-neutral-100" />
-            <div className="h-4 w-24 rounded bg-neutral-100" />
-            <div className="h-4 w-28 rounded bg-neutral-100" />
-            <div className="h-4 w-20 rounded bg-neutral-100" />
-          </div>
-        ))}
+      <div className="mt-6 overflow-x-auto overflow-y-hidden rounded-lg bg-white">
+        <div className="min-w-[1620px]">
+          <div className="h-[52px] bg-neutral-100" />
+          {Array.from({ length: 4 }, (_, index) => (
+            <div
+              key={index}
+              className="flex h-[60px] items-center gap-8 border-t border-neutral-200 px-6"
+            >
+              <div className="h-4 w-1/4 rounded bg-neutral-100" />
+              <div className="h-4 w-24 rounded bg-neutral-100" />
+              <div className="h-4 w-28 rounded bg-neutral-100" />
+              <div className="h-4 w-20 rounded bg-neutral-100" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

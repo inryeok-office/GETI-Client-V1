@@ -31,6 +31,7 @@ describe('AdminInquiryManagement', () => {
     render(<AdminInquiryManagement initialStatus="success" inquiries={INQUIRIES} />);
 
     expect(screen.getByText('총 1개 문의')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '문의 목록' })).toHaveClass('overflow-x-auto');
 
     await user.type(screen.getByRole('searchbox', { name: '문의 검색' }), '없는 문의');
     expect(screen.getByText('조건에 맞는 문의가 없습니다.')).toBeInTheDocument();
