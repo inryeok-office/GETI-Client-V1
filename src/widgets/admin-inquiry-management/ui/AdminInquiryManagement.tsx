@@ -559,7 +559,7 @@ function AdminInquiryDetailPanel({
   const isClosed = inquiry.status === 'CLOSED';
 
   return (
-    <div className="fixed inset-0 z-40">
+    <div className="fixed inset-y-0 right-0 left-[220px] z-40">
       <button
         type="button"
         aria-label="문의 상세 닫기"
@@ -570,9 +570,9 @@ function AdminInquiryDetailPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-inquiry-detail-title"
-        className="absolute top-0 right-0 z-10 flex h-full w-[680px] flex-col justify-between bg-white p-8 [@media(max-height:900px)]:p-6"
+        className="absolute top-0 right-0 z-10 flex h-full w-[680px] flex-col justify-between bg-white p-8"
       >
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <h2
             id="admin-inquiry-detail-title"
             className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900"
@@ -580,7 +580,7 @@ function AdminInquiryDetailPanel({
             문의 상세
           </h2>
 
-          <div className="mt-6 flex gap-2 [@media(max-height:900px)]:mt-3">
+          <div className="mt-4 flex gap-2">
             {[
               inquiry.inquiryTypeLabel,
               INQUIRY_STATUS_LABELS[inquiry.status],
@@ -595,7 +595,7 @@ function AdminInquiryDetailPanel({
             ))}
           </div>
 
-          <div className="mt-6 px-1 text-xs leading-[1.5] tracking-[-0.12px] [@media(max-height:900px)]:mt-3">
+          <div className="mt-6 px-1 text-xs leading-[1.5] tracking-[-0.12px]">
             <p className="font-medium text-neutral-800">
               {inquiry.author.studentNumber} {inquiry.author.name}
             </p>
@@ -604,33 +604,33 @@ function AdminInquiryDetailPanel({
             </p>
           </div>
 
-          <div className="mt-6 rounded-lg bg-neutral-50 p-5 [@media(max-height:900px)]:mt-3 [@media(max-height:900px)]:p-4">
+          <div className="mt-6 rounded-lg bg-neutral-50 p-5">
             <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">문의 제목</p>
             <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
               {inquiry.title}
             </p>
           </div>
 
-          <div className="mt-6 rounded-lg bg-neutral-50 p-5 [@media(max-height:900px)]:mt-3 [@media(max-height:900px)]:p-4">
+          <div className="mt-6 rounded-lg bg-neutral-50 p-5">
             <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">문의 내용</p>
             <p className="mt-3 text-sm leading-[1.5] tracking-[-0.14px] whitespace-pre-wrap text-neutral-800">
               {inquiry.content}
             </p>
           </div>
 
-          <div className="mt-6 px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 [@media(max-height:900px)]:mt-3">
+          <div className="mt-6 px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
             <p>문의 상태</p>
             <InquiryStatusSelect value={inquiry.status} onChange={onStatusChange} />
           </div>
 
-          <label className="mt-6 block px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 [@media(max-height:900px)]:mt-3">
+          <label className="mt-6 block px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
             답변
             <textarea
               value={answer}
               onChange={(event) => onAnswerChange(event.target.value)}
               disabled={isClosed}
               placeholder="답변 내용을 입력해 주세요."
-              className="focus:border-primary-300 mt-2 h-[220px] w-full resize-none rounded-lg border border-neutral-200 bg-white p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-400 disabled:bg-neutral-100 [@media(max-height:900px)]:h-[clamp(140px,calc(100vh-580px),220px)]"
+              className="focus:border-primary-300 mt-2 h-[220px] w-full resize-none rounded-lg border border-neutral-200 bg-white p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-400 disabled:bg-neutral-100"
             />
           </label>
           <p className="mt-1 px-1 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-500">
@@ -640,8 +640,8 @@ function AdminInquiryDetailPanel({
           </p>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-4 bg-white">
-          <Button variant="neutral" onClick={onClose}>
+        <div className="flex shrink-0 justify-end gap-4 bg-white pt-6">
+          <Button variant="neutral" className="border-neutral-200" onClick={onClose}>
             취소
           </Button>
           <Button disabled={isClosed || !answer.trim()} onClick={onSubmit}>
