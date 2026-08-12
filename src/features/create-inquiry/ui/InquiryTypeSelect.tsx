@@ -1,8 +1,7 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
-
-import { Icon } from '@/shared/ui/icon';
 
 interface InquiryTypeSelectProps {
   disabled?: boolean;
@@ -59,17 +58,20 @@ export function InquiryTypeSelect({
         aria-invalid={errorMessage ? true : undefined}
         aria-describedby={errorId}
         onClick={() => setIsOpen((current) => !current)}
-        className={`flex h-[56px] w-full items-center justify-between rounded-[8px] border bg-white pr-[12px] pl-[16px] text-left text-[14px] leading-[1.4] font-medium tracking-[-0.14px] transition-colors outline-none focus:border-[#8cc8da] disabled:cursor-not-allowed disabled:bg-neutral-100 ${
+        className={`flex h-[56px] w-full items-center justify-between rounded-[8px] border bg-white pr-[8px] pl-[16px] text-left text-[14px] leading-[1.4] font-medium tracking-[-0.14px] transition-colors outline-none focus:border-[#8cc8da] disabled:cursor-not-allowed disabled:bg-neutral-100 ${
           errorMessage ? 'border-[#ef4444]' : 'border-[#e5e5e5]'
         }`}
       >
         <span className={value ? 'text-[#111]' : 'text-[#525252]'}>
           {value || '문의 유형을 선택해 주세요.'}
         </span>
-        <span className="flex size-[20px] shrink-0 items-center justify-center">
-          <Icon
-            name="chevronDown"
-            className={`size-[12px] text-[#525252] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center overflow-hidden">
+          <Image
+            src="/icons/inquiry-type-select-chevron.svg"
+            alt=""
+            width={10}
+            height={20}
+            className="shrink-0 rotate-90"
           />
         </span>
       </button>
@@ -79,7 +81,7 @@ export function InquiryTypeSelect({
           id={listboxId}
           role="listbox"
           aria-labelledby={selectId}
-          className="absolute top-[64px] z-10 w-full overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-white py-[8px] shadow-[0px_12px_28px_-8px_rgba(23,37,45,0.2)]"
+          className="absolute top-[64px] z-10 w-full overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {options.map((option) => (
             <li key={option} role="none">
@@ -91,8 +93,8 @@ export function InquiryTypeSelect({
                   onChange(option);
                   setIsOpen(false);
                 }}
-                className={`flex h-[44px] w-full items-center px-[16px] text-left text-[14px] leading-[1.4] tracking-[-0.14px] transition-colors hover:bg-[#f6fbfc] focus:bg-[#f6fbfc] focus:outline-none ${
-                  value === option ? 'bg-[#eaf6f9] font-medium text-[#17627a]' : 'text-[#111]'
+                className={`flex h-[44px] w-full items-center rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] transition-colors hover:bg-[#f6fbfc] focus:bg-[#f6fbfc] focus:outline-none ${
+                  value === option ? 'bg-[#f6fbfc] text-[#17627a]' : 'bg-white text-[#111]'
                 }`}
               >
                 {option}
