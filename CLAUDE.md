@@ -57,6 +57,7 @@ Confirm these before starting.
 - Do not add a new package without team agreement.
 - Do not report work as complete without tests and a build.
 - Keep the commit type in English and write the subject in Korean.
+- **Keep PR bodies short.** Under 60 visible lines: a 2–3 line summary, at most 8 one-line bullets for what changed, at most 3 review notes, everything else folded into `<details>`. Do not restate the commit list. Detailed criteria are in the [`pull-request`](./.claude/skills/pull-request/SKILL.md) skill.
 - Commit, push, and open PRs only when the user asks.
 - Do not merge without the user's request.
 - Do not force push.

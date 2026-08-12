@@ -84,6 +84,26 @@ Breaking Changes  "없음" if there are none
 - If you decided something differently from the original plan, state it with the reasoning in "리뷰 참고 사항".
 - List the follow-up work you excluded. Saying what you did not do is what prevents reviewer misunderstanding.
 
+## Length
+
+**A long PR body does not get read.** Write for a reviewer who has 30 seconds and is on a phone. Keeping it short is a hard requirement, not a preference.
+
+- **Under 60 visible lines.** Anything past that goes into `<details>` or does not belong in the body at all.
+- Open with a **2–3 line summary**: what changed, and the single thing the reviewer should watch for.
+- `작업 내용` is a **flat list, 8 bullets maximum, one line each.** No sub-bullets, no paragraphs, no tables.
+- **Do not restate the commits.** GitHub already lists them on the PR page. If a bullet says the same thing as a commit subject, delete it.
+- **Cut `작업 배경` to one sentence** when the linked Issue already explains the background. Do not copy the Issue body.
+- Fold long material into `<details><summary>…</summary>` — command output, dependency tables, test case lists, excluded follow-up work, decisions you changed mid-work.
+- `리뷰 참고 사항` is **3 items maximum**, each one line plus one line of reasoning. If everything is flagged, nothing is.
+- Reasoning for *why* a change looks the way it does belongs in the **commit body**, not the PR body. The PR body says what changed and what to check.
+
+```text
+Bad   150 lines, three tables, the one risky decision buried at line 120
+Good   40 lines, the risky decision is bullet 2, detail folded into <details>
+```
+
+If you cannot get under the limit, that usually means the PR is doing too much. Say so rather than writing a longer body.
+
 ## Checklist
 
 **Tick only what you actually verified.** For anything unticked, explain why in the body.
