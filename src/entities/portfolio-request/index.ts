@@ -1,6 +1,10 @@
 export type {
+  PortfolioRequest,
   PortfolioRequestListItem,
+  PortfolioRequestStatus,
   PortfolioRequestSubmissionStatus,
+  PortfolioSubmission,
+  PortfolioSubmissionStatus,
   PortfolioUploadError,
   PortfolioUploadFile,
 } from './model/types';
