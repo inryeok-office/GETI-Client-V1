@@ -43,11 +43,23 @@ describe('InquiryRegistrationFlow', () => {
     expect(screen.getByLabelText('문의 내용')).toHaveAttribute('aria-invalid', 'true');
   });
 
+  it('피그마에 정의된 문의 유형을 드롭다운에 표시한다', () => {
+    renderFlow();
+    fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
+    fireEvent.click(screen.getByLabelText('문의 유형'));
+
+    expect(screen.getAllByRole('option')).toHaveLength(4);
+    expect(screen.getByRole('option', { name: '서비스 이용' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '지원 문의' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '계정·프로필' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '공고 문의' })).toBeInTheDocument();
+  });
+
   it('Mock 등록 성공 후 모달을 닫고 성공 알림을 표시한다', async () => {
     renderFlow();
     fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
     fireEvent.click(screen.getByLabelText('문의 유형'));
-    fireEvent.click(screen.getByRole('option', { name: '기타' }));
+    fireEvent.click(screen.getByRole('option', { name: '서비스 이용' }));
     fireEvent.change(screen.getByLabelText('제목'), { target: { value: '서비스 문의' } });
     fireEvent.change(screen.getByLabelText('문의 내용'), {
       target: { value: '서비스 이용 방법이 궁금합니다.' },
@@ -65,7 +77,7 @@ describe('InquiryRegistrationFlow', () => {
     renderFlow('error');
     fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
     fireEvent.click(screen.getByLabelText('문의 유형'));
-    fireEvent.click(screen.getByRole('option', { name: '기타' }));
+    fireEvent.click(screen.getByRole('option', { name: '서비스 이용' }));
     fireEvent.change(screen.getByLabelText('제목'), { target: { value: '서비스 문의' } });
     fireEvent.change(screen.getByLabelText('문의 내용'), {
       target: { value: '서비스 이용 방법이 궁금합니다.' },

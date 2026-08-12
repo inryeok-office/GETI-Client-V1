@@ -28,7 +28,7 @@ interface InquiryFormErrors {
   title?: string;
 }
 
-const MOCK_INQUIRY_TYPES = ['회원 정보', '채용 공고', '지원', '프로그램', '기타'];
+const MOCK_INQUIRY_TYPES = ['서비스 이용', '지원 문의', '계정·프로필', '공고 문의'];
 
 export function InquiryRegistrationFlow({
   children,
