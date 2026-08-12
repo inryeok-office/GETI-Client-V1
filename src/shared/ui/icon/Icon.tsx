@@ -29,7 +29,8 @@ export type IconName =
   | 'message'
   | 'fileSearch'
   | 'alertTriangleFilled'
-  | 'lockOutline';
+  | 'lockOutline'
+  | 'check';
 
 interface IconProps {
   name: IconName;
@@ -99,6 +100,7 @@ const VIEW_BOX: Record<Exclude<IconName, 'chevronDown'>, string> = {
   fileSearch: '0 0 72 72',
   alertTriangleFilled: '0 0 64 64',
   lockOutline: '0 0 64 64',
+  check: '0 0 20 20',
 };
 
 function renderPath(name: Exclude<IconName, 'chevronDown'>) {
@@ -382,6 +384,13 @@ function renderPath(name: Exclude<IconName, 'chevronDown'>) {
           stroke="currentColor"
           strokeWidth={2}
           strokeLinecap="round"
+        />
+      );
+    case 'check':
+      return (
+        <path
+          d="M7.95833 15L3.20833 10.25L4.39583 9.0625L7.95833 12.625L15.6042 4.97917L16.7917 6.16667L7.95833 15Z"
+          fill="currentColor"
         />
       );
     default:
