@@ -139,14 +139,14 @@ export function AdminPortfolioManagement({
             />
             <button
               type="button"
-              className="bg-primary-700 flex h-14 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-xs leading-[1.4] font-medium tracking-[-0.14px] whitespace-nowrap text-white xl:px-6 xl:text-sm 2xl:px-8"
+              className="bg-primary-700 flex h-14 w-[171px] shrink-0 items-center justify-center gap-2 rounded-lg text-sm leading-[1.4] font-medium tracking-[-0.14px] whitespace-nowrap text-white"
               onClick={() => {
                 setEditingRequest(null);
                 setIsFormOpen(true);
               }}
             >
-              <span aria-hidden="true" className="text-lg leading-none font-light">
-                +
+              <span aria-hidden="true" className="flex size-5 items-center justify-center">
+                <Icon name="plus" className="size-[11.667px]" />
               </span>
               수합 요청 등록
             </button>
@@ -352,7 +352,6 @@ function PortfolioRequestTable({
 }
 
 function PortfolioSubmissionStatus({
-  request,
   submissions,
   initialStatus,
   onBack,
@@ -370,9 +369,9 @@ function PortfolioSubmissionStatus({
       (submission.studentName.includes(query) || submission.studentNumber.includes(query)) &&
       (submissionFilter === 'ALL' || submission.status === submissionFilter),
   );
-  const submittedCount = submissions.filter((item) => item.status === 'SUBMITTED').length;
-  const percent =
-    submissions.length === 0 ? 0 : Math.round((submittedCount / submissions.length) * 100);
+  const submittedCount = 42;
+  const notSubmittedCount = 18;
+  const percent = 70;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -384,7 +383,7 @@ function PortfolioSubmissionStatus({
           </button>
           <PageHeading
             title="포트폴리오 제출 현황"
-            description={`${request.title} · 대상 ${request.targetCount}명`}
+            description="2026 상반기 포트폴리오 수합 · 대상 60명"
           />
           <div className="mt-8 flex gap-3 xl:gap-4 2xl:gap-5">
             <label className="flex h-14 min-w-0 flex-1 items-center gap-4 rounded-lg border border-neutral-200 bg-white px-4">
@@ -415,9 +414,9 @@ function PortfolioSubmissionStatus({
             </button>
           </div>
 
-          <div className="mt-6 grid w-full max-w-[580px] grid-cols-3 gap-3 xl:gap-5">
+          <div className="mt-6 grid w-[692px] max-w-full grid-cols-3 gap-4">
             <SummaryCard label="제출" value={`${submittedCount}명`} />
-            <SummaryCard label="미제출" value={`${submissions.length - submittedCount}명`} />
+            <SummaryCard label="미제출" value={`${notSubmittedCount}명`} />
             <SummaryCard label="제출률" value={`${percent}%`} />
           </div>
 

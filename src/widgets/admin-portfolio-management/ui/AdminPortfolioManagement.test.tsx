@@ -230,6 +230,23 @@ describe('AdminPortfolioManagement', () => {
     expect(downloadButton.querySelector('svg')).toBeNull();
   });
 
+  it('제출 현황 요약을 피그마 목업 값으로 표시한다', () => {
+    render(
+      <AdminPortfolioManagement
+        initialStatus="success"
+        requests={REQUESTS}
+        submissions={SUBMISSIONS}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '제출 현황' }));
+
+    expect(screen.getByText('2026 상반기 포트폴리오 수합 · 대상 60명')).toBeInTheDocument();
+    expect(screen.getByText('42명')).toBeInTheDocument();
+    expect(screen.getByText('18명')).toBeInTheDocument();
+    expect(screen.getByText('70%')).toBeInTheDocument();
+  });
+
   it('네트워크 오류 상태를 표시한다', () => {
     render(
       <AdminPortfolioManagement

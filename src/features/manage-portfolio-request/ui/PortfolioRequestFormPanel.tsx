@@ -150,9 +150,7 @@ export function PortfolioRequestFormPanel({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               errorMessage={
-                isSubmitted && title.trim().length === 0
-                  ? '요청 제목을 입력해 주세요.'
-                  : undefined
+                isSubmitted && title.trim().length === 0 ? '요청 제목을 입력해 주세요.' : undefined
               }
             />
             <TextareaField
@@ -162,9 +160,7 @@ export function PortfolioRequestFormPanel({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               errorMessage={
-                isSubmitted && description.trim().length === 0
-                  ? '설명을 입력해 주세요.'
-                  : undefined
+                isSubmitted && description.trim().length === 0 ? '설명을 입력해 주세요.' : undefined
               }
             />
 
@@ -290,7 +286,7 @@ export function PortfolioRequestFormPanel({
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2 border-t border-neutral-200 px-8 py-6">
+          <div className="flex flex-col items-end gap-2 px-8 py-6">
             {hasValidationError ? (
               <p className="text-status-error text-sm leading-[1.5] tracking-[-0.14px]">
                 제출 기간과 대상 학생을 확인해 주세요.
