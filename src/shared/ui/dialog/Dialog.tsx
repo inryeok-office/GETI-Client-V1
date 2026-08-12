@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 interface DialogProps {
+  actionsClassName?: string;
   actions?: ReactNode;
   children: ReactNode;
   contentClassName?: string;
@@ -17,6 +18,7 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Dialog({
+  actionsClassName = 'mt-6 flex justify-end gap-2',
   actions,
   children,
   contentClassName = 'mt-3 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600',
@@ -93,7 +95,7 @@ export function Dialog({
           {title}
         </h2>
         <div className={contentClassName}>{children}</div>
-        {actions ? <div className="mt-6 flex justify-end gap-2">{actions}</div> : null}
+        {actions ? <div className={actionsClassName}>{actions}</div> : null}
       </section>
     </div>
   );
