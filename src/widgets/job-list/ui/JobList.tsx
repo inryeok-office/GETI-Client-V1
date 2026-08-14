@@ -38,15 +38,13 @@ export function JobList({
     <div>
       <JobFilterSection showActiveFilters={status === 'success'} />
 
-      {showCount && (
-        <p className="mt-[32px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
-          총 <span className="font-bold">{totalCount}개</span>의 공고
-        </p>
-      )}
-      {status === 'empty' && (
-        <p className="mt-[32px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
-          총 <span className="font-bold">0개</span>의 공고
-        </p>
+      {(showCount || status === 'empty') && (
+        <div className="mt-[32px] flex items-center justify-between px-[4px]">
+          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+            총 <span className="font-bold">{status === 'empty' ? 0 : totalCount}개</span>의 공고
+          </p>
+          <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">최신순</p>
+        </div>
       )}
 
       <div className="mt-[24px]">

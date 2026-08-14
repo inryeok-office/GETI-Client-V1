@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Icon } from '@/shared/ui/icon';
 
 /** Figma엔 닫힌 상태(기본 라벨)만 있고 펼쳤을 때의 선택지 목록은 캡처되지 않았다. 그래서 실제 선택지 없이 라벨만 보여준다. */
-const FILTERS = ['최신순', '지원 유형', '직무', '기업 유형', '출처', '모집 상태'];
+const FILTERS = ['지원 유형', '직무', '기업 유형', '출처', '모집 상태'];
 
 /** "마감 공고 포함" 토글의 기본값. Figma 목업이 켜진 상태였다. */
 const DEFAULT_INCLUDE_CLOSED = true;
