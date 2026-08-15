@@ -10,9 +10,9 @@ import {
 import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
-import { StatusDialog } from '@/shared/ui/status-dialog';
 
 import { areSameRoles } from '../model/memberChanges';
+import { AdminStatusDialog } from './AdminStatusDialog';
 
 export type SaveResult = 'conflict' | 'error' | 'forbidden' | 'processing' | 'success' | null;
 
@@ -239,10 +239,7 @@ export function SaveResultDialog({
             : 'text-status-error';
 
   return (
-    <StatusDialog
-      appearance="admin"
-      width={520}
-      contentWidth="full"
+    <AdminStatusDialog
       icon={<Icon name={copy.icon} className={`size-16 ${colorClassName}`} />}
       title={copy.title}
       description={copy.description}
