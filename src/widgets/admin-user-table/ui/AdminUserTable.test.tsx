@@ -142,6 +142,9 @@ describe('AdminUserTable', () => {
     expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
     expect(auditLogLink).toHaveAttribute('href', '/admin/audit-logs');
     expect(within(detail).queryByText('사용자 생성')).not.toBeInTheDocument();
+    auditLogLink.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    fireEvent.click(auditLogLink);
+    expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(historyToggle);
 

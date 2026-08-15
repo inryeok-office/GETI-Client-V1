@@ -192,27 +192,27 @@ const MEMBER_CHANGE_HISTORY = [
 function HistoryAccordion({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
   return (
     <section>
-      <div className="relative overflow-hidden rounded-lg border border-[#dde3e8] bg-white">
+      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_20px] items-center gap-3 overflow-hidden rounded-lg border border-[#dde3e8] bg-white px-4">
         <button
           type="button"
           aria-expanded={isOpen}
           aria-controls="member-change-history"
           aria-label={`최근 역할 · 계정 상태 변경 이력 ${isOpen ? '접기' : '펼치기'}`}
           onClick={onToggle}
-          className="flex h-14 w-full items-center justify-between py-4 pr-4 pl-4 text-left text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
+          className="min-w-0 truncate text-left text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
         >
-          <span>최근 역할 · 계정 상태 변경 이력</span>
-          <Icon
-            name="chevronRight"
-            className={`h-[10px] w-5 shrink-0 transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}
-          />
+          최근 역할 · 계정 상태 변경 이력
         </button>
         <Link
           href="/admin/audit-logs"
-          className="hover:text-primary-700 absolute top-1/2 right-11 -translate-y-1/2 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600"
+          className="hover:text-primary-700 shrink-0 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600"
         >
           감사 로그 보기
         </Link>
+        <Icon
+          name="chevronRight"
+          className={`h-[10px] w-5 shrink-0 transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}
+        />
       </div>
 
       {isOpen ? (
