@@ -39,13 +39,9 @@ describe('AdminNavigation', () => {
     render(<AdminNavigation sections={SECTIONS} />);
 
     const memberToggle = screen.getByRole('button', { name: '회원 관리' });
-    expect(memberToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(memberToggle).toHaveAttribute('aria-expanded', 'true');
     expect(memberToggle).toHaveClass('gap-1');
     expect(memberToggle).not.toHaveClass('justify-between');
-    expect(screen.queryByRole('link', { name: '사용자 관리' })).not.toBeInTheDocument();
-
-    fireEvent.click(memberToggle);
-    expect(memberToggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: '사용자 관리' })).toHaveAttribute(
       'href',
       '/admin/users',
@@ -54,6 +50,10 @@ describe('AdminNavigation', () => {
     fireEvent.click(memberToggle);
     expect(memberToggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('link', { name: '사용자 관리' })).not.toBeInTheDocument();
+
+    fireEvent.click(memberToggle);
+    expect(memberToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: '사용자 관리' })).toBeInTheDocument();
   });
 
   it('현재 페이지가 속한 그룹을 펼치고 활성 배경을 적용한다', () => {
@@ -76,9 +76,9 @@ describe('AdminNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: '운영 관리' }));
 
     const navigation = screen.getByRole('navigation', { name: '관리자 메뉴' });
-    expect(within(navigation).getByRole('link', { name: '사용자 관리' })).toBeInTheDocument();
-    expect(within(navigation).getByRole('link', { name: '감사 로그' })).toBeInTheDocument();
-    expect(within(navigation).queryByRole('link', { name: '공고 관리' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: '사용자 관리' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: '감사 로그' })).not.toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: '공고 관리' })).toBeInTheDocument();
   });
 
   it('상세 경로에서도 상위 메뉴를 활성 상태로 표시한다', () => {

@@ -27,10 +27,7 @@ export function AdminNavigation({ sections }: AdminNavigationProps) {
     Object.fromEntries(
       sections
         .filter((section): section is AdminNavSection & { label: string } => Boolean(section.label))
-        .map((section) => [
-          section.label,
-          section.items.some((item) => isActivePath(pathname, item.href)),
-        ]),
+        .map((section) => [section.label, true]),
     ),
   );
 
