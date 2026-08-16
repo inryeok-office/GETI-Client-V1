@@ -9,6 +9,7 @@ interface DialogProps {
   contentClassName?: string;
   isOpen: boolean;
   onClose: () => void;
+  overlayClassName?: string;
   panelClassName?: string;
   title: string;
   titleClassName?: string;
@@ -24,6 +25,7 @@ export function Dialog({
   contentClassName = 'mt-3 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600',
   isOpen,
   onClose,
+  overlayClassName = 'bg-neutral-900/40',
   panelClassName = 'w-full max-w-md rounded-xl bg-white p-6 shadow-lg',
   title,
   titleClassName = 'text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900',
@@ -78,7 +80,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayClassName}`}
       role="presentation"
       onMouseDown={onClose}
     >

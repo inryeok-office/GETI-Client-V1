@@ -33,7 +33,7 @@ The repository's full Git Flow, branch strategy, commit convention, and label sy
 - The base branch is `develop`. **Do not open a PR against `main`** (release procedures excepted).
 - If a prerequisite PR is still open and you built on top of its changes, use a stacked PR with that branch as the base, and state the merge order in the PR body.
 - Use a draft PR while work is in progress or when you want early review. Switch to Ready for Review when implementation and verification are done.
-- The PR title follows the repository convention `[도메인] 작업 내용` — the domain in brackets, the description in Korean. Link the Issue in the body with `Closes #{issue-number}`.
+- The PR title is `[TYPE] 작업 내용`, where **TYPE comes from the work branch's prefix** (`feature/` → `[FEAT]`, `fix/` → `[FIX]`, `refactor/` → `[REFACTOR]`, `chore/` → `[CHORE]`, `docs/` → `[DOCS]`, `hotfix/` → `[HOTFIX]`). The tag is uppercase English, the description Korean. Do not use a domain name as the tag. Link the Issue in the body with `Closes #{issue-number}`.
 - **A UI change needs a screenshot or GIF.** The AI cannot attach images, so leave the slot empty and ask the user to attach one. Do not report it as attached.
 - Reviewers and the assignee are automated: `.github/CODEOWNERS` requests review from the frontend team, and `.github/workflows/pr-assign-author.yml` assigns the author. GitHub reads CODEOWNERS from the **base branch**, so neither fires when the base branch does not have the file yet. Verify after creating the PR and add them manually if nothing was applied.
 - When using squash merge, the final squash commit message follows the Korean rules too. Perform an actual merge only when the user explicitly asks.

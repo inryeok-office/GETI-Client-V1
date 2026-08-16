@@ -36,6 +36,7 @@ export function StatusDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
+      aria-label={title}
     >
       <div
         className={`flex flex-col items-center rounded-[16px] bg-white px-[24px] py-[32px] shadow-[0px_8px_12px_rgba(23,37,45,0.1)] ${widthClassName} ${actionsGap === 8 ? 'gap-[8px]' : 'gap-[24px]'}`}

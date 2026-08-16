@@ -10,6 +10,7 @@ export interface DropdownOption {
 
 interface DropdownFieldProps {
   ariaLabel?: string;
+  controlClassName?: string;
   className?: string;
   disabled?: boolean;
   errorMessage?: string;
@@ -23,6 +24,7 @@ interface DropdownFieldProps {
 
 export function DropdownField({
   ariaLabel,
+  controlClassName = 'h-14',
   className = '',
   disabled,
   errorMessage,
@@ -79,7 +81,7 @@ export function DropdownField({
         aria-haspopup="listbox"
         aria-invalid={errorMessage ? true : undefined}
         onClick={() => setIsOpen((current) => !current)}
-        className={`focus:border-primary-300 flex h-14 w-full items-center justify-between rounded-lg border bg-white text-left transition-colors outline-none disabled:bg-neutral-100 ${
+        className={`focus:border-primary-300 flex w-full items-center justify-between rounded-lg border bg-white text-left transition-colors outline-none disabled:bg-neutral-100 ${controlClassName} ${
           isLargeText
             ? 'px-4 text-base leading-[1.6] font-normal tracking-[-0.16px]'
             : 'pr-2 pl-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]'
