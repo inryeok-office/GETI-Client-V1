@@ -5,7 +5,7 @@ import { Icon } from '@/shared/ui/icon';
 
 const NAV_ITEMS = [
   { href: '/jobs', label: '채용 공고' },
-  { href: null, label: '기업 정보' },
+  { href: '/companies', label: '기업 정보' },
   { href: null, label: 'AI 추천' },
   { href: null, label: '취업 프로그램' },
   { href: '/portfolios', label: '포트폴리오' },

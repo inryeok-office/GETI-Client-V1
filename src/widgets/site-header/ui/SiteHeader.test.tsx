@@ -22,6 +22,10 @@ describe('SiteHeader', () => {
       'href',
       '/portfolios',
     );
+    expect(within(navigation).getByRole('link', { name: '기업 정보' })).toHaveAttribute(
+      'href',
+      '/companies',
+    );
     expect(screen.getByRole('link', { name: '저장한 공고 보기' })).toHaveAttribute(
       'href',
       '/bookmarks',
@@ -41,7 +45,7 @@ describe('SiteHeader', () => {
 
     const navigation = screen.getByRole('navigation', { name: '주요 메뉴' });
 
-    for (const label of ['기업 정보', 'AI 추천', '취업 프로그램']) {
+    for (const label of ['AI 추천', '취업 프로그램']) {
       expect(within(navigation).getByText(label)).toHaveAttribute('aria-disabled', 'true');
       expect(within(navigation).queryByRole('link', { name: label })).not.toBeInTheDocument();
     }
