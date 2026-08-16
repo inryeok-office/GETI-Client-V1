@@ -24,17 +24,25 @@ If one exists, update its body instead of creating another.
 ## Title
 
 ```text
-[Domain] 작업 내용
+[TYPE] 작업 내용
 ```
 
-```text
-[Job] 공고 목록 페이지 구현
-[Auth] 로그인 폼 검증 추가
-[Shared] axios 인스턴스 분리
-[Chore] AI 개발 하네스 구성
-```
+**The tag comes from the work branch's prefix**, so the branch and the PR always agree. Read the branch name and map it — do not invent a tag and do not use a domain name.
 
-The domain goes in brackets in English; the description is written in Korean. Do not put a commit type (`feat:`) in the title.
+| Branch prefix | Tag | Example |
+| --- | --- | --- |
+| `feature/` | `[FEAT]` | `[FEAT] 공고 목록 페이지 구현` |
+| `fix/` | `[FIX]` | `[FIX] 북마크 토글 롤백 오류 수정` |
+| `refactor/` | `[REFACTOR]` | `[REFACTOR] api 클라이언트 분리` |
+| `chore/` | `[CHORE]` | `[CHORE] PR 작성 규칙 정리` |
+| `docs/` | `[DOCS]` | `[DOCS] FSD 레이어 가이드 추가` |
+| `hotfix/` | `[HOTFIX]` | `[HOTFIX] 로그인 500 오류 긴급 수정` |
+
+- `feature/` maps to `[FEAT]`, not `[FEATURE]` — it matches the `feat` commit type.
+- The tag is uppercase English; the description is Korean.
+- Do not use a domain name (`[Job]`, `[Admin]`) as the tag. The domain belongs in the description and in the `area:` label.
+- Do not put a commit type with a colon (`feat:`) in the title. That format is for commits.
+- If the branch has no recognized prefix, the branch name is wrong — fix the branch rather than inventing a tag.
 
 ## Base branch
 
@@ -75,6 +83,26 @@ Breaking Changes  "없음" if there are none
 - Do not paste the commit list into the "작업 내용" section. Summarize it so a reviewer knows what to look at.
 - If you decided something differently from the original plan, state it with the reasoning in "리뷰 참고 사항".
 - List the follow-up work you excluded. Saying what you did not do is what prevents reviewer misunderstanding.
+
+## Length
+
+**A long PR body does not get read.** Write for a reviewer who has 30 seconds and is on a phone. Keeping it short is a hard requirement, not a preference.
+
+- **Under 60 visible lines.** Anything past that goes into `<details>` or does not belong in the body at all.
+- Open with a **2–3 line summary**: what changed, and the single thing the reviewer should watch for.
+- `작업 내용` is a **flat list, 8 bullets maximum, one line each.** No sub-bullets, no paragraphs, no tables.
+- **Do not restate the commits.** GitHub already lists them on the PR page. If a bullet says the same thing as a commit subject, delete it.
+- **Cut `작업 배경` to one sentence** when the linked Issue already explains the background. Do not copy the Issue body.
+- Fold long material into `<details><summary>…</summary>` — command output, dependency tables, test case lists, excluded follow-up work, decisions you changed mid-work.
+- `리뷰 참고 사항` is **3 items maximum**, each one line plus one line of reasoning. If everything is flagged, nothing is.
+- Reasoning for *why* a change looks the way it does belongs in the **commit body**, not the PR body. The PR body says what changed and what to check.
+
+```text
+Bad   150 lines, three tables, the one risky decision buried at line 120
+Good   40 lines, the risky decision is bullet 2, detail folded into <details>
+```
+
+If you cannot get under the limit, that usually means the PR is doing too much. Say so rather than writing a longer body.
 
 ## Checklist
 
