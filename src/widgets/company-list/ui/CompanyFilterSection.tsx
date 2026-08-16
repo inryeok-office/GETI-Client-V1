@@ -21,8 +21,8 @@ export function CompanyFilterSection() {
   const [companyType, setCompanyType] = useState('');
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <label className="focus-within:border-primary-300 flex h-14 w-full flex-1 items-center gap-4 rounded-lg border border-neutral-200 bg-white py-2 pr-2 pl-4">
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+      <label className="focus-within:border-primary-300 flex h-14 w-full flex-1 items-center gap-4 rounded-[10px] border border-neutral-200 bg-white py-2 pr-2 pl-4">
         <span className="sr-only">기업 검색</span>
         <Icon name="search" className="size-5 shrink-0 text-neutral-600" />
         <input
@@ -36,7 +36,7 @@ export function CompanyFilterSection() {
 
       <DropdownField
         ariaLabel="기업 유형"
-        className="sm:w-[200px]"
+        className="sm:w-[232px]"
         onChange={setCompanyType}
         options={TYPE_OPTIONS}
         placeholder="기업 유형 전체"

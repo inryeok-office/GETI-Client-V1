@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { CompanyCard, type CompanyListItem } from '@/entities/company';
-import { PageState } from '@/shared/ui/page-state';
+import { Icon } from '@/shared/ui/icon';
 
 import { CompanyFilterSection } from './CompanyFilterSection';
 import { CompanyPagination } from './CompanyPagination';
@@ -81,10 +81,10 @@ function CompanyListSkeleton() {
       {Array.from({ length: 5 }, (_, index) => (
         <div
           key={index}
-          className="flex animate-pulse items-center justify-between gap-6 rounded-2xl border border-neutral-200 bg-white p-6"
+          className="flex animate-pulse items-center justify-between rounded-lg border border-neutral-200 bg-white p-6"
         >
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-lg bg-neutral-100" />
+          <div className="flex items-center gap-6">
+            <div className="size-14 rounded-xl bg-neutral-100" />
             <div className="flex flex-col gap-2">
               <div className="h-5 w-32 rounded bg-neutral-100" />
               <div className="h-6 w-24 rounded-2xl bg-neutral-100" />
@@ -99,28 +99,39 @@ function CompanyListSkeleton() {
 
 function CompanyListEmpty() {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white">
-      <PageState
-        variant="empty"
-        title="검색 결과가 없습니다."
-        description="검색어를 확인하거나 다른 조건으로 검색해보세요."
-      />
+    <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
+      <Icon name="searchLarge" className="size-[72px] text-neutral-400" />
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
+          검색 결과가 없습니다.
+        </p>
+        <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
+          검색어를 확인하거나 다른 키워드로 검색해보세요.
+        </p>
+      </div>
     </div>
   );
 }
 
 function CompanyListError({ basePath }: { basePath: string }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white">
-      <PageState
-        variant="error"
-        title="기업 목록을 불러오지 못했습니다."
-        description="잠시 후 다시 시도해 주세요."
-      />
-      <div className="flex justify-center pb-10">
+    <div
+      className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center"
+      role="alert"
+    >
+      <Icon name="alertCircleLarge" className="size-[72px] text-neutral-600" />
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
+            기업 정보를 불러오지 못했습니다.
+          </p>
+          <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
+            잠시 후 다시 시도해 주세요.
+          </p>
+        </div>
         <Link
           href={basePath}
-          className="bg-primary-700 inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
+          className="bg-primary-700 inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
         >
           다시 시도
         </Link>

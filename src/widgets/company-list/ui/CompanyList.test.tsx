@@ -90,7 +90,7 @@ describe('CompanyList', () => {
       />,
     );
 
-    expect(screen.getByText('기업 목록을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.getByText('기업 정보를 불러오지 못했습니다.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '다시 시도' })).toHaveAttribute('href', '/companies');
   });
 

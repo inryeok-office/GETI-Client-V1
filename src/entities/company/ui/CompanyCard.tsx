@@ -20,14 +20,14 @@ interface CompanyCardProps {
  */
 export function CompanyCard({ company }: CompanyCardProps) {
   return (
-    <article className="relative flex items-center justify-between gap-6 rounded-2xl border border-neutral-200 bg-white p-6">
-      <div className="flex min-w-0 items-center gap-4">
+    <article className="relative flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-6">
+      <div className="flex min-w-0 items-center gap-6">
         <span
-          className="size-12 shrink-0 rounded-lg border border-neutral-200 bg-neutral-100"
+          className="size-14 shrink-0 rounded-xl border border-neutral-200 bg-neutral-100"
           aria-hidden="true"
         />
         <div className="min-w-0">
-          <h3 className="truncate text-base leading-[1.4] font-semibold tracking-[-0.16px] text-neutral-900">
+          <h3 className="truncate text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
             <Link
               href={company.detailHref}
               className="after:absolute after:inset-0 after:content-['']"
@@ -41,19 +41,19 @@ export function CompanyCard({ company }: CompanyCardProps) {
                 MOU 기업
               </span>
             ) : null}
-            <span className="rounded-2xl bg-neutral-100 px-2 py-1 text-xs leading-[1.5] font-bold tracking-[-0.12px] text-neutral-600">
+            <span className="bg-primary-100 text-primary-700 rounded-2xl px-2 py-1 text-xs leading-[1.5] font-bold tracking-[-0.12px]">
               {SIZE_LABEL[company.size]}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
-        <span>
-          채용 중인 공고{' '}
-          <span className="font-bold text-neutral-900">{company.openJobCount}개</span>
-        </span>
-        <Icon name="chevronRight" className="h-5 w-2.5 text-neutral-600" />
+      <div className="flex shrink-0 items-center gap-6">
+        <div className="flex items-center gap-4 text-xs leading-[1.5] tracking-[-0.12px] whitespace-nowrap">
+          <span className="text-neutral-600">채용 중인 공고</span>
+          <span className="font-medium text-neutral-900">{company.openJobCount}개</span>
+        </div>
+        <Icon name="chevronRight" className="h-6 w-3 text-neutral-600" />
       </div>
     </article>
   );
