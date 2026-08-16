@@ -63,7 +63,7 @@ export function CompanyList({
       </div>
 
       {showPagination && (
-        <div className="mt-8">
+        <div className="mt-10">
           <CompanyPagination
             currentPage={currentPage}
             totalPages={totalPages}
