@@ -1,8 +1,14 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { Icon } from '@/shared/ui/icon';
 
 const NAV_ITEMS = ['채용 공고', '기업 정보', 'AI 추천', '취업 프로그램', '포트폴리오'] as const;
+
+/** 라우트가 만들어진 메뉴만 실제 링크로 연결한다. 나머지는 해당 화면이 만들어지면 이어붙인다. */
+const NAV_HREF: Partial<Record<(typeof NAV_ITEMS)[number], string>> = {
+  '기업 정보': '/companies',
+};
 
 interface SiteHeaderProps {
   activeNav?: (typeof NAV_ITEMS)[number] | null;
@@ -33,16 +39,35 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
             />
           </button>
           <nav className="flex items-center gap-[32px]">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                aria-current={item === activeNav ? 'page' : undefined}
-                className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]"
-              >
-                {item}
-              </button>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const href = NAV_HREF[item];
+              const className =
+                'text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]';
+
+              if (href) {
+                return (
+                  <Link
+                    key={item}
+                    href={href}
+                    aria-current={item === activeNav ? 'page' : undefined}
+                    className={className}
+                  >
+                    {item}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  aria-current={item === activeNav ? 'page' : undefined}
+                  className={className}
+                >
+                  {item}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
