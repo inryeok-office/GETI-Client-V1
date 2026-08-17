@@ -302,7 +302,7 @@ export function AdminCompanyManagement({
             >
               총 {listStatus === 'success' ? filteredCompanies.length : companies.length}개 기업
             </h2>
-            <div className="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+            <div className="mt-6">
               {listStatus === 'loading' ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
                   <Icon name="spinner" className="text-primary-700 size-[72px] animate-spin" />
@@ -318,7 +318,7 @@ export function AdminCompanyManagement({
               ) : null}
               {listStatus === 'error' ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
-                  <Icon name="alertCircleOutline" className="size-[72px] text-neutral-400" />
+                  <Icon name="alertCircleOutline" className="size-[72px] text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
                     <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
                       기업 정보를 불러오지 못했습니다.
@@ -332,7 +332,7 @@ export function AdminCompanyManagement({
               ) : null}
               {isNoCompaniesAtAll ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
-                  <Icon name="buildingAdd" className="size-[72px] text-neutral-400" />
+                  <Icon name="buildingAdd" className="size-[72px] text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
                     <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
                       등록된 기업이 없습니다.
@@ -357,11 +357,13 @@ export function AdminCompanyManagement({
                 </div>
               ) : null}
               {listStatus === 'success' && filteredCompanies.length > 0 ? (
-                <AdminCompanyTable
-                  companies={filteredCompanies}
-                  onDeleteClick={setDeleteTarget}
-                  onEditClick={openEditPanel}
-                />
+                <div className="overflow-hidden rounded-lg bg-white">
+                  <AdminCompanyTable
+                    companies={filteredCompanies}
+                    onDeleteClick={setDeleteTarget}
+                    onEditClick={openEditPanel}
+                  />
+                </div>
               ) : null}
             </div>
           </section>
