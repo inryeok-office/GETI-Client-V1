@@ -345,12 +345,12 @@ export function AdminCompanyManagement({
               ) : null}
               {isSearchEmpty ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
-                  <Icon name="searchLarge" className="size-[72px] text-neutral-400" />
+                  <Icon name="searchLarge" className="size-[72px] text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
-                    <p className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
+                    <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
                       검색 결과가 없습니다.
                     </p>
-                    <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600">
+                    <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
                       검색어를 확인하거나 다른 키워드로 검색해보세요.
                     </p>
                   </div>
