@@ -1,6 +1,11 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
+import { MOCK_NOTIFICATIONS } from '@/entities/notification';
+import { NotificationPanel } from '@/features/notification-panel';
 import { Icon } from '@/shared/ui/icon';
 
 const NAV_ITEMS = [
@@ -17,6 +22,12 @@ interface SiteHeaderProps {
   activeNav?: SiteNavLabel | null;
 }
 
+const STUDENT_NOTIFICATION_POPOVER_ID = 'student-notification-panel';
+
+interface PopoverToggleEvent extends Event {
+  newState: 'closed' | 'open';
+}
+
 /**
  * 전 화면 공통 상단 내비게이션. 여러 도메인의 라우팅 링크를 모아둔 앱 전역 UI 블록이다.
  * 구현된 화면은 링크로 연결하고, 아직 대상 라우트가 없는 메뉴는 비활성 상태로 표시한다.
@@ -24,6 +35,21 @@ interface SiteHeaderProps {
  * 간격 · 색상은 Figma(node 500:1509)의 헤더 값을 그대로 옮겼다.
  */
 export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const popover = notificationPopoverRef.current;
+    if (!popover) return;
+
+    const handleToggle = (event: Event) => {
+      setIsNotificationOpen((event as PopoverToggleEvent).newState === 'open');
+    };
+
+    popover.addEventListener('toggle', handleToggle);
+    return () => popover.removeEventListener('toggle', handleToggle);
+  }, []);
+
   return (
     <header className="border-b border-[#e5e5e5] bg-white">
       <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-4">
@@ -72,13 +98,16 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
           >
             <Icon name="savedJobs" className="size-[19px]" />
           </Link>
-          <Link
-            href="/notifications/preview"
+          <button
+            type="button"
+            popoverTarget={STUDENT_NOTIFICATION_POPOVER_ID}
+            aria-controls={STUDENT_NOTIFICATION_POPOVER_ID}
+            aria-expanded={isNotificationOpen}
             aria-label="알림"
-            className="flex size-[40px] items-center justify-center rounded-[9px] text-[#525252]"
+            className={`flex size-[40px] items-center justify-center rounded-[9px] text-[#525252] ${isNotificationOpen ? 'bg-[#f5f5f5]' : 'bg-white'}`}
           >
             <Icon name="bell" className="size-[19px]" />
-          </Link>
+          </button>
           <Link
             href="/profile"
             aria-label="내 프로필 보기"
@@ -91,6 +120,14 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
             <Icon name="chevronDown" className="h-[8px] w-[16px] text-[#525252]" />
           </Link>
         </div>
+      </div>
+      <div
+        ref={notificationPopoverRef}
+        id={STUDENT_NOTIFICATION_POPOVER_ID}
+        popover="auto"
+        className="inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2-56px))] z-50 m-0 w-[420px] max-w-[calc(100vw-32px)] overflow-visible border-0 bg-transparent p-0"
+      >
+        <NotificationPanel notifications={MOCK_NOTIFICATIONS} />
       </div>
     </header>
   );
