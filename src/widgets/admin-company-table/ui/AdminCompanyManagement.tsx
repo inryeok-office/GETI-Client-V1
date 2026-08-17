@@ -305,7 +305,7 @@ export function AdminCompanyManagement({
             <div className="mt-6">
               {listStatus === 'loading' ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
-                  <Icon name="spinner" className="text-primary-700 size-[72px] animate-spin" />
+                  <Icon name="spinner" className="size-[72px] animate-spin text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
                     <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
                       정보를 불러오는 중입니다.
