@@ -78,7 +78,7 @@ export function AdminCompanyTable({ companies, onDeleteClick }: AdminCompanyTabl
                   <Link href={company.detailHref} className="text-primary-700">
                     수정
                   </Link>
-                  <span aria-hidden="true" className="text-neutral-300">
+                  <span aria-hidden="true" className="text-primary-700">
                     ·
                   </span>
                   <button

@@ -41,7 +41,7 @@ describe('AdminCompanyManagement', () => {
     expect(screen.getByRole('heading', { name: '기업 관리' })).toBeInTheDocument();
     expect(screen.getByText('총 2개 기업')).toBeInTheDocument();
     expect(
-      screen.getByPlaceholderText('기업명 또는 공고 제목을 검색해보세요.'),
+      screen.getByPlaceholderText('기업명으로 검색해 보세요.'),
     ).toBeInTheDocument();
     expect(screen.getByText('플로우테크')).toBeInTheDocument();
     expect(screen.getByText('네오스튜디오')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('AdminCompanyManagement', () => {
   it('기업명으로 검색하면 일치하는 기업만 표시한다', () => {
     render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
 
-    fireEvent.change(screen.getByPlaceholderText('기업명 또는 공고 제목을 검색해보세요.'), {
+    fireEvent.change(screen.getByPlaceholderText('기업명으로 검색해 보세요.'), {
       target: { value: '네오' },
     });
 

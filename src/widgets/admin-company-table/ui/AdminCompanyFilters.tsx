@@ -54,7 +54,7 @@ export function AdminCompanyFilters({
           type="search"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="기업명 또는 공고 제목을 검색해보세요."
+          placeholder="기업명으로 검색해 보세요."
           className="w-full text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 placeholder:text-neutral-600 focus:outline-none"
         />
       </label>
