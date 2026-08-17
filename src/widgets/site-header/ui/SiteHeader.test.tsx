@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { SiteHeader } from './SiteHeader';
@@ -30,9 +30,9 @@ describe('SiteHeader', () => {
       'href',
       '/bookmarks',
     );
-    expect(screen.getByRole('link', { name: '알림' })).toHaveAttribute(
-      'href',
-      '/notifications/preview',
+    expect(screen.getByRole('button', { name: '알림' })).toHaveAttribute(
+      'popovertarget',
+      'student-notification-panel',
     );
     expect(screen.getByRole('link', { name: '내 프로필 보기' })).toHaveAttribute(
       'href',
@@ -49,5 +49,16 @@ describe('SiteHeader', () => {
       expect(within(navigation).getByText(label)).toHaveAttribute('aria-disabled', 'true');
       expect(within(navigation).queryByRole('link', { name: label })).not.toBeInTheDocument();
     }
+  });
+
+  it('알림 버튼을 누르면 팝오버의 확장 상태를 반영한다', () => {
+    render(<SiteHeader />);
+
+    const notificationButton = screen.getByRole('button', { name: '알림' });
+    expect(notificationButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(notificationButton);
+
+    expect(notificationButton).toHaveAttribute('aria-expanded', 'true');
   });
 });

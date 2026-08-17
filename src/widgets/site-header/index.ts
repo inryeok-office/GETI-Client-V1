@@ -1,1 +1,1 @@
-export { SiteHeader } from './ui/SiteHeader';
+export { SiteHeader, STUDENT_NOTIFICATION_POPOVER_ID } from './ui/SiteHeader';

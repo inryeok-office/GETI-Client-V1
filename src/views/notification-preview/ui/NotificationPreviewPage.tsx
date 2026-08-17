@@ -1,6 +1,8 @@
+import {
+  MOCK_NOTIFICATIONS,
+  MOCK_NOTIFICATIONS_WITH_DELETED_TARGET,
+} from '@/entities/notification';
 import { NotificationPanel, type NotificationPanelStatus } from '@/widgets/notification-panel';
-
-import { MOCK_NOTIFICATIONS, MOCK_NOTIFICATIONS_WITH_DELETED_TARGET } from '../model/mock';
 
 interface NotificationPreviewPageProps {
   searchParams: Promise<{ variant?: string }>;
