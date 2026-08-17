@@ -36,4 +36,10 @@ export interface AdminCompanyListItem {
   statusLabel: string;
   /** "수정" 클릭 시 이동할 어드민 기업 상세 페이지 경로. */
   detailHref: string;
+  /** 공개 중인 공고 수. 삭제 확인 모달의 통계와 삭제 가능 여부를 결정한다(1개 이상이면 삭제 불가). */
+  activeJobCount: number;
+  /** 진행 중인 MOU 공고 수. 삭제 확인 모달의 통계로만 쓴다. */
+  activeMouJobCount: number;
+  /** 누적 지원 내역 수. 삭제 확인 모달의 통계로만 쓴다. */
+  applicationCount: number;
 }

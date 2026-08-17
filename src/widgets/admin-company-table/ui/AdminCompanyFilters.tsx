@@ -46,7 +46,7 @@ export function AdminCompanyFilters({
   typeFilter,
 }: AdminCompanyFiltersProps) {
   return (
-    <section aria-label="기업 검색 및 필터" className="mt-6 flex gap-5">
+    <section aria-label="기업 검색 및 필터" className="mt-8 flex gap-5">
       <label className="focus-within:border-primary-300 flex h-14 flex-1 items-center gap-4 rounded-lg border border-neutral-200 bg-white py-2 pr-2 pl-4">
         <span className="sr-only">기업 검색</span>
         <Icon name="search" className="size-5 shrink-0 text-neutral-600" />

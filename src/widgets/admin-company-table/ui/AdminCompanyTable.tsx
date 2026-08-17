@@ -42,7 +42,7 @@ export function AdminCompanyTable({ companies, onDeleteClick }: AdminCompanyTabl
                 <th
                   key={label}
                   scope="col"
-                  className="px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px]"
+                  className="pl-6 pr-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]"
                 >
                   {label}
                 </th>
@@ -53,27 +53,27 @@ export function AdminCompanyTable({ companies, onDeleteClick }: AdminCompanyTabl
         <tbody className="text-neutral-900">
           {companies.map((company) => (
             <tr key={company.id} className="h-[60px] border-t border-neutral-200 bg-white">
-              <td className="px-6 text-sm leading-[1.5] tracking-[-0.14px]">{company.name}</td>
-              <td className="px-6 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">{company.name}</td>
+              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
                 {ADMIN_COMPANY_TYPE_LABEL[company.type]}
               </td>
-              <td className="px-6 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.infoSource === 'direct' ? '직접 등록' : '외부 수집'}
               </td>
-              <td className="px-6">
+              <td className="pl-6 pr-4">
                 <span
                   className={`inline-flex items-center rounded-2xl px-3 py-2 text-xs leading-[1.5] font-semibold tracking-[-0.12px] ${MOU_BADGE_CLASS[company.mouStatus]}`}
                 >
                   {MOU_STATUS_LABEL[company.mouStatus]}
                 </span>
               </td>
-              <td className="px-6 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.mouPeriod ?? '—'}
               </td>
-              <td className="px-6 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.statusLabel}
               </td>
-              <td className="px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px]">
+              <td className="pl-6 pr-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]">
                 <div className="flex items-center gap-2">
                   <Link href={company.detailHref} className="text-primary-700">
                     수정

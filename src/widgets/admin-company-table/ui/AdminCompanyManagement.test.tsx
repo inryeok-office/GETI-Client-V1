@@ -15,6 +15,9 @@ const COMPANIES: AdminCompanyListItem[] = [
     mouPeriod: '2025.03.01 – 2027.02.28',
     statusLabel: '정상',
     detailHref: '/admin/companies/company-1',
+    activeJobCount: 0,
+    activeMouJobCount: 0,
+    applicationCount: 0,
   },
   {
     id: 'company-2',
@@ -25,6 +28,9 @@ const COMPANIES: AdminCompanyListItem[] = [
     mouPeriod: null,
     statusLabel: '정상',
     detailHref: '/admin/companies/company-2',
+    activeJobCount: 2,
+    activeMouJobCount: 1,
+    applicationCount: 18,
   },
 ];
 
@@ -52,17 +58,45 @@ describe('AdminCompanyManagement', () => {
     expect(screen.queryByText('플로우테크')).not.toBeInTheDocument();
   });
 
-  it('삭제 확인 후 목록에서 제거하고 완료 모달을 보여준다', () => {
+  it('공개 중인 공고가 없으면 삭제 확인 후 목록에서 제거하고 완료 모달을 보여준다', () => {
     render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
 
     fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[0]);
-    const dialog = screen.getByRole('dialog', { name: "'플로우테크' 기업을 삭제하시겠어요?" });
-    expect(dialog).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '기업 삭제' });
+    expect(within(dialog).getByText("'플로우테크' 기업을 삭제하시겠습니까?")).toBeInTheDocument();
+    expect(within(dialog).getByText('공개 중인 공고')).toBeInTheDocument();
+    expect(within(dialog).queryByText('삭제할 수 없습니다.')).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '기업 삭제' }));
 
     expect(screen.queryByText('플로우테크')).not.toBeInTheDocument();
     expect(screen.getByText('기업 삭제가 완료되었습니다.')).toBeInTheDocument();
+  });
+
+  it('공개 중인 공고가 있으면 삭제를 막고 사유를 안내한다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[1]);
+    const dialog = screen.getByRole('dialog', { name: '기업 삭제' });
+
+    expect(within(dialog).getByText('삭제할 수 없습니다.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '기업 삭제' })).toBeDisabled();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '기업 삭제' }));
+    expect(screen.getByText('네오스튜디오')).toBeInTheDocument();
+    expect(screen.queryByText('기업 삭제가 완료되었습니다.')).not.toBeInTheDocument();
+  });
+
+  it('deleting 상태에서 삭제 중 안내를 표시한다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="deleting" />);
+
+    expect(screen.getByText('기업을 삭제하고 있습니다.')).toBeInTheDocument();
+  });
+
+  it('delete-forbidden 상태에서 권한 없음 안내를 표시한다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="delete-forbidden" />);
+
+    expect(screen.getByText('기업을 삭제할 권한이 없습니다.')).toBeInTheDocument();
   });
 
   it('delete-error 상태에서 삭제 실패 모달을 표시한다', () => {

@@ -15,6 +15,9 @@ export const MOCK_ADMIN_COMPANY_LIST: AdminCompanyListItem[] = [
     mouPeriod: '2025.03.01 – 2027.02.28',
     statusLabel: '정상',
     detailHref: '/admin/companies/admin-company-1',
+    activeJobCount: 2,
+    activeMouJobCount: 1,
+    applicationCount: 18,
   },
   {
     id: 'admin-company-2',
@@ -25,6 +28,9 @@ export const MOCK_ADMIN_COMPANY_LIST: AdminCompanyListItem[] = [
     mouPeriod: null,
     statusLabel: '정상',
     detailHref: '/admin/companies/admin-company-2',
+    activeJobCount: 0,
+    activeMouJobCount: 0,
+    applicationCount: 0,
   },
   {
     id: 'admin-company-3',
@@ -35,6 +41,9 @@ export const MOCK_ADMIN_COMPANY_LIST: AdminCompanyListItem[] = [
     mouPeriod: '2024.09.01 – 2026.08.31',
     statusLabel: '정상',
     detailHref: '/admin/companies/admin-company-3',
+    activeJobCount: 0,
+    activeMouJobCount: 0,
+    applicationCount: 0,
   },
   {
     id: 'admin-company-4',
@@ -45,5 +54,8 @@ export const MOCK_ADMIN_COMPANY_LIST: AdminCompanyListItem[] = [
     mouPeriod: null,
     statusLabel: '정상',
     detailHref: '/admin/companies/admin-company-4',
+    activeJobCount: 0,
+    activeMouJobCount: 0,
+    applicationCount: 0,
   },
 ];

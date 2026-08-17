@@ -4,12 +4,15 @@ import { useMemo, useState } from 'react';
 
 import type { AdminCompanyListItem, AdminCompanyType, MouStatus } from '@/entities/company';
 import { Button } from '@/shared/ui/button';
+import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
 
 import { AdminCompanyFilters } from './AdminCompanyFilters';
 import {
   DeleteConfirmDialog,
+  DeleteForbiddenDialog,
   DeleteResultDialog,
+  DeletingDialog,
   RegisterCompleteDialog,
   type DeleteResult,
 } from './AdminCompanyDialogs';
@@ -17,8 +20,12 @@ import { AdminCompanyHeader } from './AdminCompanyHeader';
 import { AdminCompanyTable } from './AdminCompanyTable';
 
 export type AdminCompanyManagementVariant =
+  | 'delete-confirm'
+  | 'delete-confirm-allowed'
   | 'delete-error'
+  | 'delete-forbidden'
   | 'delete-success'
+  | 'deleting'
   | 'empty'
   | 'error'
   | 'loading'
@@ -34,6 +41,17 @@ function getListStatus(variant: AdminCompanyManagementVariant): ListStatus {
 function getInitialDeleteResult(variant: AdminCompanyManagementVariant): DeleteResult {
   if (variant === 'delete-success') return 'success';
   if (variant === 'delete-error') return 'error';
+  return null;
+}
+
+function getInitialDeleteTarget(
+  variant: AdminCompanyManagementVariant,
+  companies: AdminCompanyListItem[],
+): AdminCompanyListItem | null {
+  if (variant === 'delete-confirm') return companies.find((c) => c.activeJobCount > 0) ?? null;
+  if (variant === 'delete-confirm-allowed') {
+    return companies.find((c) => c.activeJobCount === 0) ?? null;
+  }
   return null;
 }
 
@@ -56,7 +74,13 @@ export function AdminCompanyManagement({
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<AdminCompanyType | ''>('');
   const [mouFilter, setMouFilter] = useState<MouStatus | ''>('');
-  const [deleteTarget, setDeleteTarget] = useState<AdminCompanyListItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminCompanyListItem | null>(
+    getInitialDeleteTarget(initialVariant, initialCompanies),
+  );
+  const [isDeleting] = useState(initialVariant === 'deleting');
+  const [isDeleteForbidden, setIsDeleteForbidden] = useState(
+    initialVariant === 'delete-forbidden',
+  );
   const [deleteResult, setDeleteResult] = useState<DeleteResult>(
     getInitialDeleteResult(initialVariant),
   );
@@ -79,7 +103,7 @@ export function AdminCompanyManagement({
   }, [companies, mouFilter, query, typeFilter]);
 
   const confirmDelete = () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteTarget.activeJobCount > 0) return;
 
     setCompanies((current) => current.filter((company) => company.id !== deleteTarget.id));
     setDeleteTarget(null);
@@ -113,7 +137,7 @@ export function AdminCompanyManagement({
             }
           />
 
-          <section className="mt-6" aria-labelledby="admin-company-count">
+          <section className="mt-8" aria-labelledby="admin-company-count">
             <h2
               id="admin-company-count"
               className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900"
@@ -142,11 +166,17 @@ export function AdminCompanyManagement({
               ) : null}
               {listStatus === 'empty' ||
               (listStatus === 'success' && filteredCompanies.length === 0) ? (
-                <PageState
-                  variant="empty"
-                  title="검색 결과가 없습니다."
-                  description="검색어를 확인하거나 다른 키워드로 검색해보세요."
-                />
+                <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
+                  <Icon name="searchLarge" className="size-[72px] text-neutral-400" />
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
+                      검색 결과가 없습니다.
+                    </p>
+                    <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600">
+                      검색어를 확인하거나 다른 키워드로 검색해보세요.
+                    </p>
+                  </div>
+                </div>
               ) : null}
               {listStatus === 'success' && filteredCompanies.length > 0 ? (
                 <AdminCompanyTable companies={filteredCompanies} onDeleteClick={setDeleteTarget} />
@@ -162,6 +192,10 @@ export function AdminCompanyManagement({
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+      {isDeleting ? <DeletingDialog /> : null}
+      {isDeleteForbidden ? (
+        <DeleteForbiddenDialog onClose={() => setIsDeleteForbidden(false)} />
+      ) : null}
       {deleteResult ? (
         <DeleteResultDialog result={deleteResult} onClose={() => setDeleteResult(null)} />
       ) : null}

@@ -5,8 +5,12 @@ import {
 } from '@/widgets/admin-company-table';
 
 const VARIANTS: AdminCompanyManagementVariant[] = [
+  'delete-confirm',
+  'delete-confirm-allowed',
   'delete-error',
+  'delete-forbidden',
   'delete-success',
+  'deleting',
   'empty',
   'error',
   'loading',
