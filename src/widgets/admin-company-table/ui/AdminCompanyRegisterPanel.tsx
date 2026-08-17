@@ -20,11 +20,29 @@ export interface AdminCompanyRegisterFormValues {
   memo: string;
 }
 
+export interface AdminCompanyEditInitialValues {
+  name: string;
+  type: AdminCompanyType;
+  infoSource: CompanyInfoSource;
+  mouStatus: MouStatus;
+  mouStartDate: string;
+  mouEndDate: string;
+  description: string;
+  memo: string;
+}
+
 interface AdminCompanyRegisterPanelProps {
   isOpen: boolean;
+  mode?: 'create' | 'edit';
+  initialValues?: AdminCompanyEditInitialValues;
   onClose: () => void;
   onSubmit: (values: AdminCompanyRegisterFormValues) => void;
 }
+
+const PANEL_COPY = {
+  create: { heading: '기업 등록', submit: '등록하기' },
+  edit: { heading: '기업 수정', submit: '수정하기' },
+};
 
 const INFO_SOURCE_HELP: Record<CompanyInfoSource, { description: string; title: string }> = {
   direct: { title: '직접 등록', description: '관리자가 직접 등록하고 수정합니다.' },
@@ -48,24 +66,31 @@ function formatDate(value: string) {
 }
 
 /**
- * 어드민 기업 등록 슬라이드 패널.
+ * 어드민 기업 등록/수정 슬라이드 패널.
+ * "수정" 모드는 같은 패널 컴포넌트를 재사용하되 제목·버튼 문구만 바꾼다(Figma 933:16623).
  * 간격 · 색상은 Figma(기업 등록 패널 869:33869)의 값을 그대로 옮겼다.
  */
 export function AdminCompanyRegisterPanel({
   isOpen,
+  mode = 'create',
+  initialValues,
   onClose,
   onSubmit,
 }: AdminCompanyRegisterPanelProps) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState<AdminCompanyType | ''>('');
-  const [infoSource, setInfoSource] = useState<CompanyInfoSource>('direct');
-  const [mouStatus, setMouStatus] = useState<MouStatus>('signed');
-  const [mouStartDate, setMouStartDate] = useState('');
-  const [mouEndDate, setMouEndDate] = useState('');
-  const [description, setDescription] = useState('');
-  const [memo, setMemo] = useState('');
+  const [name, setName] = useState(initialValues?.name ?? '');
+  const [type, setType] = useState<AdminCompanyType | ''>(initialValues?.type ?? '');
+  const [infoSource, setInfoSource] = useState<CompanyInfoSource>(
+    initialValues?.infoSource ?? 'direct',
+  );
+  const [mouStatus, setMouStatus] = useState<MouStatus>(initialValues?.mouStatus ?? 'signed');
+  const [mouStartDate, setMouStartDate] = useState(initialValues?.mouStartDate ?? '');
+  const [mouEndDate, setMouEndDate] = useState(initialValues?.mouEndDate ?? '');
+  const [description, setDescription] = useState(initialValues?.description ?? '');
+  const [memo, setMemo] = useState(initialValues?.memo ?? '');
 
   if (!isOpen) return null;
+
+  const copy = PANEL_COPY[mode];
 
   const isValid = name.trim() !== '' && type !== '' && mouStartDate !== '' && mouEndDate !== '';
 
@@ -90,11 +115,11 @@ export function AdminCompanyRegisterPanel({
         className="fixed top-0 right-0 z-50 flex h-full w-[560px] flex-col bg-white shadow-[0px_16px_20px_rgba(23,37,45,0.16)]"
         role="dialog"
         aria-modal="true"
-        aria-label="기업 등록"
+        aria-label={copy.heading}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-neutral-200 py-7 pr-6 pl-8">
           <p className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-            기업 등록
+            {copy.heading}
           </p>
         </div>
 
@@ -271,7 +296,7 @@ export function AdminCompanyRegisterPanel({
                 : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             }`}
           >
-            등록하기
+            {copy.submit}
           </button>
         </div>
       </aside>

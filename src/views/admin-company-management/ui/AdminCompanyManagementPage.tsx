@@ -15,6 +15,7 @@ const VARIANTS: AdminCompanyManagementVariant[] = [
   'error',
   'loading',
   'register-complete',
+  'register-confirm',
   'register-panel',
   'registering',
   'success',

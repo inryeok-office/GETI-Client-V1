@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import {
   ADMIN_COMPANY_TYPE_LABEL,
   MOU_STATUS_LABEL,
@@ -16,13 +14,15 @@ const MOU_BADGE_CLASS: Record<MouStatus, string> = {
 interface AdminCompanyTableProps {
   companies: AdminCompanyListItem[];
   onDeleteClick: (company: AdminCompanyListItem) => void;
+  onEditClick: (company: AdminCompanyListItem) => void;
 }
 
 /**
  * 어드민 기업 관리 목록 표.
+ * "수정"은 별도 페이지가 아니라 기업 등록 패널을 재사용하는 수정 모드를 연다(Figma 933:16523).
  * 간격 · 색상은 Figma(node 869:33491)의 값을 그대로 옮겼다.
  */
-export function AdminCompanyTable({ companies, onDeleteClick }: AdminCompanyTableProps) {
+export function AdminCompanyTable({ companies, onDeleteClick, onEditClick }: AdminCompanyTableProps) {
   return (
     <div role="region" aria-label="기업 목록" tabIndex={0} className="overflow-x-auto">
       <table className="w-full min-w-[1440px] table-fixed text-left">
@@ -75,9 +75,13 @@ export function AdminCompanyTable({ companies, onDeleteClick }: AdminCompanyTabl
               </td>
               <td className="pl-6 pr-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]">
                 <div className="flex items-center gap-2">
-                  <Link href={company.detailHref} className="text-primary-700">
+                  <button
+                    type="button"
+                    onClick={() => onEditClick(company)}
+                    className="text-primary-700"
+                  >
                     수정
-                  </Link>
+                  </button>
                   <span aria-hidden="true" className="text-primary-700">
                     ·
                   </span>

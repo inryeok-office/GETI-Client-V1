@@ -113,7 +113,7 @@ describe('AdminCompanyManagement', () => {
     expect(screen.getByRole('dialog', { name: '기업 등록' })).toBeInTheDocument();
   });
 
-  it('필수 항목을 입력하고 등록하면 목록에 추가되고 완료 모달을 보여준다', () => {
+  it('필수 항목을 입력하고 등록을 확정하면 목록에 추가되고 완료 모달을 보여준다', () => {
     render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
 
     fireEvent.click(screen.getByRole('button', { name: '기업 등록' }));
@@ -136,9 +136,36 @@ describe('AdminCompanyManagement', () => {
     expect(submitButton).toBeEnabled();
     fireEvent.click(submitButton);
 
+    const confirmDialog = screen.getByRole('dialog', { name: '기업을 등록할까요?' });
+    expect(within(confirmDialog).getByText('테스트기업')).toBeInTheDocument();
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: '등록하기' }));
+
     expect(screen.queryByRole('dialog', { name: '기업 등록' })).not.toBeInTheDocument();
     expect(screen.getByText('기업 등록이 완료되었습니다.')).toBeInTheDocument();
     expect(screen.getByText('테스트기업')).toBeInTheDocument();
+  });
+
+  it('기업 수정 버튼을 누르면 기존 값이 채워진 패널이 열리고, 확정하면 목록에 반영된다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: '수정' })[0]);
+    const panel = screen.getByRole('dialog', { name: '기업 수정' });
+    expect(screen.getByDisplayValue('플로우테크')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue('플로우테크'), {
+      target: { value: '플로우테크(수정)' },
+    });
+
+    const submitButton = within(panel).getByRole('button', { name: '수정하기' });
+    fireEvent.click(submitButton);
+
+    const confirmDialog = screen.getByRole('dialog', { name: '변경사항을 저장할까요?' });
+    expect(within(confirmDialog).getByText('플로우테크(수정)')).toBeInTheDocument();
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: '변경사항 저장' }));
+
+    expect(screen.queryByRole('dialog', { name: '기업 수정' })).not.toBeInTheDocument();
+    expect(screen.getByText('기업 수정이 완료되었습니다.')).toBeInTheDocument();
+    expect(screen.getByText('플로우테크(수정)')).toBeInTheDocument();
   });
 
   it('registering 상태에서 등록 중 안내를 표시한다', () => {
@@ -150,7 +177,7 @@ describe('AdminCompanyManagement', () => {
   it('로딩 상태를 표시한다', () => {
     render(<AdminCompanyManagement companies={[]} initialVariant="loading" />);
 
-    expect(screen.getByText('기업 정보를 불러오고 있습니다.')).toBeInTheDocument();
+    expect(screen.getByText('정보를 불러오는 중입니다.')).toBeInTheDocument();
   });
 
   it('에러 상태에서 다시 시도 버튼을 표시한다', () => {
@@ -160,8 +187,18 @@ describe('AdminCompanyManagement', () => {
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
   });
 
-  it('검색 결과가 없으면 빈 상태를 표시한다', () => {
+  it('등록된 기업이 하나도 없으면 기업 없음 빈 상태를 표시한다', () => {
     render(<AdminCompanyManagement companies={[]} initialVariant="empty" />);
+
+    expect(screen.getByText('등록된 기업이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('검색 결과가 없으면 검색 결과 없음 빈 상태를 표시한다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
+
+    fireEvent.change(screen.getByPlaceholderText('기업명으로 검색해 보세요.'), {
+      target: { value: '존재하지않는기업' },
+    });
 
     expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
   });
