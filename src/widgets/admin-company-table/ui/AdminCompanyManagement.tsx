@@ -14,9 +14,14 @@ import {
   DeleteResultDialog,
   DeletingDialog,
   RegisterCompleteDialog,
+  RegisteringDialog,
   type DeleteResult,
 } from './AdminCompanyDialogs';
 import { AdminCompanyHeader } from './AdminCompanyHeader';
+import {
+  AdminCompanyRegisterPanel,
+  type AdminCompanyRegisterFormValues,
+} from './AdminCompanyRegisterPanel';
 import { AdminCompanyTable } from './AdminCompanyTable';
 
 export type AdminCompanyManagementVariant =
@@ -30,6 +35,8 @@ export type AdminCompanyManagementVariant =
   | 'error'
   | 'loading'
   | 'register-complete'
+  | 'register-panel'
+  | 'registering'
   | 'success';
 
 type ListStatus = 'empty' | 'error' | 'loading' | 'success';
@@ -84,6 +91,8 @@ export function AdminCompanyManagement({
   const [deleteResult, setDeleteResult] = useState<DeleteResult>(
     getInitialDeleteResult(initialVariant),
   );
+  const [showRegisterPanel, setShowRegisterPanel] = useState(initialVariant === 'register-panel');
+  const [isRegistering] = useState(initialVariant === 'registering');
   const [showRegisterComplete, setShowRegisterComplete] = useState(
     initialVariant === 'register-complete',
   );
@@ -110,6 +119,26 @@ export function AdminCompanyManagement({
     setDeleteResult('success');
   };
 
+  const registerCompany = (values: AdminCompanyRegisterFormValues) => {
+    const newCompany: AdminCompanyListItem = {
+      id: `admin-company-${Date.now()}`,
+      name: values.name,
+      type: values.type,
+      infoSource: values.infoSource,
+      mouStatus: values.mouStatus,
+      mouPeriod: values.mouStatus === 'unsigned' ? null : values.mouPeriod,
+      statusLabel: '정상',
+      detailHref: `/admin/companies/admin-company-${Date.now()}`,
+      activeJobCount: 0,
+      activeMouJobCount: 0,
+      applicationCount: 0,
+    };
+
+    setCompanies((current) => [newCompany, ...current]);
+    setShowRegisterPanel(false);
+    setShowRegisterComplete(true);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <AdminCompanyHeader />
@@ -131,7 +160,7 @@ export function AdminCompanyManagement({
             typeFilter={typeFilter}
             onMouChange={(value) => setMouFilter(value === 'ALL' ? '' : (value as MouStatus))}
             onQueryChange={setQuery}
-            onRegisterClick={() => setShowRegisterComplete(true)}
+            onRegisterClick={() => setShowRegisterPanel(true)}
             onTypeChange={(value) =>
               setTypeFilter(value === 'ALL' ? '' : (value as AdminCompanyType))
             }
@@ -199,6 +228,12 @@ export function AdminCompanyManagement({
       {deleteResult ? (
         <DeleteResultDialog result={deleteResult} onClose={() => setDeleteResult(null)} />
       ) : null}
+      <AdminCompanyRegisterPanel
+        isOpen={showRegisterPanel}
+        onClose={() => setShowRegisterPanel(false)}
+        onSubmit={registerCompany}
+      />
+      {isRegistering ? <RegisteringDialog /> : null}
       {showRegisterComplete ? (
         <RegisterCompleteDialog onClose={() => setShowRegisterComplete(false)} />
       ) : null}

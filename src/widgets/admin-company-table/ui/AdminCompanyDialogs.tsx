@@ -112,6 +112,16 @@ export function DeletingDialog() {
   );
 }
 
+export function RegisteringDialog() {
+  return (
+    <AdminCompanyStatusDialog
+      icon={<Icon name="spinner" className="text-primary-700 size-16 animate-spin" />}
+      title="기업을 등록하고 있습니다."
+      description="잠시만 기다려 주세요."
+    />
+  );
+}
+
 export function DeleteForbiddenDialog({ onClose }: { onClose: () => void }) {
   return (
     <AdminCompanyStatusDialog

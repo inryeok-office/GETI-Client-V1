@@ -105,12 +105,46 @@ describe('AdminCompanyManagement', () => {
     expect(screen.getByText('기업을 삭제하지 못했습니다.')).toBeInTheDocument();
   });
 
-  it('기업 등록 버튼을 누르면 등록 완료 모달을 표시한다', () => {
+  it('기업 등록 버튼을 누르면 등록 패널이 열린다', () => {
     render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
 
     fireEvent.click(screen.getByRole('button', { name: '기업 등록' }));
 
+    expect(screen.getByRole('dialog', { name: '기업 등록' })).toBeInTheDocument();
+  });
+
+  it('필수 항목을 입력하고 등록하면 목록에 추가되고 완료 모달을 보여준다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '기업 등록' }));
+    const panel = screen.getByRole('dialog', { name: '기업 등록' });
+
+    fireEvent.change(screen.getByPlaceholderText('기업명을 입력해 주세요.'), {
+      target: { value: '테스트기업' },
+    });
+    fireEvent.change(within(panel).getByDisplayValue('기업 유형을 선택해 주세요.'), {
+      target: { value: 'large' },
+    });
+    fireEvent.change(screen.getByLabelText('MOU 시작일'), {
+      target: { value: '2026-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('MOU 종료일'), {
+      target: { value: '2027-01-01' },
+    });
+
+    const submitButton = within(panel).getByRole('button', { name: '등록하기' });
+    expect(submitButton).toBeEnabled();
+    fireEvent.click(submitButton);
+
+    expect(screen.queryByRole('dialog', { name: '기업 등록' })).not.toBeInTheDocument();
     expect(screen.getByText('기업 등록이 완료되었습니다.')).toBeInTheDocument();
+    expect(screen.getByText('테스트기업')).toBeInTheDocument();
+  });
+
+  it('registering 상태에서 등록 중 안내를 표시한다', () => {
+    render(<AdminCompanyManagement companies={COMPANIES} initialVariant="registering" />);
+
+    expect(screen.getByText('기업을 등록하고 있습니다.')).toBeInTheDocument();
   });
 
   it('로딩 상태를 표시한다', () => {
