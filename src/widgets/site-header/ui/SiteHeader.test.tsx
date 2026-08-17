@@ -55,10 +55,21 @@ describe('SiteHeader', () => {
     render(<SiteHeader />);
 
     const notificationButton = screen.getByRole('button', { name: '알림' });
+    const notificationPopover = document.getElementById('student-notification-panel');
+    if (!notificationPopover) throw new Error('알림 팝오버를 찾을 수 없습니다.');
+
     expect(notificationButton).toHaveAttribute('aria-expanded', 'false');
 
-    fireEvent.click(notificationButton);
+    const openEvent = new Event('toggle');
+    Object.defineProperty(openEvent, 'newState', { value: 'open' });
+    fireEvent(notificationPopover, openEvent);
 
     expect(notificationButton).toHaveAttribute('aria-expanded', 'true');
+
+    const closeEvent = new Event('toggle');
+    Object.defineProperty(closeEvent, 'newState', { value: 'closed' });
+    fireEvent(notificationPopover, closeEvent);
+
+    expect(notificationButton).toHaveAttribute('aria-expanded', 'false');
   });
 });

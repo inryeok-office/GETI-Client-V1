@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { MOCK_NOTIFICATIONS } from '@/entities/notification';
+import { NotificationPanel } from '@/features/notification-panel';
 import { Icon } from '@/shared/ui/icon';
 
 const NAV_ITEMS = [
@@ -20,7 +22,7 @@ interface SiteHeaderProps {
   activeNav?: SiteNavLabel | null;
 }
 
-export const STUDENT_NOTIFICATION_POPOVER_ID = 'student-notification-panel';
+const STUDENT_NOTIFICATION_POPOVER_ID = 'student-notification-panel';
 
 interface PopoverToggleEvent extends Event {
   newState: 'closed' | 'open';
@@ -34,9 +36,10 @@ interface PopoverToggleEvent extends Event {
  */
 export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const popover = document.getElementById(STUDENT_NOTIFICATION_POPOVER_ID);
+    const popover = notificationPopoverRef.current;
     if (!popover) return;
 
     const handleToggle = (event: Event) => {
@@ -101,7 +104,6 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
             aria-controls={STUDENT_NOTIFICATION_POPOVER_ID}
             aria-expanded={isNotificationOpen}
             aria-label="알림"
-            onClick={() => setIsNotificationOpen((current) => !current)}
             className={`flex size-[40px] items-center justify-center rounded-[9px] text-[#525252] ${isNotificationOpen ? 'bg-[#f5f5f5]' : 'bg-white'}`}
           >
             <Icon name="bell" className="size-[19px]" />
@@ -118,6 +120,14 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
             <Icon name="chevronDown" className="h-[8px] w-[16px] text-[#525252]" />
           </Link>
         </div>
+      </div>
+      <div
+        ref={notificationPopoverRef}
+        id={STUDENT_NOTIFICATION_POPOVER_ID}
+        popover="auto"
+        className="inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2-56px))] z-50 m-0 w-[420px] max-w-[calc(100vw-32px)] overflow-visible border-0 bg-transparent p-0"
+      >
+        <NotificationPanel notifications={MOCK_NOTIFICATIONS} />
       </div>
     </header>
   );
