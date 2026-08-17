@@ -11,7 +11,11 @@ interface CompanyJobSectionProps {
  */
 export function CompanyJobSection({ jobs }: CompanyJobSectionProps) {
   return (
-    <div className="w-full rounded-2xl border border-neutral-200 bg-white px-6 pt-6 pb-8">
+    <div
+      className={`w-full rounded-2xl border border-neutral-200 bg-white px-6 pt-6 pb-8 ${
+        jobs.length === 0 ? 'flex min-h-[240px] flex-col' : ''
+      }`}
+    >
       <h2 className="flex items-baseline gap-2">
         <span className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
           채용 공고
@@ -22,11 +26,11 @@ export function CompanyJobSection({ jobs }: CompanyJobSectionProps) {
       </h2>
 
       {jobs.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <p className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
             현재 채용 중인 공고가 없습니다.
           </p>
-          <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
+          <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600">
             새로운 공고가 등록되면 다시 확인해 보세요.
           </p>
         </div>
