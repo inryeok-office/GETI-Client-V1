@@ -63,7 +63,7 @@ describe('AdminCompanyManagement', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[0]);
     const dialog = screen.getByRole('dialog', { name: '기업 삭제' });
-    expect(within(dialog).getByText("'플로우테크' 기업을 삭제하시겠습니까?")).toBeInTheDocument();
+    expect(within(dialog).getByText('‘플로우테크’ 기업을 삭제하시겠습니까?')).toBeInTheDocument();
     expect(within(dialog).getByText('공개 중인 공고')).toBeInTheDocument();
     expect(within(dialog).queryByText('삭제할 수 없습니다.')).not.toBeInTheDocument();
 

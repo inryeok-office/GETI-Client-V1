@@ -35,7 +35,7 @@ export function DeleteConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/[0.24] p-4"
       role="dialog"
       aria-modal="true"
       aria-label="기업 삭제"
@@ -45,7 +45,7 @@ export function DeleteConfirmDialog({
           기업 삭제
         </p>
         <p className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
-          &apos;{company.name}&apos; 기업을 삭제하시겠습니까?
+          &lsquo;{company.name}&rsquo; 기업을 삭제하시겠습니까?
         </p>
 
         <dl className="flex w-full flex-col gap-2.5">
@@ -67,7 +67,7 @@ export function DeleteConfirmDialog({
         <div className="flex w-full flex-col gap-3">
           <div className="bg-primary-100 w-full rounded-lg p-4">
             <p className="text-primary-700 text-xs leading-[1.5] font-bold tracking-[-0.12px]">
-              Soft Delete 안내
+              삭제 안내
             </p>
             <p className="text-primary-700 text-xs leading-[1.5] tracking-[-0.12px]">
               기업은 목록에서 숨김 처리되지만 연결된 공고·지원 내역은 실제로 삭제되지 않습니다.
