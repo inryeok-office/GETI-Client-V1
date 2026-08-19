@@ -1,3 +1,4 @@
 export { CompanyCard } from './ui/CompanyCard';
 
-export type { CompanyListItem, CompanySize } from './model/types';
+export { COMPANY_SIZE_LABEL } from './model/sizeLabel';
+export type { CompanyDetail, CompanyListItem, CompanySize } from './model/types';

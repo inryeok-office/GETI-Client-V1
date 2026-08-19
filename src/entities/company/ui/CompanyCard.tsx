@@ -2,13 +2,8 @@ import Link from 'next/link';
 
 import { Icon } from '@/shared/ui/icon';
 
-import type { CompanyListItem, CompanySize } from '../model/types';
-
-const SIZE_LABEL: Record<CompanySize, string> = {
-  large: '대기업',
-  midsize: '중견기업',
-  small: '중소기업',
-};
+import { COMPANY_SIZE_LABEL } from '../model/sizeLabel';
+import type { CompanyListItem } from '../model/types';
 
 interface CompanyCardProps {
   company: CompanyListItem;
@@ -42,7 +37,7 @@ export function CompanyCard({ company }: CompanyCardProps) {
               </span>
             ) : null}
             <span className="bg-primary-100 text-primary-700 rounded-2xl px-2 py-1 text-xs leading-[1.5] font-bold tracking-[-0.12px]">
-              {SIZE_LABEL[company.size]}
+              {COMPANY_SIZE_LABEL[company.size]}
             </span>
           </div>
         </div>
