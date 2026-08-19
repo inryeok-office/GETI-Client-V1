@@ -98,7 +98,7 @@ export async function ExternalJobDetailPage({ searchParams }: ExternalJobDetailP
                   {!job.isClosed && job.originalUrl ? (
                     <button
                       type="button"
-                      className="w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+                      className="w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white hover:bg-[#1d7693]"
                     >
                       사이트에서 지원하기
                     </button>
