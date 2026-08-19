@@ -39,7 +39,7 @@ export function ApplicantFilterBar() {
   const selectOption = (key: FilterKey, option: string) => {
     setSelected((prev) => {
       const next = { ...prev };
-      if (option === '전체') {
+      if (option === '전체' || prev[key] === option) {
         delete next[key];
       } else {
         next[key] = option;
