@@ -36,7 +36,7 @@ export function CompanyDetailHeaderCard({ company }: CompanyDetailHeaderCardProp
         href={company.homepageUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-primary-700 flex shrink-0 items-center gap-2 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
+        className="bg-primary-700 hover:bg-primary-600 flex shrink-0 items-center gap-2 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors"
       >
         기업 홈페이지
         <Icon name="externalLink" className="size-5" />
