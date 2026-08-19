@@ -107,13 +107,13 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'job' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {jobPostings.map((job) => (
                   <button
                     key={job.key}
                     type="button"
                     onClick={() => handleSelectJob(job.key)}
-                    className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                    className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
                       job.key === selectedJobKey ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                     }`}
                   >
@@ -146,7 +146,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'applicants' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {applicantsForSelectedJob.map((applicant) => {
                   const isSelected = selectedApplicantIds.includes(applicant.id);
                   return (
@@ -154,7 +154,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
                       key={applicant.id}
                       type="button"
                       onClick={() => toggleApplicant(applicant.id)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
                         isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                       }`}
                     >
@@ -194,7 +194,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'materials' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {MATERIAL_OPTIONS.map((material) => {
                   const isSelected = selectedMaterialKeys.includes(material.key);
                   return (
@@ -202,7 +202,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
                       key={material.key}
                       type="button"
                       onClick={() => toggleMaterial(material.key)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
                         isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                       }`}
                     >

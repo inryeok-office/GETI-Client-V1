@@ -163,7 +163,7 @@ export function ProfileOnboardingPage() {
                     <div
                       role="listbox"
                       aria-label="전공"
-                      className="absolute top-[100px] left-0 z-20 flex w-full flex-col rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                      className="absolute top-[100px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
                     >
                       {MAJORS.map((major, index) => {
                         const isHighlighted =
