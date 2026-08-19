@@ -28,31 +28,21 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'channel', label: '채널' },
 ];
 
-interface FilterOption {
-  label: string;
-  selected?: boolean;
-}
+/**
+ * 드롭다운 선택지. Figma가 캡처한 5개 드롭다운(job-list · admin-applicant)과 동일한 패턴 —
+ * 목록의 첫 옵션을 고르면 해당 필터를 해제한 것으로 본다. 채널만 "전체"를 뜻하는 값이
+ * "#전체-공지"라서 CLEAR_VALUE로 필터별 해제 값을 따로 둔다.
+ */
+const DROPDOWN_OPTIONS: Record<FilterKey, string[]> = {
+  type: ['전체', '채용 공고', '프로그램', '공지사항'],
+  target: ['전체', '8기', '9기', '10기'],
+  channel: ['#전체-공지', '#취업-공지', '#개발자', '#취업연계-프로젝트'],
+};
 
-/** 드롭다운 선택지. Figma가 캡처한 선택 상태(체크 표시 위치)를 그대로 옮겼다. */
-const DROPDOWN_OPTIONS: Record<FilterKey, FilterOption[]> = {
-  type: [
-    { label: '전체', selected: true },
-    { label: '채용 공고' },
-    { label: '프로그램' },
-    { label: '공지사항' },
-  ],
-  target: [
-    { label: '전체', selected: true },
-    { label: '8기' },
-    { label: '9기' },
-    { label: '10기' },
-  ],
-  channel: [
-    { label: '#전체-공지', selected: true },
-    { label: '#취업-공지' },
-    { label: '#개발자' },
-    { label: '#취업연계-프로젝트' },
-  ],
+const CLEAR_VALUE: Record<FilterKey, string> = {
+  type: '전체',
+  target: '전체',
+  channel: '#전체-공지',
 };
 
 /** Figma(node 586:15675) 테이블 컬럼 폭을 그대로 옮겼다 — 7개 컬럼이 동일한 폭이 아니다. */
@@ -78,8 +68,9 @@ interface AdminDiscordPostPageProps {
 
 /**
  * Discord 게시 관리 화면. 필터 바 + 전송 이력 테이블 + 전송 상세 패널을 조합한다.
- * 디자인 단계라 필터 드롭다운 옵션 선택, Discord 전송, 재시도, 다시 전송은 실제로 동작하지 않는다.
- * 드롭다운은 버튼을 누르면 열리고 닫힌다(job-list 필터와 동일한 패턴).
+ * 디자인 단계라 Discord 전송, 재시도, 다시 전송은 실제로 동작하지 않는다.
+ * 필터 드롭다운은 옵션을 고르면 실제로 선택되어 버튼 라벨이 바뀐다("전체"/"#전체-공지"를
+ * 고르면 해제된다) — job-list · admin-applicant 필터와 동일한 패턴이다.
  * 상세 패널은 클라이언트 상태가 아니라 실제 라우트(/admin/discord-posts/[deliveryId])로 열고,
  * 닫기는 목록 경로로 돌아가는 링크다 — 뒤로가기 · 새로고침 · 공유가 전부 자연스럽게 동작한다.
  * 간격 · 색상은 Figma(node 586:15675, 드롭다운은 1227:14609 등, 상세 패널 실패는 586:15962, 성공은 1343:14098)의 값을 그대로 옮겼다.
@@ -93,7 +84,21 @@ export function AdminDiscordPostPage({
   detail,
 }: AdminDiscordPostPageProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
+  const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
   const showError = variant === 'error';
+
+  const selectOption = (key: FilterKey, option: string) => {
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (option === CLEAR_VALUE[key]) {
+        delete next[key];
+      } else {
+        next[key] = option;
+      }
+      return next;
+    });
+    setOpenFilter(null);
+  };
 
   return (
     <div className="bg-[#fafafa]">
@@ -130,39 +135,51 @@ export function AdminDiscordPostPage({
           {/* Figma는 한 줄(1620px) 고정 폭이지만, 좁은 화면에서는 필터/버튼이 줄바꿈되게 했다(반응형은 Figma에 없는 부분). */}
           <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
             <div className="flex flex-wrap items-center gap-[20px]">
-              {FILTERS.map((item) => (
-                <div key={item.key} className="relative h-[56px] w-[272px]">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFilter((prev) => (prev === item.key ? null : item.key))}
-                    className="flex h-full w-full items-center justify-between rounded-[8px] border border-[#e5e5e5] bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
-                  >
-                    {item.label}
-                    <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
-                      <Icon
-                        name="chevronRight"
-                        className="h-[20px] w-[10px] rotate-90 text-[#525252]"
-                      />
-                    </span>
-                  </button>
+              {FILTERS.map((item) => {
+                const selectedOption = selected[item.key];
 
-                  {openFilter === item.key && (
-                    <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
-                      {DROPDOWN_OPTIONS[item.key].map((option) => (
-                        <div
-                          key={option.label}
-                          className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-[14px] leading-[21px] tracking-[-0.14px] ${
-                            option.selected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
-                          }`}
-                        >
-                          {option.label}
-                          {option.selected && <Icon name="check" className="size-[20px]" />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                return (
+                  <div key={item.key} className="relative h-[56px] w-[272px]">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFilter((prev) => (prev === item.key ? null : item.key))}
+                      className="flex h-full w-full items-center justify-between rounded-[8px] border border-[#e5e5e5] bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
+                    >
+                      <span className="truncate">{selectedOption ?? item.label}</span>
+                      <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+                        <Icon
+                          name="chevronRight"
+                          className="h-[20px] w-[10px] rotate-90 text-[#525252]"
+                        />
+                      </span>
+                    </button>
+
+                    {openFilter === item.key && (
+                      <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+                        {DROPDOWN_OPTIONS[item.key].map((option) => {
+                          const isSelected = selectedOption
+                            ? selectedOption === option
+                            : option === CLEAR_VALUE[item.key];
+
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => selectOption(item.key, option)}
+                              className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] ${
+                                isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                              }`}
+                            >
+                              {option}
+                              {isSelected && <Icon name="check" className="size-[20px]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <button

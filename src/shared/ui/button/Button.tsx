@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 import { Icon } from '@/shared/ui/icon';
 
-type ButtonVariant = 'neutral' | 'outline' | 'primary';
+type ButtonVariant = 'dangerOutline' | 'neutral' | 'outline' | 'primary';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -11,6 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASS_NAMES: Record<ButtonVariant, string> = {
+  dangerOutline:
+    'border border-status-error bg-white text-status-error hover:bg-[#fef2f2] active:bg-[#fee2e2] disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400',
   neutral:
     'border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 active:bg-neutral-100 disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400',
   primary:
