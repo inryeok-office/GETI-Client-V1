@@ -1,4 +1,4 @@
-import type { AdminCompanyType, MouStatus } from './types';
+import type { AdminCompanyJobStatus, AdminCompanyType, MouStatus } from './types';
 
 /** 어드민 기업 관리 목록의 기업 유형 한글 라벨. */
 export const ADMIN_COMPANY_TYPE_LABEL: Record<AdminCompanyType, string> = {
@@ -13,4 +13,11 @@ export const MOU_STATUS_LABEL: Record<MouStatus, string> = {
   signed: '체결',
   unsigned: '미체결',
   expired: '만료',
+};
+
+/** 어드민 기업 상세의 연결된 공고 상태 한글 라벨. */
+export const ADMIN_COMPANY_JOB_STATUS_LABEL: Record<AdminCompanyJobStatus, string> = {
+  open: '모집 중',
+  reviewing: '검토중',
+  closed: '마감',
 };
