@@ -168,14 +168,7 @@ function InquiryFilterSelect<T extends string>({
                   }`}
                 >
                   <span>{option.label}</span>
-                  {isSelected ? (
-                    <Image
-                      src="/icons/admin-inquiry-filter-check.svg"
-                      alt=""
-                      width={20}
-                      height={20}
-                    />
-                  ) : null}
+                  {isSelected ? <Icon name="check" className="size-5 shrink-0" /> : null}
                 </button>
               </li>
             );
