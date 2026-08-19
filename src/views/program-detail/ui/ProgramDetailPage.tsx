@@ -27,7 +27,7 @@ export async function ProgramDetailPage({ params, searchParams }: ProgramDetailP
   const program = MOCK_PROGRAM_DETAILS.find((item) => item.programId === programId);
 
   return (
-    <div className="relative min-h-screen bg-[#f7f7f8]">
+    <div className="min-h-screen bg-[#f7f7f8]">
       <SiteHeader activeNav="취업 프로그램" />
 
       <main className="mx-auto max-w-[1280px] px-4 pt-[40px] pb-[120px]">

@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 import { StatusDialog } from '@/shared/ui/status-dialog';
-import { Toast } from '@/shared/ui/toast';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 
 interface ProgramApplyActionProps {
   programTitle: string;
@@ -49,7 +49,6 @@ function ActionCard({
 /**
  * 프로그램 상세 하단의 신청 · 신청 취소 액션. 확인 모달과 결과 안내까지 담당한다.
  * 신청 완료는 결과 모달, 신청 취소는 페이지 상단 토스트로 알린다(취소 확인 모달이 이미 결과를 설명한다).
- * 토스트는 `absolute`라 이 컴포넌트를 렌더링하는 페이지 루트에 `relative`가 있어야 한다.
  * API 연동 전이라 신청 결과는 로컬 상태로만 바뀐다(서버에 아무 요청도 보내지 않는다).
  */
 export function ProgramApplyAction({
@@ -59,7 +58,6 @@ export function ProgramApplyAction({
 }: ProgramApplyActionProps) {
   const [isApplied, setIsApplied] = useState(status === 'APPLIED');
   const [step, setStep] = useState<ActionStep>('idle');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const unavailable = UNAVAILABLE_TEXTS[status];
   if (unavailable) {
@@ -81,7 +79,7 @@ export function ProgramApplyAction({
     if (isApplied) {
       setIsApplied(false);
       setStep('idle');
-      setToastMessage('신청이 취소되었습니다.');
+      showToast({ tone: 'success', message: '신청이 취소되었습니다.' });
       return;
     }
 
@@ -183,14 +181,7 @@ export function ProgramApplyAction({
         />
       )}
 
-      {toastMessage && (
-        <Toast
-          tone="success"
-          message={toastMessage}
-          onClose={() => setToastMessage(null)}
-          top={154}
-        />
-      )}
+      <AppToaster />
     </>
   );
 }

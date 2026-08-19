@@ -1,19 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ApplicationStatusBadge, type ApplicationDetail } from '@/entities/my-application';
 import { Icon } from '@/shared/ui/icon';
 import { StatusDialog } from '@/shared/ui/status-dialog';
-import { Toast, type ToastTone } from '@/shared/ui/toast';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 import { SiteHeader } from '@/widgets/site-header';
 
 type DialogState = 'cancelConfirm' | null;
-interface ToastState {
-  tone: ToastTone;
-  message: string;
-}
 
 export interface MyApplicationDetailPageProps {
   application: ApplicationDetail;
@@ -34,17 +30,19 @@ export function MyApplicationDetailPage({
   const [dialog, setDialog] = useState<DialogState>(
     variant === 'cancel-confirm' ? 'cancelConfirm' : null,
   );
-  const [toast, setToast] = useState<ToastState | null>(
-    variant === 'request-completed'
-      ? { tone: 'success', message: '수정 권한 요청이 완료되었습니다.' }
-      : variant === 'request-failed'
-        ? { tone: 'error', message: '수정 권한 요청에 실패했습니다. 다시 시도해 주세요.' }
-        : null,
-  );
   const [showDeletedBanner, setShowDeletedBanner] = useState(application.isJobDeleted);
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(application.questions.map((question) => [question.id, question.answer])),
   );
+
+  useEffect(() => {
+    if (variant === 'request-completed') {
+      showToast({ tone: 'success', message: '수정 권한 요청이 완료되었습니다.' });
+    }
+    if (variant === 'request-failed') {
+      showToast({ tone: 'error', message: '수정 권한 요청에 실패했습니다. 다시 시도해 주세요.' });
+    }
+  }, [variant]);
 
   return (
     <div className="relative min-h-screen bg-[#f5f5f5]">
@@ -230,9 +228,7 @@ export function MyApplicationDetailPage({
         )}
       </main>
 
-      {toast && (
-        <Toast tone={toast.tone} message={toast.message} onClose={() => setToast(null)} top={154} />
-      )}
+      <AppToaster />
 
       {dialog === 'cancelConfirm' && (
         <StatusDialog
