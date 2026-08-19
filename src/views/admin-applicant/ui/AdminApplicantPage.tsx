@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useApplicantDetailQuery, useApplicantListQuery } from '@/entities/applicant';
 import { useMyProfileQuery } from '@/entities/member';
 import { Icon } from '@/shared/ui/icon';
+import { PageState } from '@/shared/ui/page-state';
 
 import { ApplicantDetailPanel } from './ApplicantDetailPanel';
 import { ApplicantFilterBar } from './ApplicantFilterBar';
@@ -25,6 +26,15 @@ const SCOPE_TABS: { value: ApplicantScope; label: string }[] = [
   { value: 'all', label: '전체보기' },
 ];
 
+const PAGE_SIZE = 20;
+/**
+ * "담당 공고" 탭은 서버에 담당자 필터 파라미터가 없어 클라이언트에서 managerMemberId로 거른다.
+ * 페이지네이션까지 하면 다음 페이지에 있는 내 담당 지원자를 놓치므로, 대신 한 번에 더 큰
+ * 페이지(100건)를 가져와 그 안에서 거른다 — 100건을 넘는 지원자 수에서는 여전히 누락될 수 있다.
+ * 서버에 담당자 필터 파라미터가 추가되면 이 상한을 없애야 한다.
+ */
+const MINE_SCOPE_SIZE = 100;
+
 /**
  * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
  * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
@@ -32,14 +42,20 @@ const SCOPE_TABS: { value: ApplicantScope; label: string }[] = [
  * 상세를 함께 불러온다(entities/applicant의 TanStack Query 훅).
  * "담당 공고 / 전체보기" 탭은 서버 필터가 아니라, `GET /me/profile`로 얻은 내 memberId와
  * 각 지원서의 managerMemberId를 클라이언트에서 비교해 걸러낸다(기능명세서: 기본은 담당 공고).
- * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭은 Figma에 없어 기존
- * 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
+ * `ApplicantFilterBar`(기수 · 학과 · 공고 · 기업 · 상태)는 아직 이 화면의 실제 조회에 연결돼
+ * 있지 않다 — 선택 UI만 동작하고 목록 요청 파라미터로는 안 넘어간다(별도 이슈에서 진행).
+ * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
+ * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
 export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageProps) {
   const [scope, setScope] = useState<ApplicantScope>('mine');
-  const listQuery = useApplicantListQuery();
+  const [page, setPage] = useState(0);
+  const listQuery = useApplicantListQuery(
+    scope === 'all' ? { page, size: PAGE_SIZE } : { page: 0, size: MINE_SCOPE_SIZE },
+  );
   const myProfileQuery = useMyProfileQuery();
-  const detailApplicationId = applicantId ? Number(applicantId) : null;
+  const parsedApplicantId = applicantId ? Number(applicantId) : NaN;
+  const detailApplicationId = Number.isInteger(parsedApplicantId) ? parsedApplicantId : null;
   const detailQuery = useApplicantDetailQuery(detailApplicationId);
   const isDownloadModalOpen = variant === 'download';
 
@@ -51,17 +67,24 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
           (applicant) => applicant.managerMemberId === myProfileQuery.data?.memberId,
         );
   const totalCount = scope === 'all' ? (listQuery.data?.totalElements ?? 0) : applicants.length;
+  const isListLoading = listQuery.isLoading || (scope === 'mine' && myProfileQuery.isLoading);
+  const isListError = listQuery.isError || (scope === 'mine' && myProfileQuery.isError);
+
+  function selectScope(nextScope: ApplicantScope) {
+    setScope(nextScope);
+    setPage(0);
+  }
 
   return (
-    <div className="bg-[#fafafa]">
-      <header className="flex h-[80px] items-center justify-between border-b border-[#e5e5e5] bg-white px-[40px]">
-        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">지원자 관리</p>
+    <div className="bg-neutral-50">
+      <header className="flex h-[80px] items-center justify-between border-b border-neutral-200 bg-white px-[40px]">
+        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">지원자 관리</p>
         <div className="flex items-center gap-[12px]">
-          <span className="size-[32px] rounded-full bg-[#eaf6f9]" />
-          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+          <span className="bg-primary-100 size-[32px] rounded-full" />
+          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
             개발자 · 외 1개
           </p>
-          <Icon name="chevronRight" className="h-[12px] w-[24px] rotate-90 text-[#525252]" />
+          <Icon name="chevronRight" className="h-[12px] w-[24px] rotate-90 text-neutral-600" />
         </div>
       </header>
 
@@ -69,16 +92,16 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
         <div className="flex flex-col gap-[32px]">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-[8px]">
-              <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
+              <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-neutral-900">
                 지원자 관리
               </h1>
-              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#404040]">
+              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-700">
                 공고별 지원자를 조회하고 검토 상태를 관리합니다.
               </p>
             </div>
             <button
               type="button"
-              className="flex h-[56px] items-center justify-center rounded-[8px] bg-[#17627a] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
+              className="bg-primary-700 flex h-[56px] items-center justify-center rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
             >
               자료 일괄 다운로드
             </button>
@@ -87,16 +110,16 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
           <ApplicantFilterBar />
         </div>
 
-        <div className="flex border-b border-[#e5e5e5]">
+        <div className="flex border-b border-neutral-200">
           {SCOPE_TABS.map((tab) => (
             <button
               key={tab.value}
               type="button"
-              onClick={() => setScope(tab.value)}
+              onClick={() => selectScope(tab.value)}
               className={`border-b-2 px-[16px] py-[12px] text-[16px] leading-[1.6] tracking-[-0.16px] focus:outline-none ${
                 scope === tab.value
-                  ? 'border-[#17627a] font-semibold text-[#17627a]'
-                  : 'border-transparent text-[#525252]'
+                  ? 'border-primary-700 text-primary-700 font-semibold'
+                  : 'border-transparent text-neutral-600'
               }`}
             >
               {tab.label}
@@ -104,49 +127,75 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
           ))}
         </div>
 
-        {listQuery.isLoading || (scope === 'mine' && myProfileQuery.isLoading) ? (
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
-            <Icon name="spinner" className="size-[72px] animate-spin text-[#525252]" />
-            <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
-              지원자 목록을 불러오는 중입니다.
-            </p>
+        {isListLoading ? (
+          <div className="min-h-[420px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="loading"
+              title="지원자 목록을 불러오는 중입니다."
+              description="잠시만 기다려 주세요."
+            />
           </div>
-        ) : listQuery.isError || (scope === 'mine' && myProfileQuery.isError) ? (
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
-            <Icon name="alertCircleLarge" className="size-[72px] text-[#525252]" />
-            <div className="flex flex-col items-center gap-[12px]">
-              <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
-                지원자 목록을 불러오지 못했습니다.
-              </p>
-              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
-                잠시 후 다시 시도해 주세요.
-              </p>
-            </div>
+        ) : isListError ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[16px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="error"
+              title="지원자 목록을 불러오지 못했습니다."
+              description="잠시 후 다시 시도해 주세요."
+            />
             <button
               type="button"
               onClick={() => {
                 listQuery.refetch();
                 myProfileQuery.refetch();
               }}
-              className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+              className="bg-primary-700 rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
             >
               다시 시도
             </button>
           </div>
         ) : applicants.length === 0 ? (
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
-            <Icon name="fileSearch" className="size-[72px] text-[#525252]" />
-            <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
-              등록된 지원자가 없습니다.
-            </p>
+          <div className="min-h-[420px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="empty"
+              title="등록된 지원자가 없습니다."
+              description={
+                scope === 'mine'
+                  ? '내가 담당하는 공고에 지원한 학생이 아직 없습니다.'
+                  : '조건에 맞는 지원자가 아직 없습니다.'
+              }
+            />
           </div>
         ) : (
           <div className="flex flex-col gap-[24px]">
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
               총 {totalCount}명
             </p>
 
             <ApplicantTable applicants={applicants} />
+
+            {scope === 'all' && listQuery.data && listQuery.data.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-[12px]">
+                <button
+                  type="button"
+                  disabled={listQuery.data.first}
+                  onClick={() => setPage((current) => current - 1)}
+                  className="rounded-[8px] border border-neutral-200 px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+                >
+                  이전
+                </button>
+                <p className="text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700">
+                  {page + 1} / {listQuery.data.totalPages}
+                </p>
+                <button
+                  type="button"
+                  disabled={listQuery.data.last}
+                  onClick={() => setPage((current) => current + 1)}
+                  className="rounded-[8px] border border-neutral-200 px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+                >
+                  다음
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -156,14 +205,15 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
           <div className="ml-[220px] flex-1 bg-black/24" />
           {detailQuery.isLoading ? (
             <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 items-center justify-center bg-white">
-              <Icon name="spinner" className="size-[48px] animate-spin text-[#525252]" />
+              <Icon name="spinner" className="size-[48px] animate-spin text-neutral-600" />
             </div>
           ) : detailQuery.isError || !detailQuery.data ? (
-            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 flex-col items-center justify-center gap-[16px] bg-white text-center">
-              <Icon name="alertCircleLarge" className="size-[56px] text-[#525252]" />
-              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
-                지원자 상세 정보를 불러오지 못했습니다.
-              </p>
+            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 items-center justify-center bg-white">
+              <PageState
+                variant="error"
+                title="지원자 상세 정보를 불러오지 못했습니다."
+                description="잠시 후 다시 시도해 주세요."
+              />
             </div>
           ) : (
             <ApplicantDetailPanel detail={detailQuery.data} />

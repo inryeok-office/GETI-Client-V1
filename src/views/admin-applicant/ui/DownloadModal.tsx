@@ -79,42 +79,44 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
       <div className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]">
         <div className="flex flex-col gap-[8px]">
-          <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-[#111]">
+          <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
             지원자 자료 일괄 다운로드
           </p>
-          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
             다운로드할 공고와 지원자를 선택해 주세요.
           </p>
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             공고
           </p>
           <div className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'job' ? null : 'job'))}
-              className="flex w-full items-center justify-between rounded-[8px] border border-[#e5e5e5] p-[16px] text-left focus:outline-none"
+              className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 p-[16px] text-left focus:outline-none"
             >
-              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
                 {selectedJob?.title ?? '등록된 공고가 없습니다'}
               </span>
               <Icon
                 name="chevronRight"
-                className="h-[10px] w-[20px] shrink-0 rotate-90 text-[#525252]"
+                className="h-[10px] w-[20px] shrink-0 rotate-90 text-neutral-600"
               />
             </button>
 
             {openField === 'job' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {jobPostings.map((job) => (
                   <button
                     key={job.jobId}
                     type="button"
                     onClick={() => handleSelectJob(job.jobId)}
-                    className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
-                      job.jobId === selectedJobId ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                    className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                      job.jobId === selectedJobId
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-neutral-900'
                     }`}
                   >
                     {job.title}
@@ -127,26 +129,26 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             지원자
           </p>
           <div className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'applicants' ? null : 'applicants'))}
-              className="flex w-full items-center justify-between rounded-[8px] border border-[#e5e5e5] p-[16px] text-left focus:outline-none"
+              className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 p-[16px] text-left focus:outline-none"
             >
-              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
                 선택한 지원자 {selectedApplicantIds.length}명
               </span>
               <Icon
                 name="chevronRight"
-                className="h-[10px] w-[20px] shrink-0 rotate-90 text-[#525252]"
+                className="h-[10px] w-[20px] shrink-0 rotate-90 text-neutral-600"
               />
             </button>
 
             {openField === 'applicants' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {applicantsForSelectedJob.map((applicant) => {
                   const isSelected = selectedApplicantIds.includes(applicant.applicationId);
                   return (
@@ -154,8 +156,8 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
                       key={applicant.applicationId}
                       type="button"
                       onClick={() => toggleApplicant(applicant.applicationId)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
-                        isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                      className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                        isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
                       }`}
                     >
                       {applicant.applicantName ?? 'ㅡ'}
@@ -169,16 +171,16 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             포함 자료
           </p>
           <div className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'materials' ? null : 'materials'))}
-              className="flex w-full items-center justify-between rounded-[8px] border border-[#e5e5e5] p-[16px] text-left focus:outline-none"
+              className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 p-[16px] text-left focus:outline-none"
             >
-              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+              <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
                 {selectedMaterialKeys.length > 0
                   ? MATERIAL_OPTIONS.filter((material) =>
                       selectedMaterialKeys.includes(material.key),
@@ -189,12 +191,12 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
               </span>
               <Icon
                 name="chevronRight"
-                className="h-[10px] w-[20px] shrink-0 rotate-90 text-[#525252]"
+                className="h-[10px] w-[20px] shrink-0 rotate-90 text-neutral-600"
               />
             </button>
 
             {openField === 'materials' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {MATERIAL_OPTIONS.map((material) => {
                   const isSelected = selectedMaterialKeys.includes(material.key);
                   return (
@@ -202,8 +204,8 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
                       key={material.key}
                       type="button"
                       onClick={() => toggleMaterial(material.key)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
-                        isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                      className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                        isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
                       }`}
                     >
                       {material.label}
@@ -219,13 +221,13 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
         <div className="flex justify-end gap-[16px]">
           <button
             type="button"
-            className="flex items-center justify-center rounded-[8px] border border-[#e5e5e5] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
+            className="flex items-center justify-center rounded-[8px] border border-neutral-200 bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
           >
             취소
           </button>
           <button
             type="button"
-            className="flex items-center justify-center rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
+            className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
           >
             다운로드
           </button>

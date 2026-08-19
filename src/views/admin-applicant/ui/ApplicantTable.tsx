@@ -28,12 +28,12 @@ interface ApplicantTableProps {
  */
 export function ApplicantTable({ applicants }: ApplicantTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[12px] border border-[#e5e5e5] bg-white">
+    <div className="overflow-x-auto rounded-[12px] border border-neutral-200 bg-white">
       <div className="flex min-w-[1620px] flex-col">
-        <div className="flex h-[62px] items-center bg-[#fafafa]">
+        <div className="flex h-[62px] items-center bg-neutral-50">
           {TABLE_COLUMNS.map((column) => (
             <div key={column.label} className={`${column.widthClass} shrink-0 pr-[8px] pl-[16px]`}>
-              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]">
+              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600">
                 {column.label}
               </p>
             </div>
@@ -42,45 +42,45 @@ export function ApplicantTable({ applicants }: ApplicantTableProps) {
         {applicants.map((applicant) => (
           <div key={applicant.applicationId} className="flex h-[62px] items-center">
             <div className="w-[240px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.applicantName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[230px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.applicantCohort ? `${applicant.applicantCohort}기` : 'ㅡ'} ·{' '}
                 {formatApplicantDepartment(applicant.applicantDepartment)}
               </p>
             </div>
             <div className="w-[260px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.jobTitle ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[180px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.companyName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[160px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.managerName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[190px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {applicant.submittedAt ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[150px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {APPLICANT_STATUS_LABEL[applicant.status]}
               </p>
             </div>
             <div className="w-[210px] shrink-0 pr-[8px] pl-[16px]">
               <Link
                 href={`/admin/applicants/${applicant.applicationId}`}
-                className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#17627a]"
+                className="text-primary-700 text-[14px] leading-[1.4] font-medium tracking-[-0.14px]"
               >
                 상세 보기
               </Link>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   executeApplicantAction,
@@ -25,19 +25,19 @@ export function useApplicantListQuery(params: FetchApplicantListParams = {}) {
   });
 }
 
+/** applicationId는 호출부에서 `Number.isInteger`로 걸러진 값만 받는다(NaN 요청 방지). */
 export function useApplicantDetailQuery(applicationId: number | null) {
   return useQuery({
     queryKey: applicantKeys.detail(applicationId ?? -1),
-    queryFn: () => fetchApplicantDetail(applicationId as number),
-    enabled: applicationId !== null,
+    queryFn: applicationId === null ? skipToken : () => fetchApplicantDetail(applicationId),
   });
 }
 
+/** applicationId는 호출부에서 `Number.isInteger`로 걸러진 값만 받는다(NaN 요청 방지). */
 export function useApplicantHistoryQuery(applicationId: number | null) {
   return useQuery({
     queryKey: applicantKeys.history(applicationId ?? -1),
-    queryFn: () => fetchApplicantHistory(applicationId as number),
-    enabled: applicationId !== null,
+    queryFn: applicationId === null ? skipToken : () => fetchApplicantHistory(applicationId),
   });
 }
 

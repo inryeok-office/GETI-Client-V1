@@ -34,6 +34,7 @@ const REASON_MODAL_COPY: Partial<Record<ApplicantReviewAction, string>> = {
  */
 export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
   const [pendingAction, setPendingAction] = useState<ApplicantReviewAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const actionMutation = useApplicantActionMutation();
   const historyQuery = useApplicantHistoryQuery(detail.applicationId);
 
@@ -44,12 +45,20 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
         ? ['ALLOW_EDIT']
         : [];
 
+  /** 성공했을 때만 모달을 닫는다 — 실패하면 모달·사유를 그대로 두고 에러를 보여준다. */
   function runAction(action: ApplicantReviewAction, reason?: string) {
-    actionMutation.mutate({ applicationId: detail.applicationId, action, reason });
-    setPendingAction(null);
+    setActionError(null);
+    actionMutation.mutate(
+      { applicationId: detail.applicationId, action, reason },
+      {
+        onSuccess: () => setPendingAction(null),
+        onError: () => setActionError('처리에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+      },
+    );
   }
 
   function handleActionClick(action: ApplicantReviewAction) {
+    setActionError(null);
     if (REASON_REQUIRED_ACTIONS.includes(action)) {
       setPendingAction(action);
       return;
@@ -61,17 +70,17 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
     <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 flex-col bg-white">
       <div className="flex flex-1 flex-col gap-[24px] overflow-y-auto px-[32px] py-[24px]">
         <div className="flex items-center justify-between pb-[4px]">
-          <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
+          <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
             지원자 상세
           </p>
-          <Icon name="close" className="size-[20px] text-[#111]" />
+          <Icon name="close" className="size-[20px] text-neutral-900" />
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
+          <p className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-neutral-900">
             {detail.applicantName ?? 'ㅡ'}
           </p>
-          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
             {detail.applicantCohort ? `${detail.applicantCohort}기` : 'ㅡ'} ·{' '}
             {formatApplicantDepartment(detail.applicantDepartment)}
           </p>
@@ -79,55 +88,57 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
 
         <div className="flex flex-col gap-[16px] px-[4px]">
           <div className="flex items-center gap-[12px]">
-            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">지원 공고</p>
-            <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-neutral-600">지원 공고</p>
+            <p className="text-[14px] tracking-[-0.14px] text-neutral-800">
               {detail.jobTitle ?? 'ㅡ'} {detail.companyName ? `· ${detail.companyName}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-[12px]">
-            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">담당자</p>
-            <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-neutral-600">담당자</p>
+            <p className="text-[14px] tracking-[-0.14px] text-neutral-800">
               {detail.managerName ?? 'ㅡ'}
             </p>
           </div>
           <div className="flex items-center gap-[12px]">
-            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">지원 상태</p>
-            <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-neutral-600">지원 상태</p>
+            <p className="text-[14px] tracking-[-0.14px] text-neutral-800">
               {APPLICANT_STATUS_LABEL[detail.status]}
             </p>
           </div>
           <div className="flex items-center gap-[12px]">
-            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">연락처</p>
-            <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-neutral-600">연락처</p>
+            <p className="text-[14px] tracking-[-0.14px] text-neutral-800">
               {detail.contactEmail}
               {detail.contactPhone ? ` · ${detail.contactPhone}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-[12px]">
-            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">제출 시각</p>
-            <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+            <p className="w-[120px] text-[12px] tracking-[-0.12px] text-neutral-600">제출 시각</p>
+            <p className="text-[14px] tracking-[-0.14px] text-neutral-800">
               {detail.submittedAt ?? 'ㅡ'}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-[16px]">
-          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">지원서 답변</p>
+          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">
+            지원서 답변
+          </p>
           <div className="flex flex-col gap-[12px]">
             {detail.answers.length === 0 ? (
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
                 등록된 답변이 없습니다.
               </p>
             ) : (
               detail.answers.map((answer) => (
                 <div
                   key={answer.fieldId}
-                  className="flex flex-col gap-[4px] rounded-[8px] bg-[#fafafa] p-[16px]"
+                  className="flex flex-col gap-[4px] rounded-[8px] bg-neutral-50 p-[16px]"
                 >
-                  <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+                  <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-neutral-600">
                     {answer.fieldId}
                   </p>
-                  <p className="text-[14px] leading-[1.6] tracking-[-0.16px] text-[#111]">
+                  <p className="text-[14px] leading-[1.6] tracking-[-0.16px] text-neutral-900">
                     {typeof answer.value === 'string' ? answer.value : JSON.stringify(answer.value)}
                   </p>
                 </div>
@@ -137,10 +148,10 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
         </div>
 
         <div className="flex flex-col gap-[16px]">
-          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">첨부파일</p>
+          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">첨부파일</p>
           <div className="flex flex-col gap-[16px]">
             {detail.files.length === 0 ? (
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
                 첨부된 파일이 없습니다.
               </p>
             ) : (
@@ -154,18 +165,18 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
                 >
                   <div className="flex items-center gap-[12px]">
                     <div className="flex size-[40px] items-center justify-center rounded-[8px] bg-[#fef2f2]">
-                      <Icon name="file" className="size-[20px] text-[#ef4444]" />
+                      <Icon name="file" className="text-status-error size-[20px]" />
                     </div>
                     <div className="flex flex-col">
                       <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-black">
                         {file.originalName}
                       </p>
-                      <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+                      <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-neutral-600">
                         {file.contentType} · {formatFileSize(file.size)}
                       </p>
                     </div>
                   </div>
-                  <Icon name="download" className="size-[20px] text-[#111]" />
+                  <Icon name="download" className="size-[20px] text-neutral-900" />
                 </a>
               ))
             )}
@@ -173,13 +184,13 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">처리 이력</p>
+          <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">처리 이력</p>
           {historyQuery.isLoading ? (
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
               불러오는 중입니다...
             </p>
           ) : historyQuery.isError ? (
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#ef4444]">
+            <p className="text-status-error text-[14px] leading-[1.5] tracking-[-0.14px]">
               처리 이력을 불러오지 못했습니다.
             </p>
           ) : historyQuery.data && historyQuery.data.length > 0 ? (
@@ -187,7 +198,7 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
               {historyQuery.data.map((entry) => (
                 <p
                   key={entry.historyId}
-                  className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#404040]"
+                  className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-700"
                 >
                   {APPLICANT_STATUS_LABEL[entry.fromStatus]} →{' '}
                   {APPLICANT_STATUS_LABEL[entry.toStatus]}
@@ -198,7 +209,7 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
               ))}
             </div>
           ) : (
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
               처리 이력이 없습니다.
             </p>
           )}
@@ -206,7 +217,12 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
       </div>
 
       {availableActions.length > 0 && (
-        <div className="flex h-[92px] shrink-0 items-center justify-end gap-[8px] border-t border-[#e5e5e5] px-[24px]">
+        <div className="flex h-[92px] shrink-0 items-center justify-end gap-[12px] border-t border-neutral-200 px-[24px]">
+          {actionError && !pendingAction && (
+            <p className="text-status-error text-[12px] leading-[1.5] tracking-[-0.12px]">
+              {actionError}
+            </p>
+          )}
           {availableActions.map((action) => (
             <button
               key={action}
@@ -225,7 +241,11 @@ export function ApplicantDetailPanel({ detail }: ApplicantDetailPanelProps) {
         <ApplicantReasonModal
           title={REASON_MODAL_COPY[pendingAction] ?? ''}
           isSubmitting={actionMutation.isPending}
-          onCancel={() => setPendingAction(null)}
+          errorMessage={actionError}
+          onCancel={() => {
+            setPendingAction(null);
+            setActionError(null);
+          }}
           onConfirm={(reason) => runAction(pendingAction, reason)}
         />
       )}
@@ -241,10 +261,10 @@ const ACTION_LABEL: Record<ApplicantReviewAction, string> = {
 };
 
 const ACTION_BUTTON_CLASS: Record<ApplicantReviewAction, string> = {
-  APPROVE: 'bg-[#17627a] text-white',
-  REJECT: 'bg-[#ef4444] text-white',
-  REQUEST_REVISION: 'border border-[#e5e5e5] bg-white text-[#525252]',
-  ALLOW_EDIT: 'bg-[#17627a] text-white',
+  APPROVE: 'bg-primary-700 text-white',
+  REJECT: 'bg-status-error text-white',
+  REQUEST_REVISION: 'border border-neutral-200 bg-white text-neutral-600',
+  ALLOW_EDIT: 'bg-primary-700 text-white',
 };
 
 function formatFileSize(bytes: number): string {

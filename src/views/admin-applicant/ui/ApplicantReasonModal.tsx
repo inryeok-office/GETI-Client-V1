@@ -5,6 +5,7 @@ import { useState } from 'react';
 interface ApplicantReasonModalProps {
   title: string;
   isSubmitting: boolean;
+  errorMessage?: string | null;
   onCancel: () => void;
   onConfirm: (reason: string) => void;
 }
@@ -16,6 +17,7 @@ interface ApplicantReasonModalProps {
 export function ApplicantReasonModal({
   title,
   isSubmitting,
+  errorMessage,
   onCancel,
   onConfirm,
 }: ApplicantReasonModalProps) {
@@ -30,25 +32,31 @@ export function ApplicantReasonModal({
       aria-label={title}
     >
       <div className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[20px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]">
-        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">{title}</p>
+        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">{title}</p>
 
         <div className="flex flex-col gap-[8px]">
-          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+          <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             사유 *
           </p>
           <textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="사유를 입력해 주세요."
-            className="h-[180px] w-full resize-none rounded-[8px] border border-[#e5e5e5] p-[13px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111] placeholder:text-[#737373] focus:outline-none"
+            className="h-[180px] w-full resize-none rounded-[8px] border border-neutral-200 p-[13px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none"
           />
         </div>
+
+        {errorMessage && (
+          <p className="text-status-error -mt-[16px] text-[12px] leading-[1.5] tracking-[-0.12px]">
+            {errorMessage}
+          </p>
+        )}
 
         <div className="flex justify-end gap-[16px]">
           <button
             type="button"
             onClick={onCancel}
-            className="flex items-center justify-center rounded-[8px] border border-[#e5e5e5] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
+            className="flex items-center justify-center rounded-[8px] border border-neutral-200 bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
           >
             취소
           </button>
@@ -56,7 +64,7 @@ export function ApplicantReasonModal({
             type="button"
             disabled={!isValid || isSubmitting}
             onClick={() => onConfirm(reason.trim())}
-            className="flex items-center justify-center rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
+            className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
           >
             확인
           </button>

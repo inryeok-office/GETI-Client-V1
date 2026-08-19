@@ -30,7 +30,10 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 /**
  * 검색창 + 필터 드롭다운 5개(기수 · 학과 · 공고 · 기업 · 상태).
  * 드롭다운에서 옵션을 고르면 실제로 선택되어 버튼 라벨이 바뀌고, "전체"를 고르면 필터가 해제된다.
- * 검색창은 입력만 되고 실제 검색 동작은 없다(API 연동 이슈에서 붙인다).
+ * 이 선택 상태는 아직 목록 조회 파라미터로 안 넘어간다 — 검색창 입력도 마찬가지다.
+ * `GET /admin/job-applications`가 jobId · status만 필터로 받고 기수 · 학과 · 기업은 아예
+ * 필터 파라미터가 없어(Issue #97 상세 요구사항), 5개 드롭다운을 목록 조회에 연결하는 건 별도
+ * 이슈에서 진행한다.
  */
 export function ApplicantFilterBar() {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
