@@ -175,7 +175,10 @@ export function RegisterConfirmDialog({
 
         <dl className="w-full overflow-hidden rounded-lg border border-neutral-200">
           {rows.map(([label, value]) => (
-            <div key={label} className="flex w-full border-b border-neutral-200 p-4 last:border-b-0">
+            <div
+              key={label}
+              className="flex w-full border-b border-neutral-200 p-4 last:border-b-0"
+            >
               <dt className="w-1/2 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900">
                 {label}
               </dt>

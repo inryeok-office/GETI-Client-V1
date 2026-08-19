@@ -2,11 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-import type {
-  AdminCompanyListItem,
-  AdminCompanyType,
-  MouStatus,
-} from '@/entities/company';
+import type { AdminCompanyListItem, AdminCompanyType, MouStatus } from '@/entities/company';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
@@ -164,9 +160,7 @@ export function AdminCompanyManagement({
     getInitialDeleteTarget(initialVariant, initialCompanies),
   );
   const [isDeleting] = useState(initialVariant === 'deleting');
-  const [isDeleteForbidden, setIsDeleteForbidden] = useState(
-    initialVariant === 'delete-forbidden',
-  );
+  const [isDeleteForbidden, setIsDeleteForbidden] = useState(initialVariant === 'delete-forbidden');
   const [deleteResult, setDeleteResult] = useState<DeleteResult>(
     getInitialDeleteResult(initialVariant),
   );
@@ -338,7 +332,9 @@ export function AdminCompanyManagement({
                       등록된 기업이 없습니다.
                     </p>
                     <p className="text-base leading-[1.6] tracking-[-0.16px] whitespace-pre-line text-neutral-600">
-                      {'아직 등록된 기업 정보가 없습니다.\n기업을 등록하면 이곳에서 상세 정보를 확인할 수 있습니다.'}
+                      {
+                        '아직 등록된 기업 정보가 없습니다.\n기업을 등록하면 이곳에서 상세 정보를 확인할 수 있습니다.'
+                      }
                     </p>
                   </div>
                 </div>

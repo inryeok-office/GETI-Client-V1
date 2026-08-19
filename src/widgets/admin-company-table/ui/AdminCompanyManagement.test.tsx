@@ -40,9 +40,7 @@ describe('AdminCompanyManagement', () => {
 
     expect(screen.getByRole('heading', { name: '기업 관리' })).toBeInTheDocument();
     expect(screen.getByText('총 2개 기업')).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('기업명으로 검색해 보세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('기업명으로 검색해 보세요.')).toBeInTheDocument();
     expect(screen.getByText('플로우테크')).toBeInTheDocument();
     expect(screen.getByText('네오스튜디오')).toBeInTheDocument();
   });

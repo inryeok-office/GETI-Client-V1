@@ -22,7 +22,11 @@ interface AdminCompanyTableProps {
  * "수정"은 별도 페이지가 아니라 기업 등록 패널을 재사용하는 수정 모드를 연다(Figma 933:16523).
  * 간격 · 색상은 Figma(node 869:33491)의 값을 그대로 옮겼다.
  */
-export function AdminCompanyTable({ companies, onDeleteClick, onEditClick }: AdminCompanyTableProps) {
+export function AdminCompanyTable({
+  companies,
+  onDeleteClick,
+  onEditClick,
+}: AdminCompanyTableProps) {
   return (
     <div role="region" aria-label="기업 목록" tabIndex={0} className="overflow-x-auto">
       <table className="w-full min-w-[1440px] table-fixed text-left">
@@ -42,7 +46,7 @@ export function AdminCompanyTable({ companies, onDeleteClick, onEditClick }: Adm
                 <th
                   key={label}
                   scope="col"
-                  className="pl-6 pr-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]"
+                  className="pr-4 pl-6 text-sm leading-[1.4] font-medium tracking-[-0.14px]"
                 >
                   {label}
                 </th>
@@ -53,27 +57,27 @@ export function AdminCompanyTable({ companies, onDeleteClick, onEditClick }: Adm
         <tbody className="text-neutral-900">
           {companies.map((company) => (
             <tr key={company.id} className="h-[60px] border-t border-neutral-200 bg-white">
-              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">{company.name}</td>
-              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pr-4 pl-6 text-sm leading-[1.5] tracking-[-0.14px]">{company.name}</td>
+              <td className="pr-4 pl-6 text-sm leading-[1.5] tracking-[-0.14px]">
                 {ADMIN_COMPANY_TYPE_LABEL[company.type]}
               </td>
-              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pr-4 pl-6 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.infoSource === 'direct' ? '직접 등록' : '외부 수집'}
               </td>
-              <td className="pl-6 pr-4">
+              <td className="pr-4 pl-6">
                 <span
                   className={`inline-flex items-center rounded-2xl px-3 py-2 text-xs leading-[1.5] font-semibold tracking-[-0.12px] ${MOU_BADGE_CLASS[company.mouStatus]}`}
                 >
                   {MOU_STATUS_LABEL[company.mouStatus]}
                 </span>
               </td>
-              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pr-4 pl-6 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.mouPeriod ?? '—'}
               </td>
-              <td className="pl-6 pr-4 text-sm leading-[1.5] tracking-[-0.14px]">
+              <td className="pr-4 pl-6 text-sm leading-[1.5] tracking-[-0.14px]">
                 {company.statusLabel}
               </td>
-              <td className="pl-6 pr-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]">
+              <td className="pr-4 pl-6 text-sm leading-[1.4] font-medium tracking-[-0.14px]">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
