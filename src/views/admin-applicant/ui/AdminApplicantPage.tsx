@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 
-import { useApplicantDetailQuery, useApplicantListQuery } from '@/entities/applicant';
+import {
+  useApplicantDetailQuery,
+  useApplicantListQuery,
+  type ApplicantStatus,
+} from '@/entities/applicant';
 import { useMyProfileQuery } from '@/entities/member';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
@@ -42,18 +46,34 @@ const MINE_SCOPE_SIZE = 100;
  * 상세를 함께 불러온다(entities/applicant의 TanStack Query 훅).
  * "담당 공고 / 전체보기" 탭은 서버 필터가 아니라, `GET /me/profile`로 얻은 내 memberId와
  * 각 지원서의 managerMemberId를 클라이언트에서 비교해 걸러낸다(기능명세서: 기본은 담당 공고).
- * `ApplicantFilterBar`(기수 · 학과 · 공고 · 기업 · 상태)는 아직 이 화면의 실제 조회에 연결돼
- * 있지 않다 — 선택 UI만 동작하고 목록 요청 파라미터로는 안 넘어간다(별도 이슈에서 진행).
+ * `ApplicantFilterBar`의 "공고" · "상태"는 API가 받는 jobId · status 파라미터에 실제로
+ * 연결했다. 기수 · 학과 · 기업은 API에 대응하는 필터 파라미터가 아예 없어(Issue #97 상세
+ * 요구사항) 선택 UI만 동작하는 로컬 상태로 남아 있다.
  * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
  * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
 export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageProps) {
   const [scope, setScope] = useState<ApplicantScope>('mine');
   const [page, setPage] = useState(0);
-  const listQuery = useApplicantListQuery(
-    scope === 'all' ? { page, size: PAGE_SIZE } : { page: 0, size: MINE_SCOPE_SIZE },
-  );
+  const [jobIdFilter, setJobIdFilter] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(null);
+  const listQuery = useApplicantListQuery({
+    ...(scope === 'all' ? { page, size: PAGE_SIZE } : { page: 0, size: MINE_SCOPE_SIZE }),
+    jobId: jobIdFilter ?? undefined,
+    status: statusFilter ?? undefined,
+  });
   const myProfileQuery = useMyProfileQuery();
+
+  /**
+   * "공고" 필터 드롭다운 선택지. 지금 불러온 목록(`listQuery.data.content`)에 실제로 등장하는
+   * 공고만 보여준다 — 공고로 필터를 걸면 선택지도 그 공고 하나로 좁아진다("전체"를 다시 고르면
+   * 필터가 풀리고 원래 목록에 있던 다른 공고들이 다시 보인다).
+   */
+  const jobOptionMap = new Map<number, string>();
+  for (const applicant of listQuery.data?.content ?? []) {
+    if (applicant.jobTitle) jobOptionMap.set(applicant.jobId, applicant.jobTitle);
+  }
+  const jobOptions = Array.from(jobOptionMap, ([jobId, title]) => ({ jobId, title }));
   const parsedApplicantId = applicantId ? Number(applicantId) : NaN;
   const detailApplicationId = Number.isInteger(parsedApplicantId) ? parsedApplicantId : null;
   const detailQuery = useApplicantDetailQuery(detailApplicationId);
@@ -72,6 +92,16 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
 
   function selectScope(nextScope: ApplicantScope) {
     setScope(nextScope);
+    setPage(0);
+  }
+
+  function selectJobFilter(jobId: number | null) {
+    setJobIdFilter(jobId);
+    setPage(0);
+  }
+
+  function selectStatusFilter(status: ApplicantStatus | null) {
+    setStatusFilter(status);
     setPage(0);
   }
 
@@ -107,7 +137,13 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
             </button>
           </div>
 
-          <ApplicantFilterBar />
+          <ApplicantFilterBar
+            jobOptions={jobOptions}
+            selectedJobId={jobIdFilter}
+            onJobChange={selectJobFilter}
+            selectedStatus={statusFilter}
+            onStatusChange={selectStatusFilter}
+          />
         </div>
 
         <div className="flex border-b border-neutral-200">
