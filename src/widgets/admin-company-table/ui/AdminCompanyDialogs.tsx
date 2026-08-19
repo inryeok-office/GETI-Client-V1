@@ -234,7 +234,7 @@ const DELETE_RESULT_COPY: Record<
     title: '기업 삭제가 완료되었습니다.',
   },
   error: {
-    description: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    description: '일시적인 오류가 발생했습니다.\n잠시 후 다시 시도해 주세요.',
     icon: 'alertCircleFilled',
     title: '기업을 삭제하지 못했습니다.',
   },
