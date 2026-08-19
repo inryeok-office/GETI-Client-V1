@@ -7,3 +7,5 @@ export {
   type MemberAffiliationStatus,
   type MemberRole,
 } from './model/types';
+export type { MyProfile } from './model/myProfile';
+export { useMyProfileQuery } from './api/useMyProfileQuery';

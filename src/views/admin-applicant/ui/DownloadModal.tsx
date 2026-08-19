@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { type Applicant } from '@/entities/applicant';
+import { type ApplicantListItem } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
 
 /** 자료 일괄 다운로드 모달의 "포함 자료" 선택지. Figma 예시(인적사항 · 답변 · 첨부파일)를 그대로 옮겼다. */
@@ -15,7 +15,7 @@ const MATERIAL_OPTIONS: { key: string; label: string }[] = [
 type DownloadField = 'job' | 'applicants' | 'materials';
 
 interface DownloadModalProps {
-  applicants: Applicant[];
+  applicants: ApplicantListItem[];
 }
 
 /**
@@ -23,47 +23,47 @@ interface DownloadModalProps {
  * ?variant=download URL로만 보인다 — 그래서 "취소" · "다운로드" 버튼도 클릭 동작이 없다.
  * 공고 · 지원자 · 포함 자료 3개 필드는 실제로 동작한다(사용자 요청) — 공고를 선택하면
  * 그 공고에 지원한 지원자만 지원자 드롭다운에 나오고, 지원자 · 포함 자료는 복수 선택이다.
- * "다운로드" 버튼 자체(실제 파일 생성)는 별도 이슈에서 진행한다.
+ * "다운로드" 버튼 자체(실제 파일 생성, `GET /admin/jobs/{jobId}/applications/export`)는 별도 이슈에서 진행한다.
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
 export function DownloadModal({ applicants }: DownloadModalProps) {
-  /** 등록된 공고 목록. 지원자 데이터에서 (제목, 기업)이 겹치지 않는 조합만 추린다. */
+  /** 등록된 공고 목록. 지원자 데이터에서 jobId가 겹치지 않는 조합만 추린다. */
   const jobPostings = Array.from(
     new Map(
-      applicants.map((applicant) => {
-        const key = `${applicant.jobTitle}__${applicant.company}`;
-        return [key, { key, title: applicant.jobTitle, company: applicant.company }];
-      }),
+      applicants.map((applicant) => [
+        applicant.jobId,
+        { jobId: applicant.jobId, title: applicant.jobTitle ?? 'ㅡ' },
+      ]),
     ).values(),
   );
 
-  const [selectedJobKey, setSelectedJobKey] = useState(jobPostings[0]?.key);
-  const [selectedApplicantIds, setSelectedApplicantIds] = useState<string[]>(() =>
+  const [selectedJobId, setSelectedJobId] = useState(jobPostings[0]?.jobId);
+  const [selectedApplicantIds, setSelectedApplicantIds] = useState<number[]>(() =>
     applicants
-      .filter((applicant) => `${applicant.jobTitle}__${applicant.company}` === jobPostings[0]?.key)
-      .map((applicant) => applicant.id),
+      .filter((applicant) => applicant.jobId === jobPostings[0]?.jobId)
+      .map((applicant) => applicant.applicationId),
   );
   const [selectedMaterialKeys, setSelectedMaterialKeys] = useState<string[]>(
     MATERIAL_OPTIONS.map((material) => material.key),
   );
   const [openField, setOpenField] = useState<DownloadField | null>(null);
 
-  const selectedJob = jobPostings.find((job) => job.key === selectedJobKey);
+  const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
   const applicantsForSelectedJob = applicants.filter(
-    (applicant) => `${applicant.jobTitle}__${applicant.company}` === selectedJobKey,
+    (applicant) => applicant.jobId === selectedJobId,
   );
 
-  const handleSelectJob = (key: string) => {
-    setSelectedJobKey(key);
+  const handleSelectJob = (jobId: number) => {
+    setSelectedJobId(jobId);
     setSelectedApplicantIds(
       applicants
-        .filter((applicant) => `${applicant.jobTitle}__${applicant.company}` === key)
-        .map((applicant) => applicant.id),
+        .filter((applicant) => applicant.jobId === jobId)
+        .map((applicant) => applicant.applicationId),
     );
     setOpenField(null);
   };
 
-  const toggleApplicant = (id: string) => {
+  const toggleApplicant = (id: number) => {
     setSelectedApplicantIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
@@ -107,18 +107,18 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'job' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {jobPostings.map((job) => (
                   <button
-                    key={job.key}
+                    key={job.jobId}
                     type="button"
-                    onClick={() => handleSelectJob(job.key)}
-                    className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
-                      job.key === selectedJobKey ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                    onClick={() => handleSelectJob(job.jobId)}
+                    className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
+                      job.jobId === selectedJobId ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                     }`}
                   >
                     {job.title}
-                    {job.key === selectedJobKey && <Icon name="check" className="size-[20px]" />}
+                    {job.jobId === selectedJobId && <Icon name="check" className="size-[20px]" />}
                   </button>
                 ))}
               </div>
@@ -146,19 +146,19 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'applicants' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {applicantsForSelectedJob.map((applicant) => {
-                  const isSelected = selectedApplicantIds.includes(applicant.id);
+                  const isSelected = selectedApplicantIds.includes(applicant.applicationId);
                   return (
                     <button
-                      key={applicant.id}
+                      key={applicant.applicationId}
                       type="button"
-                      onClick={() => toggleApplicant(applicant.id)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                      onClick={() => toggleApplicant(applicant.applicationId)}
+                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
                         isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                       }`}
                     >
-                      {applicant.name}
+                      {applicant.applicantName ?? 'ㅡ'}
                       {isSelected && <Icon name="check" className="size-[20px]" />}
                     </button>
                   );
@@ -194,7 +194,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
             </button>
 
             {openField === 'materials' && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                 {MATERIAL_OPTIONS.map((material) => {
                   const isSelected = selectedMaterialKeys.includes(material.key);
                   return (
@@ -202,7 +202,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
                       key={material.key}
                       type="button"
                       onClick={() => toggleMaterial(material.key)}
-                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] focus:outline-none ${
+                      className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] focus:outline-none ${
                         isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                       }`}
                     >

@@ -1,0 +1,56 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import {
+  executeApplicantAction,
+  fetchApplicantDetail,
+  fetchApplicantHistory,
+  fetchApplicantList,
+  type ExecuteApplicantActionParams,
+  type FetchApplicantListParams,
+} from './applicantApi';
+
+export const applicantKeys = {
+  all: ['applicants'] as const,
+  list: (params: FetchApplicantListParams) => [...applicantKeys.all, 'list', params] as const,
+  detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
+  history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
+};
+
+export function useApplicantListQuery(params: FetchApplicantListParams = {}) {
+  return useQuery({
+    queryKey: applicantKeys.list(params),
+    queryFn: () => fetchApplicantList(params),
+  });
+}
+
+export function useApplicantDetailQuery(applicationId: number | null) {
+  return useQuery({
+    queryKey: applicantKeys.detail(applicationId ?? -1),
+    queryFn: () => fetchApplicantDetail(applicationId as number),
+    enabled: applicationId !== null,
+  });
+}
+
+export function useApplicantHistoryQuery(applicationId: number | null) {
+  return useQuery({
+    queryKey: applicantKeys.history(applicationId ?? -1),
+    queryFn: () => fetchApplicantHistory(applicationId as number),
+    enabled: applicationId !== null,
+  });
+}
+
+/** 승인 · 거절 · 보완 요청 · 수정 허용 Action. 성공하면 목록 · 상세 · 이력을 다시 불러온다. */
+export function useApplicantActionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ExecuteApplicantActionParams) => executeApplicantAction(params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: applicantKeys.all });
+      queryClient.invalidateQueries({ queryKey: applicantKeys.detail(variables.applicationId) });
+      queryClient.invalidateQueries({ queryKey: applicantKeys.history(variables.applicationId) });
+    },
+  });
+}

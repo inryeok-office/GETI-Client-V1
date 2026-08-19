@@ -1,46 +1,56 @@
-import { type Applicant } from '@/entities/applicant';
+'use client';
+
+import { useState } from 'react';
+
+import { useApplicantDetailQuery, useApplicantListQuery } from '@/entities/applicant';
+import { useMyProfileQuery } from '@/entities/member';
 import { Icon } from '@/shared/ui/icon';
 
 import { ApplicantDetailPanel } from './ApplicantDetailPanel';
 import { ApplicantFilterBar } from './ApplicantFilterBar';
 import { ApplicantTable } from './ApplicantTable';
 import { DownloadModal } from './DownloadModal';
-import { RejectReasonModal } from './RejectReasonModal';
 
 interface AdminApplicantPageProps {
-  applicants: Applicant[];
   /** /admin/applicants/[applicantId]로 들어왔을 때 그 id가 있으면 상세 패널을 목록 위에 띄운다. */
-  detailId?: string;
-  /** id에 해당하는 지원자. 못 찾으면 패널을 띄우지 않는다(목록만 보인다). */
-  detail?: Applicant;
-  /**
-   * ?variant=download(목록) 또는 ?variant=reject(상세)일 때 그 위에 뜨는 모달을 항상 띄운다.
-   * Figma가 캡처한 4개 화면(목록 · 상세 · 거부 사유 · 자료 다운로드)을 각각 클릭 없이
-   * URL만으로 바로 볼 수 있게 하기 위한 것이라, 버튼을 눌러서 여는 방식이 아니다.
-   */
-  variant?: 'download' | 'reject';
+  applicantId?: string;
+  /** ?variant=download일 때 자료 일괄 다운로드 모달을 띄운다. */
+  variant?: 'download';
 }
+
+type ApplicantScope = 'mine' | 'all';
+
+const SCOPE_TABS: { value: ApplicantScope; label: string }[] = [
+  { value: 'mine', label: '담당 공고' },
+  { value: 'all', label: '전체보기' },
+];
 
 /**
  * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
- * 상세 패널(`ApplicantDetailPanel`) + 거부 사유 모달(`RejectReasonModal`) +
- * 자료 일괄 다운로드 모달(`DownloadModal`)을 조합하는 페이지 레이아웃만 담당한다.
- * 각 조각의 상태 · 동작은 해당 컴포넌트 파일에 있다.
- *
- * Figma가 캡처한 4개 화면(목록 · 상세 · 거부 사유 · 자료 다운로드)은 서로 클릭으로 이동하지 않고
- * 전부 독립된 URL로만 접근한다 — 상세: /admin/applicants/[applicantId], 거부 사유 · 자료
- * 다운로드는 ?variant= 쿼리(Discord 게시 관리의 ?variant=error와 동일한 패턴).
- * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다.
- * 지원자 승인 · 거부 · 다운로드 API 연동은 별도 이슈에서 진행한다.
+ * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
+ * `GET /admin/job-applications`로 목록을, `applicantId`가 있으면 `GET /admin/job-applications/{id}`로
+ * 상세를 함께 불러온다(entities/applicant의 TanStack Query 훅).
+ * "담당 공고 / 전체보기" 탭은 서버 필터가 아니라, `GET /me/profile`로 얻은 내 memberId와
+ * 각 지원서의 managerMemberId를 클라이언트에서 비교해 걸러낸다(기능명세서: 기본은 담당 공고).
+ * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭은 Figma에 없어 기존
+ * 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
-export function AdminApplicantPage({
-  applicants,
-  detailId,
-  detail,
-  variant,
-}: AdminApplicantPageProps) {
+export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageProps) {
+  const [scope, setScope] = useState<ApplicantScope>('mine');
+  const listQuery = useApplicantListQuery();
+  const myProfileQuery = useMyProfileQuery();
+  const detailApplicationId = applicantId ? Number(applicantId) : null;
+  const detailQuery = useApplicantDetailQuery(detailApplicationId);
   const isDownloadModalOpen = variant === 'download';
-  const isRejectModalOpen = variant === 'reject';
+
+  const allApplicants = listQuery.data?.content ?? [];
+  const applicants =
+    scope === 'all'
+      ? allApplicants
+      : allApplicants.filter(
+          (applicant) => applicant.managerMemberId === myProfileQuery.data?.memberId,
+        );
+  const totalCount = scope === 'all' ? (listQuery.data?.totalElements ?? 0) : applicants.length;
 
   return (
     <div className="bg-[#fafafa]">
@@ -77,24 +87,87 @@ export function AdminApplicantPage({
           <ApplicantFilterBar />
         </div>
 
-        <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#404040]">
-          총 {applicants.length}명
-        </p>
-
-        <div className="flex flex-col gap-[24px]">
-          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
-            총 {applicants.length}명
-          </p>
-
-          <ApplicantTable applicants={applicants} />
+        <div className="flex border-b border-[#e5e5e5]">
+          {SCOPE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setScope(tab.value)}
+              className={`border-b-2 px-[16px] py-[12px] text-[16px] leading-[1.6] tracking-[-0.16px] focus:outline-none ${
+                scope === tab.value
+                  ? 'border-[#17627a] font-semibold text-[#17627a]'
+                  : 'border-transparent text-[#525252]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {listQuery.isLoading || (scope === 'mine' && myProfileQuery.isLoading) ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
+            <Icon name="spinner" className="size-[72px] animate-spin text-[#525252]" />
+            <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
+              지원자 목록을 불러오는 중입니다.
+            </p>
+          </div>
+        ) : listQuery.isError || (scope === 'mine' && myProfileQuery.isError) ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
+            <Icon name="alertCircleLarge" className="size-[72px] text-[#525252]" />
+            <div className="flex flex-col items-center gap-[12px]">
+              <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
+                지원자 목록을 불러오지 못했습니다.
+              </p>
+              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
+                잠시 후 다시 시도해 주세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                listQuery.refetch();
+                myProfileQuery.refetch();
+              }}
+              className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : applicants.length === 0 ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white text-center">
+            <Icon name="fileSearch" className="size-[72px] text-[#525252]" />
+            <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
+              등록된 지원자가 없습니다.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[24px]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111]">
+              총 {totalCount}명
+            </p>
+
+            <ApplicantTable applicants={applicants} />
+          </div>
+        )}
       </main>
 
-      {detailId && detail && (
+      {applicantId && (
         <div className="fixed inset-0 z-40 flex">
           <div className="ml-[220px] flex-1 bg-black/24" />
-          <ApplicantDetailPanel detail={detail} />
-          {isRejectModalOpen && <RejectReasonModal />}
+          {detailQuery.isLoading ? (
+            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 items-center justify-center bg-white">
+              <Icon name="spinner" className="size-[48px] animate-spin text-[#525252]" />
+            </div>
+          ) : detailQuery.isError || !detailQuery.data ? (
+            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 flex-col items-center justify-center gap-[16px] bg-white text-center">
+              <Icon name="alertCircleLarge" className="size-[56px] text-[#525252]" />
+              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
+                지원자 상세 정보를 불러오지 못했습니다.
+              </p>
+            </div>
+          ) : (
+            <ApplicantDetailPanel detail={detailQuery.data} />
+          )}
         </div>
       )}
 
