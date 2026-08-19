@@ -290,9 +290,9 @@ export function AdminCompanyRegisterPanel({
             type="button"
             disabled={!isValid}
             onClick={handleSubmit}
-            className={`rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] ${
+            className={`rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] transition-colors ${
               isValid
-                ? 'bg-primary-700 text-white'
+                ? 'bg-primary-700 hover:bg-primary-600 text-white'
                 : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             }`}
           >

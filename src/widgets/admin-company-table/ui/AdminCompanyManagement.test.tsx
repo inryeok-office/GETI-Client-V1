@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AdminCompanyListItem } from '@/entities/company';
 
@@ -35,6 +35,14 @@ const COMPANIES: AdminCompanyListItem[] = [
 ];
 
 describe('AdminCompanyManagement', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('기업 목록과 검색·필터 UI를 표시한다', () => {
     render(<AdminCompanyManagement companies={COMPANIES} initialVariant="success" />);
 
@@ -66,6 +74,13 @@ describe('AdminCompanyManagement', () => {
     expect(within(dialog).queryByText('삭제할 수 없습니다.')).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: '기업 삭제' }));
+
+    expect(screen.queryByRole('dialog', { name: '기업 삭제' })).not.toBeInTheDocument();
+    expect(screen.getByText('기업을 삭제하고 있습니다.')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
 
     expect(screen.queryByText('플로우테크')).not.toBeInTheDocument();
     expect(screen.getByText('기업 삭제가 완료되었습니다.')).toBeInTheDocument();
@@ -139,6 +154,12 @@ describe('AdminCompanyManagement', () => {
     fireEvent.click(within(confirmDialog).getByRole('button', { name: '등록하기' }));
 
     expect(screen.queryByRole('dialog', { name: '기업 등록' })).not.toBeInTheDocument();
+    expect(screen.getByText('기업을 등록하고 있습니다.')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
     expect(screen.getByText('기업 등록이 완료되었습니다.')).toBeInTheDocument();
     expect(screen.getByText('테스트기업')).toBeInTheDocument();
   });
@@ -162,6 +183,12 @@ describe('AdminCompanyManagement', () => {
     fireEvent.click(within(confirmDialog).getByRole('button', { name: '변경사항 저장' }));
 
     expect(screen.queryByRole('dialog', { name: '기업 수정' })).not.toBeInTheDocument();
+    expect(screen.getByText('기업을 수정하고 있습니다.')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
     expect(screen.getByText('기업 수정이 완료되었습니다.')).toBeInTheDocument();
     expect(screen.getByText('플로우테크(수정)')).toBeInTheDocument();
   });

@@ -79,7 +79,7 @@ export function AdminCompanyFilters({
       <button
         type="button"
         onClick={onRegisterClick}
-        className="bg-primary-700 flex h-14 shrink-0 items-center gap-2 rounded-lg px-8 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
+        className="bg-primary-700 hover:bg-primary-600 flex h-14 shrink-0 items-center gap-2 rounded-lg px-8 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors"
       >
         <Icon name="plus" className="size-5" />
         기업 등록

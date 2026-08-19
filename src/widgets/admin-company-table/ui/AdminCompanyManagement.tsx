@@ -159,7 +159,7 @@ export function AdminCompanyManagement({
   const [deleteTarget, setDeleteTarget] = useState<AdminCompanyListItem | null>(
     getInitialDeleteTarget(initialVariant, initialCompanies),
   );
-  const [isDeleting] = useState(initialVariant === 'deleting');
+  const [isDeleting, setIsDeleting] = useState(initialVariant === 'deleting');
   const [isDeleteForbidden, setIsDeleteForbidden] = useState(initialVariant === 'delete-forbidden');
   const [deleteResult, setDeleteResult] = useState<DeleteResult>(
     getInitialDeleteResult(initialVariant),
@@ -168,7 +168,9 @@ export function AdminCompanyManagement({
     initialVariant === 'register-panel' ? 'create' : null,
   );
   const [editTarget, setEditTarget] = useState<AdminCompanyListItem | null>(null);
-  const [isRegistering] = useState(initialVariant === 'registering');
+  const [submittingMode, setSubmittingMode] = useState<'edit' | 'register' | null>(
+    initialVariant === 'registering' ? 'register' : null,
+  );
   const [pendingSubmit, setPendingSubmit] = useState<PendingSubmit | null>(
     getInitialPendingSubmit(initialVariant, initialCompanies),
   );
@@ -199,9 +201,14 @@ export function AdminCompanyManagement({
   const confirmDelete = () => {
     if (!deleteTarget || deleteTarget.activeJobCount > 0) return;
 
-    setCompanies((current) => current.filter((company) => company.id !== deleteTarget.id));
+    const targetId = deleteTarget.id;
     setDeleteTarget(null);
-    setDeleteResult('success');
+    setIsDeleting(true);
+    setTimeout(() => {
+      setCompanies((current) => current.filter((company) => company.id !== targetId));
+      setIsDeleting(false);
+      setDeleteResult('success');
+    }, 1000);
   };
 
   const openRegisterPanel = () => {
@@ -232,22 +239,27 @@ export function AdminCompanyManagement({
   const confirmSubmit = () => {
     if (!pendingSubmit) return;
 
-    if (pendingSubmit.mode === 'register') {
-      setCompanies((current) => [buildRegisteredCompany(pendingSubmit.values), ...current]);
-      setShowRegisterComplete(true);
-    } else {
-      setCompanies((current) =>
-        current.map((company) =>
-          company.id === pendingSubmit.targetId
-            ? applyEditValues(company, pendingSubmit.values)
-            : company,
-        ),
-      );
-      setShowEditComplete(true);
-    }
-
+    const submission = pendingSubmit;
     setPendingSubmit(null);
     closePanel();
+    setSubmittingMode(submission.mode);
+    setTimeout(() => {
+      if (submission.mode === 'register') {
+        setCompanies((current) => [buildRegisteredCompany(submission.values), ...current]);
+        setSubmittingMode(null);
+        setShowRegisterComplete(true);
+      } else {
+        setCompanies((current) =>
+          current.map((company) =>
+            company.id === submission.targetId
+              ? applyEditValues(company, submission.values)
+              : company,
+          ),
+        );
+        setSubmittingMode(null);
+        setShowEditComplete(true);
+      }
+    }, 1000);
   };
 
   const editInitialValues: AdminCompanyEditInitialValues | undefined = editTarget
@@ -395,7 +407,7 @@ export function AdminCompanyManagement({
           onConfirm={confirmSubmit}
         />
       ) : null}
-      {isRegistering ? <RegisteringDialog /> : null}
+      {submittingMode ? <RegisteringDialog mode={submittingMode} /> : null}
       {showRegisterComplete ? (
         <RegisterCompleteDialog onClose={() => setShowRegisterComplete(false)} />
       ) : null}

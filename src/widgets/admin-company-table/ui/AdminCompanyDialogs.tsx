@@ -117,11 +117,15 @@ export function DeletingDialog() {
   );
 }
 
-export function RegisteringDialog() {
+/**
+ * 등록/수정 확정 중 로딩 모달. "수정 중" 문구는 대응하는 Figma 프레임을 찾지 못해
+ * "등록 중"(935:7371)과 같은 패턴으로 추정 구현했다.
+ */
+export function RegisteringDialog({ mode = 'register' }: { mode?: 'edit' | 'register' }) {
   return (
     <AdminCompanyStatusDialog
       icon={<Icon name="spinner" className="text-primary-700 size-16 animate-spin" />}
-      title="기업을 등록하고 있습니다."
+      title={mode === 'edit' ? '기업을 수정하고 있습니다.' : '기업을 등록하고 있습니다.'}
       description="잠시만 기다려 주세요."
     />
   );
@@ -200,7 +204,7 @@ export function RegisterConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="bg-primary-700 flex-1 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
+            className="bg-primary-700 hover:bg-primary-600 flex-1 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors"
           >
             {copy.submit}
           </button>
