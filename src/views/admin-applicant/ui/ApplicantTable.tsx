@@ -1,4 +1,10 @@
-import { APPLICANT_STATUS_LABEL, type Applicant } from '@/entities/applicant';
+import Link from 'next/link';
+
+import {
+  APPLICANT_STATUS_LABEL,
+  formatApplicantDepartment,
+  type ApplicantListItem,
+} from '@/entities/applicant';
 
 /** Figma(node 586:15965) 지원자 목록 테이블 컬럼 폭을 그대로 옮겼다. */
 const TABLE_COLUMNS = [
@@ -13,67 +19,71 @@ const TABLE_COLUMNS = [
 ];
 
 interface ApplicantTableProps {
-  applicants: Applicant[];
+  applicants: ApplicantListItem[];
 }
 
 /**
- * 지원자 목록 테이블. "상세 보기"는 링크가 아니라 텍스트다(상세는 URL을 직접 입력해서 본다).
+ * 지원자 목록 테이블. "상세 보기"는 `/admin/applicants/[applicantId]`로 이동하는 실제 링크다.
  * 화면이 좁을 땐 이 박스 안에서만 가로 스크롤되게 했다(반응형은 Figma에 없는 부분).
  */
 export function ApplicantTable({ applicants }: ApplicantTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[12px] border border-[#e5e5e5] bg-white">
+    <div className="overflow-x-auto rounded-[12px] border border-neutral-200 bg-white">
       <div className="flex min-w-[1620px] flex-col">
-        <div className="flex h-[62px] items-center bg-[#fafafa]">
+        <div className="flex h-[62px] items-center bg-neutral-50">
           {TABLE_COLUMNS.map((column) => (
             <div key={column.label} className={`${column.widthClass} shrink-0 pr-[8px] pl-[16px]`}>
-              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]">
+              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600">
                 {column.label}
               </p>
             </div>
           ))}
         </div>
         {applicants.map((applicant) => (
-          <div key={applicant.id} className="flex h-[62px] items-center">
+          <div key={applicant.applicationId} className="flex h-[62px] items-center">
             <div className="w-[240px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.name}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.applicantName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[230px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.cohort} · {applicant.department}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.applicantCohort ? `${applicant.applicantCohort}기` : 'ㅡ'} ·{' '}
+                {formatApplicantDepartment(applicant.applicantDepartment)}
               </p>
             </div>
             <div className="w-[260px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.jobTitle}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.jobTitle ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[180px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.company}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.companyName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[160px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.reviewerName ?? 'ㅡ'}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.managerName ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[190px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                {applicant.submittedAt}
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {applicant.submittedAt ?? 'ㅡ'}
               </p>
             </div>
             <div className="w-[150px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
+              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 {APPLICANT_STATUS_LABEL[applicant.status]}
               </p>
             </div>
             <div className="w-[210px] shrink-0 pr-[8px] pl-[16px]">
-              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#17627a]">
+              <Link
+                href={`/admin/applicants/${applicant.applicationId}`}
+                className="text-primary-700 text-[14px] leading-[1.4] font-medium tracking-[-0.14px]"
+              >
                 상세 보기
-              </p>
+              </Link>
             </div>
           </div>
         ))}
