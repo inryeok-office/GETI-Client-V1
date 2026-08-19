@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   formatFileSize,
@@ -19,7 +19,7 @@ import {
 } from '@/features/job-apply';
 import { Icon } from '@/shared/ui/icon';
 import { StatusDialog } from '@/shared/ui/status-dialog';
-import { Toast, type ToastTone } from '@/shared/ui/toast';
+import { AppToaster, showToast, type ToastTone } from '@/shared/ui/toast';
 import { SiteHeader } from '@/widgets/site-header';
 
 import {
@@ -39,15 +39,19 @@ const EMPTY_PROFILE: ApplicantProfile = {
 
 type DialogState = 'submitting' | 'submitted' | 'submit-failed' | 'leaving' | null;
 
-interface ToastState {
-  tone: ToastTone;
-  message: string;
-}
-
 const TOAST_MESSAGE: Record<ToastTone, string> = {
   loading: '저장 중입니다...',
   success: '성공적으로 저장되었습니다.',
   error: '저장에 실패했습니다. 다시 시도해 주세요.',
+};
+
+/** 임시저장 토스트는 진행 → 결과로 같은 토스트를 바꿔 쓴다. */
+const DRAFT_TOAST_OPTIONS = { top: 188, id: 'job-apply-draft' } as const;
+
+const DRAFT_VARIANT_TONE: Record<string, ToastTone | undefined> = {
+  'draft-saving': 'loading',
+  'draft-success': 'success',
+  'draft-error': 'error',
 };
 
 export interface JobApplyPageProps {
@@ -100,15 +104,6 @@ export function JobApplyPage({ backHref, variant }: JobApplyPageProps) {
         ? '필수 항목을 모두 입력해 주세요.'
         : null;
 
-  const [toast, setToast] = useState<ToastState | null>(
-    variant === 'draft-saving'
-      ? { tone: 'loading', message: TOAST_MESSAGE.loading }
-      : variant === 'draft-success'
-        ? { tone: 'success', message: TOAST_MESSAGE.success }
-        : variant === 'draft-error'
-          ? { tone: 'error', message: TOAST_MESSAGE.error }
-          : null,
-  );
   const [dialog, setDialog] = useState<DialogState>(
     variant === 'submitting' ||
       variant === 'submitted' ||
@@ -117,6 +112,12 @@ export function JobApplyPage({ backHref, variant }: JobApplyPageProps) {
       ? variant
       : null,
   );
+
+  useEffect(() => {
+    const tone = DRAFT_VARIANT_TONE[variant ?? ''];
+    if (!tone) return;
+    showToast({ tone, message: TOAST_MESSAGE[tone], ...DRAFT_TOAST_OPTIONS });
+  }, [variant]);
 
   function markDirty() {
     if (!isDirty) setIsDirty(true);
@@ -144,9 +145,9 @@ export function JobApplyPage({ backHref, variant }: JobApplyPageProps) {
   }
 
   function handleSaveDraft() {
-    setToast({ tone: 'loading', message: TOAST_MESSAGE.loading });
+    showToast({ tone: 'loading', message: TOAST_MESSAGE.loading, ...DRAFT_TOAST_OPTIONS });
     setTimeout(() => {
-      setToast({ tone: 'success', message: TOAST_MESSAGE.success });
+      showToast({ tone: 'success', message: TOAST_MESSAGE.success, ...DRAFT_TOAST_OPTIONS });
     }, 1000);
   }
 
@@ -239,7 +240,7 @@ export function JobApplyPage({ backHref, variant }: JobApplyPageProps) {
         )}
       </main>
 
-      {toast && <Toast tone={toast.tone} message={toast.message} onClose={() => setToast(null)} />}
+      <AppToaster />
 
       {dialog === 'submitting' && (
         <StatusDialog

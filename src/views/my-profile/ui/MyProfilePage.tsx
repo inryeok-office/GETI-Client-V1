@@ -15,7 +15,7 @@ import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { TextareaField } from '@/shared/ui/textarea-field';
 import { TextField } from '@/shared/ui/text-field';
-import { Toast } from '@/shared/ui/toast';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import {
   MOCK_MY_PROFILE_FORM,
@@ -44,6 +44,16 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
   const [saveStatus, setSaveStatus] = useState<MyProfileSaveStatus>(initialSaveStatus);
   const [skillInput, setSkillInput] = useState('');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (saveStatus === 'idle') return;
+    showToast({
+      tone: saveStatus,
+      message: TOAST_CONTENT[saveStatus],
+      top: 70,
+      id: 'my-profile-save',
+    });
+  }, [saveStatus]);
 
   useEffect(
     () => () => {
@@ -118,14 +128,7 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
 
   return (
     <main className="relative min-h-[calc(100dvh-72px)] bg-[#f7f7f8] px-6 py-10 xl:px-0">
-      {saveStatus !== 'idle' ? (
-        <Toast
-          tone={saveStatus}
-          message={TOAST_CONTENT[saveStatus]}
-          onClose={() => setSaveStatus('idle')}
-          top={70}
-        />
-      ) : null}
+      <AppToaster />
 
       <div className="mx-auto flex max-w-[1280px] flex-col gap-8">
         <header className="flex flex-col gap-1 text-neutral-900">
