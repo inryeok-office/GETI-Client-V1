@@ -5,6 +5,7 @@ export {
   ADMIN_COMPANY_TYPE_LABEL,
   MOU_STATUS_LABEL,
 } from './model/adminLabels';
+export { COMPANY_SIZE_LABEL } from './model/sizeLabel';
 export type {
   AdminCompanyAuditLogEntry,
   AdminCompanyConnectedJob,
@@ -14,6 +15,7 @@ export type {
   AdminCompanyListItem,
   AdminCompanyStats,
   AdminCompanyType,
+  CompanyDetail,
   CompanyInfoSource,
   CompanyListItem,
   CompanySize,

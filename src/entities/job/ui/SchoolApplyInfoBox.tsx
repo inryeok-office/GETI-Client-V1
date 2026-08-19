@@ -68,7 +68,7 @@ export function SchoolApplyInfoBox({ job, applyHref }: SchoolApplyInfoBoxProps) 
           {isAvailable ? (
             <Link
               href={applyHref}
-              className="block w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+              className="block w-full rounded-[8px] bg-[#17627a] py-[12px] text-center text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white hover:bg-[#1d7693]"
             >
               지원서 작성하기
             </Link>

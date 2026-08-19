@@ -26,6 +26,10 @@ describe('SiteHeader', () => {
       'href',
       '/companies',
     );
+    expect(within(navigation).getByRole('link', { name: '취업 프로그램' })).toHaveAttribute(
+      'href',
+      '/programs',
+    );
     expect(screen.getByRole('link', { name: '저장한 공고 보기' })).toHaveAttribute(
       'href',
       '/bookmarks',
@@ -45,10 +49,8 @@ describe('SiteHeader', () => {
 
     const navigation = screen.getByRole('navigation', { name: '주요 메뉴' });
 
-    for (const label of ['AI 추천', '취업 프로그램']) {
-      expect(within(navigation).getByText(label)).toHaveAttribute('aria-disabled', 'true');
-      expect(within(navigation).queryByRole('link', { name: label })).not.toBeInTheDocument();
-    }
+    expect(within(navigation).getByText('AI 추천')).toHaveAttribute('aria-disabled', 'true');
+    expect(within(navigation).queryByRole('link', { name: 'AI 추천' })).not.toBeInTheDocument();
   });
 
   it('알림 버튼을 누르면 팝오버의 확장 상태를 반영한다', () => {
