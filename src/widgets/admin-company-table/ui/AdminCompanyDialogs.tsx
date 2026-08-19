@@ -229,7 +229,7 @@ const DELETE_RESULT_COPY: Record<
   { description: string; icon: 'alertCircleFilled' | 'checkCircleFilled'; title: string }
 > = {
   success: {
-    description: '기업이 목록에서 숨김 처리되었습니다. 연결된 공고와 지원 내역은 유지됩니다.',
+    description: '기업이 목록에서 숨김 처리되었습니다.\n연결된 공고와 지원 내역은 유지됩니다.',
     icon: 'checkCircleFilled',
     title: '기업 삭제가 완료되었습니다.',
   },
