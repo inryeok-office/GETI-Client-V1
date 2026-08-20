@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  JobDetail,
   JobPostingType,
   JobSearchResponse,
   JobSort,
@@ -29,5 +30,14 @@ export async function fetchJobList(params: FetchJobListParams = {}): Promise<Job
   const { data } = await api.get<ApiResponse<JobSearchResponse>>(BASE_PATH, {
     params: { page: 0, size: 20, ...params },
   });
+  return data.data;
+}
+
+/**
+ * `GET /api/v1/jobs/{jobId}`(GETI-Server `JobController`) — 공고 상세 조회.
+ * 조회할 때마다 서버의 viewCount가 올라간다(GETI-Server 쪽 동작, 중복 방문도 그대로 반영됨).
+ */
+export async function fetchJobDetail(jobId: number): Promise<JobDetail> {
+  const { data } = await api.get<ApiResponse<JobDetail>>(`${BASE_PATH}/${jobId}`);
   return data.data;
 }

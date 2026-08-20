@@ -1,12 +1,13 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query';
 
-import { fetchJobList, type FetchJobListParams } from './jobApi';
+import { fetchJobDetail, fetchJobList, type FetchJobListParams } from './jobApi';
 
 export const jobKeys = {
   all: ['jobs'] as const,
   list: (params: FetchJobListParams) => [...jobKeys.all, 'list', params] as const,
+  detail: (jobId: number) => [...jobKeys.all, 'detail', jobId] as const,
 };
 
 /**
@@ -18,5 +19,13 @@ export function useJobListQuery(params: FetchJobListParams = {}) {
     queryKey: jobKeys.list(params),
     queryFn: () => fetchJobList(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** jobId는 호출부에서 `Number.isInteger`로 걸러진 값만 넘긴다(NaN 요청 방지). */
+export function useJobDetailQuery(jobId: number | null) {
+  return useQuery({
+    queryKey: jobKeys.detail(jobId ?? -1),
+    queryFn: jobId === null ? skipToken : () => fetchJobDetail(jobId),
   });
 }
