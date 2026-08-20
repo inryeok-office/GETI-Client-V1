@@ -47,13 +47,13 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
     MATERIAL_OPTIONS.map((material) => material.key),
   );
   const [openField, setOpenField] = useState<DownloadField | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const openDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!openField) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!cardRef.current?.contains(event.target as Node)) setOpenField(null);
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenField(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpenField(null);
@@ -96,10 +96,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
 
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
-      <div
-        ref={cardRef}
-        className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]"
-      >
+      <div className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]">
         <div className="flex flex-col gap-[8px]">
           <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
             지원자 자료 일괄 다운로드
@@ -113,7 +110,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             공고
           </p>
-          <div className="relative">
+          <div ref={openField === 'job' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'job' ? null : 'job'))}
@@ -154,7 +151,10 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             지원자
           </p>
-          <div className="relative">
+          <div
+            ref={openField === 'applicants' ? openDropdownRef : undefined}
+            className="relative"
+          >
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'applicants' ? null : 'applicants'))}
@@ -196,7 +196,10 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             포함 자료
           </p>
-          <div className="relative">
+          <div
+            ref={openField === 'materials' ? openDropdownRef : undefined}
+            className="relative"
+          >
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'materials' ? null : 'materials'))}

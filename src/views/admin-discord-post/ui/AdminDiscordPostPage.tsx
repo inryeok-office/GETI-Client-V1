@@ -85,14 +85,14 @@ export function AdminDiscordPostPage({
 }: AdminDiscordPostPageProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
-  const filterRowRef = useRef<HTMLDivElement>(null);
+  const openDropdownRef = useRef<HTMLDivElement>(null);
   const showError = variant === 'error';
 
   useEffect(() => {
     if (!openFilter) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!filterRowRef.current?.contains(event.target as Node)) setOpenFilter(null);
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenFilter(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpenFilter(null);
@@ -153,12 +153,16 @@ export function AdminDiscordPostPage({
 
           {/* Figma는 한 줄(1620px) 고정 폭이지만, 좁은 화면에서는 필터/버튼이 줄바꿈되게 했다(반응형은 Figma에 없는 부분). */}
           <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
-            <div ref={filterRowRef} className="flex flex-wrap items-center gap-[20px]">
+            <div className="flex flex-wrap items-center gap-[20px]">
               {FILTERS.map((item) => {
                 const selectedOption = selected[item.key];
 
                 return (
-                  <div key={item.key} className="relative h-[56px] w-[272px]">
+                  <div
+                    key={item.key}
+                    ref={item.key === openFilter ? openDropdownRef : undefined}
+                    className="relative h-[56px] w-[272px]"
+                  >
                     <button
                       type="button"
                       onClick={() => setOpenFilter((prev) => (prev === item.key ? null : item.key))}
