@@ -52,3 +52,21 @@ body {
   background: var(--color-neutral-0);
   color: var(--color-neutral-900);
 }
+
+/*
+ * Tailwind v4 Preflight는 <button>에 기본 pointer 커서를 적용하지 않는다.
+ * 컴포넌트마다 cursor-pointer를 개별로 붙이는 대신, 클릭 가능한 네이티브
+ * 인터랙티브 요소 전반에 커서를 공통으로 일치시킨다. disabled 상태는 제외해
+ * 클릭 불가 여부를 계속 구분할 수 있게 한다.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  label:has(input[type='checkbox']:not(:disabled)),
+  label:has(input[type='radio']:not(:disabled)) {
+    cursor: pointer;
+  }
+}
