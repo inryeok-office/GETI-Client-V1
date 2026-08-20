@@ -1,33 +1,59 @@
-import { JobList, MOCK_JOB_LIST_ITEMS, type JobListStatus } from '@/widgets/job-list';
+'use client';
+
+import { useEffect, useState } from 'react';
+
+import { mapJobSummaryToListItem, useJobListQuery } from '@/entities/job';
+import { JobList, type JobListStatus } from '@/widgets/job-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-const VARIANT_TO_STATUS: Record<string, JobListStatus> = {
-  success: 'success',
-  'initial-loading': 'initialLoading',
-  'page-loading': 'pageLoading',
-  error: 'error',
-  empty: 'empty',
-};
-
-const TOTAL_PAGES = 8;
-/** Figma 목업의 "총 24개의 공고" 문구에 맞춘 값. 실제로는 서버가 내려주는 전체 개수로 바뀐다. */
-const MOCK_TOTAL_COUNT = 24;
-
-interface JobListPageProps {
-  searchParams: Promise<{ variant?: string; page?: string }>;
-}
+const PAGE_SIZE = 20;
+/** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). */
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * 채용 공고 목록 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * `variant` 쿼리 파라미터(?variant=initial-loading 등)로 5개 상태를 수동으로 확인할 수 있다(화면에 노출되는 UI는 없음).
- * `page`는 페이지네이션 클릭으로 실제 이동하지만, 목업이 한 페이지 분량뿐이라 카드 내용은 바뀌지 않는다.
- * API 연동 이슈(A)에서 이 자리를 `useQuery` 결과로 교체한다.
+ * 채용 공고 목록 화면. `GET /api/v1/jobs`(entities/job의 `useJobListQuery`)로 실제 데이터를
+ * 불러온다(Issue #122). 인증이 필요한 API라 다른 어드민 화면과 동일하게 클라이언트에서 조회한다.
+ * 검색어 · "마감 공고 포함" 토글만 실제 조회에 연결돼 있다 — 나머지 5개 드롭다운 필터는
+ * 대응하는 API 파라미터가 없거나(직무) 실제 값을 확인하지 못해(기업 유형 · 출처 · 모집 상태)
+ * 선택 UI만 동작하는 로컬 상태로 남아 있다(`JobFilterSection` 참고).
  */
-export async function JobListPage({ searchParams }: JobListPageProps) {
-  const { variant, page } = await searchParams;
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
-  const jobs = status === 'empty' || status === 'error' ? [] : MOCK_JOB_LIST_ITEMS;
-  const currentPage = clampPage(Number(page ?? '1'));
+export function JobListPage() {
+  const [page, setPage] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [includeClosed, setIncludeClosed] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPage(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleIncludeClosedChange = (next: boolean) => {
+    setIncludeClosed(next);
+    setPage(0);
+  };
+
+  const listQuery = useJobListQuery({
+    page,
+    size: PAGE_SIZE,
+    query: searchQuery.trim() || undefined,
+    openOnly: !includeClosed,
+  });
+
+  const status: JobListStatus = listQuery.isLoading
+    ? 'initialLoading'
+    : listQuery.isFetching
+      ? 'pageLoading'
+      : listQuery.isError
+        ? 'error'
+        : (listQuery.data?.content.length ?? 0) === 0
+          ? 'empty'
+          : 'success';
+
+  const jobs = (listQuery.data?.content ?? []).map(mapJobSummaryToListItem);
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -45,19 +71,18 @@ export async function JobListPage({ searchParams }: JobListPageProps) {
           <JobList
             status={status}
             jobs={jobs}
-            totalCount={MOCK_TOTAL_COUNT}
-            currentPage={currentPage}
-            totalPages={TOTAL_PAGES}
-            basePath="/jobs"
+            totalCount={listQuery.data?.totalElements ?? 0}
+            currentPage={page + 1}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            searchQuery={searchInput}
+            onSearchQueryChange={setSearchInput}
+            includeClosed={includeClosed}
+            onIncludeClosedChange={handleIncludeClosedChange}
+            onRetry={() => listQuery.refetch()}
           />
         </div>
       </main>
     </div>
   );
-}
-
-function clampPage(page: number): number {
-  if (!Number.isFinite(page) || page < 1) return 1;
-  if (page > TOTAL_PAGES) return TOTAL_PAGES;
-  return Math.trunc(page);
 }
