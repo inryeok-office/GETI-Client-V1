@@ -341,7 +341,7 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
         <div
           role="listbox"
           aria-label="전공 목록"
-          className="absolute top-[66px] left-0 z-20 flex w-full flex-col rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
+          className="absolute top-[66px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {MY_PROFILE_MAJORS.map((major) => {
             const isSelected = value === major;

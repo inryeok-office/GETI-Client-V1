@@ -228,7 +228,7 @@ export function PortfolioRequestFormPanel({
                   <ul
                     role="listbox"
                     aria-label="개별 학생 선택"
-                    className="absolute top-16 z-20 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                    className="absolute top-16 z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
                   >
                     <li className="bg-primary-50 border-b border-neutral-100">
                       <button

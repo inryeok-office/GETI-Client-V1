@@ -90,7 +90,7 @@ export function AdminDiscordPostPage({
   const selectOption = (key: FilterKey, option: string) => {
     setSelected((prev) => {
       const next = { ...prev };
-      if (option === CLEAR_VALUE[key]) {
+      if (option === CLEAR_VALUE[key] || prev[key] === option) {
         delete next[key];
       } else {
         next[key] = option;

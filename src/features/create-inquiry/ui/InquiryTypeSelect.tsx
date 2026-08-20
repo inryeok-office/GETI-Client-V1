@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { Icon } from '@/shared/ui/icon';
+
 interface InquiryTypeSelectProps {
   disabled?: boolean;
   errorMessage?: string;
@@ -81,26 +83,31 @@ export function InquiryTypeSelect({
           id={listboxId}
           role="listbox"
           aria-labelledby={selectId}
-          className="absolute top-[64px] z-10 w-full overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+          className="absolute top-[64px] z-10 flex w-full flex-col gap-[2px] overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
-          {options.map((option) => (
-            <li key={option} role="none">
-              <button
-                role="option"
-                aria-selected={value === option}
-                type="button"
-                onClick={() => {
-                  onChange(option);
-                  setIsOpen(false);
-                }}
-                className={`flex h-[44px] w-full items-center rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] transition-colors hover:bg-[#f6fbfc] focus:bg-[#f6fbfc] focus:outline-none ${
-                  value === option ? 'bg-[#f6fbfc] text-[#17627a]' : 'bg-white text-[#111]'
-                }`}
-              >
-                {option}
-              </button>
-            </li>
-          ))}
+          {options.map((option) => {
+            const isSelected = value === option;
+
+            return (
+              <li key={option} role="none">
+                <button
+                  role="option"
+                  aria-selected={isSelected}
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setIsOpen(false);
+                  }}
+                  className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] transition-colors hover:bg-[#f6fbfc] focus:bg-[#f6fbfc] focus:outline-none ${
+                    isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'bg-white text-[#111]'
+                  }`}
+                >
+                  {option}
+                  {isSelected && <Icon name="check" className="size-5 shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 

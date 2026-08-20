@@ -148,7 +148,7 @@ function InquiryFilterSelect<T extends string>({
           id={listboxId}
           role="listbox"
           aria-label={ariaLabel}
-          className="absolute top-16 z-30 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+          className="absolute top-16 z-30 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {options.map((option) => {
             const isSelected = option.value === value;
@@ -168,14 +168,7 @@ function InquiryFilterSelect<T extends string>({
                   }`}
                 >
                   <span>{option.label}</span>
-                  {isSelected ? (
-                    <Image
-                      src="/icons/admin-inquiry-filter-check.svg"
-                      alt=""
-                      width={20}
-                      height={20}
-                    />
-                  ) : null}
+                  {isSelected ? <Icon name="check" className="size-5 shrink-0" /> : null}
                 </button>
               </li>
             );
@@ -236,7 +229,7 @@ function InquiryStatusSelect({ onChange, value }: InquiryStatusSelectProps) {
           id="admin-inquiry-status-listbox"
           role="listbox"
           aria-label="문의 상태"
-          className="absolute top-16 z-20 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+          className="absolute top-16 z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {EDITABLE_INQUIRY_STATUSES.map((status) => {
             const isSelected = status === value;
@@ -251,11 +244,12 @@ function InquiryStatusSelect({ onChange, value }: InquiryStatusSelectProps) {
                     onChange(status);
                     setIsOpen(false);
                   }}
-                  className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center rounded-lg px-4 text-left text-sm leading-[21px] tracking-[-0.14px] outline-none ${
+                  className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center justify-between rounded-lg px-4 text-left text-sm leading-[21px] tracking-[-0.14px] outline-none ${
                     isSelected ? 'bg-primary-50 text-primary-700' : 'bg-white text-neutral-900'
                   }`}
                 >
                   {INQUIRY_STATUS_LABELS[status]}
+                  {isSelected && <Icon name="check" className="size-5 shrink-0" />}
                 </button>
               </li>
             );
