@@ -1,8 +1,13 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { type ApplicantListItem } from '@/entities/applicant';
+import {
+  useExportJobApplicationsMutation,
+  type ApplicantListItem,
+  type ExportedFile,
+} from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
 
 /** 자료 일괄 다운로드 모달의 "포함 자료" 선택지. Figma 예시(인적사항 · 답변 · 첨부파일)를 그대로 옮겼다. */
@@ -18,15 +23,29 @@ interface DownloadModalProps {
   applicants: ApplicantListItem[];
 }
 
+/** Blob 응답을 브라우저가 파일로 내려받도록 임시 링크를 만들어 클릭한다. */
+function saveExportedFile({ blob, filename }: ExportedFile) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
 /**
  * 자료 일괄 다운로드 모달. 목록의 "자료 일괄 다운로드" 버튼을 눌러서 여는 게 아니라
- * ?variant=download URL로만 보인다 — 그래서 "취소" · "다운로드" 버튼도 클릭 동작이 없다.
- * 공고 · 지원자 · 포함 자료 3개 필드는 실제로 동작한다(사용자 요청) — 공고를 선택하면
- * 그 공고에 지원한 지원자만 지원자 드롭다운에 나오고, 지원자 · 포함 자료는 복수 선택이다.
- * "다운로드" 버튼 자체(실제 파일 생성, `GET /admin/jobs/{jobId}/applications/export`)는 별도 이슈에서 진행한다.
+ * ?variant=download URL로만 보인다(그대로 둠).
+ * "공고" 드롭다운만 실제 다운로드 API(`GET /admin/jobs/{jobId}/applications/export`,
+ * jobId 단위로 그 공고 지원자 전원의 첨부파일을 ZIP 하나로 묶어줌)에 연결돼 있다.
+ * "지원자"(개별 선택) · "포함 자료"(자료 종류 선택)는 대응하는 API 파라미터가 없어서
+ * — API가 공고당 지원자 전원 · 첨부파일만 묶어줄 뿐 골라 받는 기능 자체가 없다 — 선택
+ * UI만 동작하고 다운로드 결과에는 반영되지 않는다(Issue #120 DECISION_REQUIRED, 후속 정리 대상).
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
 export function DownloadModal({ applicants }: DownloadModalProps) {
+  const router = useRouter();
+  const exportMutation = useExportJobApplicationsMutation();
   /** 등록된 공고 목록. 지원자 데이터에서 jobId가 겹치지 않는 조합만 추린다. */
   const jobPostings = Array.from(
     new Map(
@@ -73,6 +92,19 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
     setSelectedMaterialKeys((prev) =>
       prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
     );
+  };
+
+  const closeModal = () => router.push('/admin/applicants');
+
+  const handleDownload = () => {
+    if (selectedJobId === undefined) return;
+
+    exportMutation.mutate(selectedJobId, {
+      onSuccess: (file) => {
+        saveExportedFile(file);
+        closeModal();
+      },
+    });
   };
 
   return (
@@ -218,18 +250,27 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           </div>
         </div>
 
+        {exportMutation.isError && (
+          <p className="text-status-error text-[14px] leading-[1.5] tracking-[-0.14px]">
+            다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
+
         <div className="flex justify-end gap-[16px]">
           <button
             type="button"
+            onClick={closeModal}
             className="flex items-center justify-center rounded-[8px] border border-neutral-200 bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
           >
             취소
           </button>
           <button
             type="button"
-            className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
+            onClick={handleDownload}
+            disabled={selectedJobId === undefined || exportMutation.isPending}
+            className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
           >
-            다운로드
+            {exportMutation.isPending ? '다운로드 중...' : '다운로드'}
           </button>
         </div>
       </div>

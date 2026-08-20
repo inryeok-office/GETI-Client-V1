@@ -4,8 +4,13 @@ export {
   useApplicantDetailQuery,
   useApplicantHistoryQuery,
   useApplicantListQuery,
+  useExportJobApplicationsMutation,
 } from './api/useApplicantQueries';
-export type { ExecuteApplicantActionParams, FetchApplicantListParams } from './api/applicantApi';
+export type {
+  ExecuteApplicantActionParams,
+  ExportedFile,
+  FetchApplicantListParams,
+} from './api/applicantApi';
 
 export { APPLICANT_STATUS_LABEL, formatApplicantDepartment } from './model/statusLabel';
 export type {

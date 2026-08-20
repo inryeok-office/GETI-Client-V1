@@ -4,6 +4,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 
 import {
   executeApplicantAction,
+  exportJobApplications,
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
@@ -52,5 +53,12 @@ export function useApplicantActionMutation() {
       queryClient.invalidateQueries({ queryKey: applicantKeys.detail(variables.applicationId) });
       queryClient.invalidateQueries({ queryKey: applicantKeys.history(variables.applicationId) });
     },
+  });
+}
+
+/** 공고별 지원자 자료 일괄 다운로드(ZIP). 서버 상태를 바꾸지 않으니 쿼리 무효화는 하지 않는다. */
+export function useExportJobApplicationsMutation() {
+  return useMutation({
+    mutationFn: (jobId: number) => exportJobApplications(jobId),
   });
 }
