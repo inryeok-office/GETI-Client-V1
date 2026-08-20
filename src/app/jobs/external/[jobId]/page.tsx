@@ -1,9 +1,10 @@
 import { ExternalJobDetailPage } from '@/views/job-detail-external';
 
 interface PageProps {
-  searchParams: Promise<{ variant?: string }>;
+  params: Promise<{ jobId: string }>;
 }
 
-export default function Page({ searchParams }: PageProps) {
-  return <ExternalJobDetailPage searchParams={searchParams} />;
+export default async function Page({ params }: PageProps) {
+  const { jobId } = await params;
+  return <ExternalJobDetailPage jobId={jobId} />;
 }
