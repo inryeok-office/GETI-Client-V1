@@ -9,6 +9,11 @@ export { OrganizationInfoBox } from './ui/OrganizationInfoBox';
 export { JobDetailHeader } from './ui/JobDetailHeader';
 export { JobDetailContent } from './ui/JobDetailContent';
 
+export { jobKeys, useJobListQuery } from './api/useJobQueries';
+export type { FetchJobListParams } from './api/jobApi';
+
+export { mapJobSummaryToListItem } from './model/mapJobListItem';
+
 export type {
   JobSource,
   JobListItem,
@@ -19,4 +24,13 @@ export type {
   ApplyEligibility,
   SchoolJobDetail,
   ExternalJobDetail,
+  JobPostingType,
+  JobApplicationMethod,
+  PublicJobStatus,
+  JobSort,
+  JobSortDirection,
+  JobCompanySummary,
+  JobApplicationEligibility,
+  JobSummary,
+  JobSearchResponse,
 } from './model/types';

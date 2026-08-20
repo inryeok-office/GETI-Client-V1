@@ -23,6 +23,68 @@ export interface JobListItem {
   detailHref: string;
 }
 
+/** `GET /api/v1/jobs`(GETI-Server `JobSearchController`)의 공고 유형. */
+export type JobPostingType = 'GENERAL' | 'MOU' | 'SCHOOL';
+
+/** 지원 방식. 학교 내부 지원서(INTERNAL)인지 외부 채용 페이지(EXTERNAL)인지 — 목록 카드의 "학교"/"외부" 배지를 여기서 결정한다. */
+export type JobApplicationMethod = 'INTERNAL' | 'EXTERNAL';
+
+/** 공개 목록 조회에서 필터로 받는 상태. 관리자 전용(DRAFT/DELETED)은 여기 없다. */
+export type PublicJobStatus = 'PUBLISHED' | 'CLOSED';
+
+export type JobSort = 'LATEST' | 'DEADLINE' | 'VIEWS';
+export type JobSortDirection = 'ASC' | 'DESC';
+
+export interface JobCompanySummary {
+  companyId: number;
+  name: string;
+  /** presigned URL. 만료될 수 있다. */
+  logoUrl: string | null;
+}
+
+/** 지원 가능 여부 스냅샷. 목록·상세 응답에 공통으로 포함된다. */
+export interface JobApplicationEligibility {
+  canApply: boolean;
+  eligibilityReason: string;
+  eligibilityMessage: string;
+  applicationId: number | null;
+  applicationStatus: string | null;
+  availableActions: string[];
+}
+
+/** `GET /api/v1/jobs` 목록 항목(`JobSummaryResponse`). */
+export interface JobSummary {
+  jobId: number;
+  title: string;
+  postingType: JobPostingType;
+  applicationMethod: JobApplicationMethod;
+  status: PublicJobStatus;
+  /** 공고 등록 후 기업이 삭제되면 null. */
+  company: JobCompanySummary | null;
+  startDate: string | null;
+  /** 마감일. null이면 상시 채용(마감 없음). */
+  endDate: string | null;
+  targetGrade: number | null;
+  capacity: number | null;
+  location: string | null;
+  employmentType: string | null;
+  firstComeServed: boolean;
+  viewCount: number;
+  publishedAt: string | null;
+  application: JobApplicationEligibility;
+  bookmarked: boolean;
+}
+
+export interface JobSearchResponse {
+  content: JobSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
 /** 공고 상세에 첨부된 파일. */
 export interface JobAttachment {
   id: string;
