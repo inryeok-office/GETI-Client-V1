@@ -2,7 +2,8 @@ import { Icon } from '@/shared/ui/icon';
 
 interface OrganizationInfoBoxProps {
   name: string;
-  description: string;
+  /** `JobCompanySummary`엔 소개 문구 필드가 없어 없을 수 있다(Issue #122). */
+  description?: string | null;
   homepageLabel: string;
 }
 
@@ -29,7 +30,9 @@ export function OrganizationInfoBox({
           <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-[#111]">
             {name}
           </p>
-          <p className="text-[14px] leading-[1.4] font-medium text-[#525252]">{description}</p>
+          {description && (
+            <p className="text-[14px] leading-[1.4] font-medium text-[#525252]">{description}</p>
+          )}
         </div>
       </div>
       <button
