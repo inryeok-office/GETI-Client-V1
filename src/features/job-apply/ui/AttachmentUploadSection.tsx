@@ -5,6 +5,7 @@ const UPLOAD_ERROR_LABEL: Record<NonNullable<ApplicationAttachment['uploadError'
   sizeExceeded: '용량 초과',
   invalidFormat: '파일 형식 오류',
   countExceeded: '개수 초과',
+  uploadFailed: '업로드 실패',
 };
 
 interface AttachmentUploadSectionProps {
@@ -16,8 +17,9 @@ interface AttachmentUploadSectionProps {
 /**
  * 지원서 작성의 첨부파일 카드. 파일 선택 영역을 클릭하거나 끌어다 놓으면 실제로 파일을 추가할 수 있고,
  * 목록의 삭제 버튼으로 뺄 수 있다.
- * `uploadError`가 있는 항목은 오류 사유 라벨을 삭제 버튼 옆에 함께 보여준다(용량 초과 · 파일 형식 오류 · 개수 초과).
- * 실제 서버 업로드 연동은 이번 범위가 아니라 선택한 파일을 화면에 목록으로만 보여준다.
+ * `uploadError`가 있는 항목은 오류 사유 라벨을 삭제 버튼 옆에 함께 보여준다(용량 초과 · 파일 형식 오류 ·
+ * 개수 초과 · 업로드 실패). 파일 선택·검증·업로드 자체는 호출부(`JobApplyPage`)가 실제 `POST /files`로
+ * 처리하고, 이 컴포넌트는 그 결과 목록을 보여주기만 한다(Issue #123).
  * 간격 · 색상은 Figma(node 500:2568 · "지원서 작성 - 오류")의 첨부파일 카드 값을 그대로 옮겼다.
  */
 export function AttachmentUploadSection({
