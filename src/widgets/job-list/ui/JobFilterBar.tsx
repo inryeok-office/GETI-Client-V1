@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/shared/ui/icon';
 
@@ -57,8 +57,27 @@ export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
   const [includeClosed, setIncludeClosed] = useState(DEFAULT_INCLUDE_CLOSED);
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
+  const filterRowRef = useRef<HTMLDivElement>(null);
 
   const activeFilterCount = Object.keys(selected).length;
+
+  useEffect(() => {
+    if (!openFilter) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!filterRowRef.current?.contains(event.target as Node)) setOpenFilter(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenFilter(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openFilter]);
 
   const selectOption = (key: FilterKey, option: string) => {
     setSelected((prev) => {
@@ -90,7 +109,7 @@ export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
         />
       </label>
 
-      <div className="mt-[20px] flex flex-wrap items-center gap-[8px]">
+      <div ref={filterRowRef} className="mt-[20px] flex flex-wrap items-center gap-[8px]">
         {FILTERS.map((filter) => {
           const selectedOption = selected[filter.key];
 

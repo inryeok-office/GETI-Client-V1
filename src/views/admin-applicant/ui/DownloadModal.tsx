@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { type ApplicantListItem } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
@@ -47,6 +47,25 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
     MATERIAL_OPTIONS.map((material) => material.key),
   );
   const [openField, setOpenField] = useState<DownloadField | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openField) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!cardRef.current?.contains(event.target as Node)) setOpenField(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenField(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openField]);
 
   const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
   const applicantsForSelectedJob = applicants.filter(
@@ -77,7 +96,10 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
 
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
-      <div className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]">
+      <div
+        ref={cardRef}
+        className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]"
+      >
         <div className="flex flex-col gap-[8px]">
           <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
             지원자 자료 일괄 다운로드

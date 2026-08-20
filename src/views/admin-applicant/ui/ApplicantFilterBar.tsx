@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { APPLICANT_STATUS_LABEL, type ApplicantStatus } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
@@ -60,6 +60,25 @@ export function ApplicantFilterBar({
 }: ApplicantFilterBarProps) {
   const [openFilter, setOpenFilter] = useState<LocalFilterKey | 'job' | 'status' | null>(null);
   const [selected, setSelected] = useState<Partial<Record<LocalFilterKey, string>>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openFilter) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpenFilter(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenFilter(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openFilter]);
 
   const selectLocalOption = (key: LocalFilterKey, option: string) => {
     setSelected((prev) => {
@@ -79,7 +98,7 @@ export function ApplicantFilterBar({
     selectedStatus === null ? undefined : APPLICANT_STATUS_LABEL[selectedStatus];
 
   return (
-    <div className="flex h-[56px] w-full gap-[16px]">
+    <div ref={containerRef} className="flex h-[56px] w-full gap-[16px]">
       <div className="flex h-full w-[296px] shrink-0 items-center gap-[16px] rounded-[8px] border border-neutral-200 bg-white py-[8px] pr-[8px] pl-[16px]">
         <Icon name="search" className="size-[20px] text-neutral-500" />
         <input
