@@ -39,22 +39,31 @@ const DROPDOWN_OPTIONS: Record<FilterKey, string[]> = {
   status: ['전체', '모집 중', '마감 임박', '마감'],
 };
 
-/** "마감 공고 포함" 토글의 기본값. Figma 목업이 켜진 상태였다. */
-const DEFAULT_INCLUDE_CLOSED = true;
-
 interface JobFilterSectionProps {
   /** 필터 적용 배지 + 초기화 버튼은 정상 목록(success) 상태일 때만 보여준다. */
   showActiveFilters: boolean;
+  /** 검색어. `GET /api/v1/jobs`의 `query` 파라미터에 실제로 연결된다. */
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  /** "마감 공고 포함" 토글. `openOnly` 파라미터에 실제로 연결된다(켜짐 = openOnly false). */
+  includeClosed: boolean;
+  onIncludeClosedChange: (includeClosed: boolean) => void;
 }
 
 /**
  * 채용 공고 목록 필터 바 + 필터 적용 배지.
- * 드롭다운에서 옵션을 고르면 실제로 선택되어 버튼 라벨이 바뀌고, "전체"를 고르면 그 필터가 해제된다.
- * 필터를 하나라도 선택했을 때만 "필터 N개 적용중" 배지와 "필터 초기화" 버튼이 나타난다.
- * 검색 · 필터 API 연동 이슈에서 실제 검색·목록 상태를 붙인다.
+ * 검색창과 "마감 공고 포함" 토글은 실제 목록 조회(`query`·`openOnly`)에 연결돼 있다(Issue #122).
+ * 5개 드롭다운(지원 유형 · 직무 · 기업 유형 · 출처 · 모집 상태)은 대응하는 API 파라미터가
+ * 없거나(직무) 실제 값을 확인하지 못해(기업 유형 · 출처 · 모집 상태 세부 구분) 선택 UI만
+ * 동작하고 목록 조회에는 반영되지 않는 로컬 상태로 남겨뒀다.
  */
-export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
-  const [includeClosed, setIncludeClosed] = useState(DEFAULT_INCLUDE_CLOSED);
+export function JobFilterSection({
+  showActiveFilters,
+  searchQuery,
+  onSearchQueryChange,
+  includeClosed,
+  onIncludeClosedChange,
+}: JobFilterSectionProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
   const openDropdownRef = useRef<HTMLDivElement>(null);
@@ -94,7 +103,6 @@ export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
 
   const resetFilters = () => {
     setSelected({});
-    setIncludeClosed(DEFAULT_INCLUDE_CLOSED);
   };
 
   return (
@@ -104,6 +112,8 @@ export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
         <Icon name="search" className="size-[20px] shrink-0 text-[#525252]" />
         <input
           type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
           placeholder="기업명 또는 공고 제목을 검색해보세요"
           className="w-full text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] placeholder:text-[#525252] focus:outline-none"
         />
@@ -166,7 +176,7 @@ export function JobFilterSection({ showActiveFilters }: JobFilterSectionProps) {
             <input
               type="checkbox"
               checked={includeClosed}
-              onChange={() => setIncludeClosed((prev) => !prev)}
+              onChange={() => onIncludeClosedChange(!includeClosed)}
               className="peer sr-only"
             />
             <span className="size-[20px] translate-x-0 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[20px]" />
