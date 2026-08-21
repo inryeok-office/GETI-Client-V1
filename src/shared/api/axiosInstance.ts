@@ -99,9 +99,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * `responseType: 'blob'`로 요청한 API(예: ZIP 다운로드)가 오류를 반환하면, axios는 JSON 오류
+ * Body도 요청에 지정된 responseType 그대로 Blob에 담아 돌려준다 — `error.response.data`가
+ * `{ error: {...} }` 객체가 아니라 Blob이라 `toApiError`가 code/message를 꺼내지 못한다.
+ * Blob이면 JSON으로 다시 파싱해 자리를 바꿔치기한 뒤 `toApiError`에 넘긴다.
+ */
+async function resolveBlobErrorData(error: AxiosError): Promise<void> {
+  const response = error.response;
+  if (!response || !(response.data instanceof Blob)) return;
+
+  try {
+    response.data = JSON.parse(await response.data.text());
+  } catch {
+    // 실제 Binary 오류 응답이면 파싱이 실패한다 — Blob 그대로 두면 toApiError가 기본 메시지로 처리한다.
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      await resolveBlobErrorData(error);
+    }
+
     const config: RetriableConfig | undefined = axios.isAxiosError(error)
       ? error.config
       : undefined;

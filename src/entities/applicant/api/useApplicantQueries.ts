@@ -4,6 +4,8 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 
 import {
   executeApplicantAction,
+  exportJobApplications,
+  fetchAllJobPostings,
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
@@ -14,14 +16,28 @@ import {
 export const applicantKeys = {
   all: ['applicants'] as const,
   list: (params: FetchApplicantListParams) => [...applicantKeys.all, 'list', params] as const,
+  jobPostingOptions: () => [...applicantKeys.all, 'job-posting-options'] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
 
-export function useApplicantListQuery(params: FetchApplicantListParams = {}) {
+/** `options.enabled`이 false면 아직 값을 정하지 못한 파라미터(예: 아직 안 고른 jobId)로 요청을 보내지 않는다. */
+export function useApplicantListQuery(
+  params: FetchApplicantListParams = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: applicantKeys.list(params),
     queryFn: () => fetchApplicantList(params),
+    enabled: options.enabled,
+  });
+}
+
+/** 다운로드 모달의 "공고" 드롭다운. 상한 없이 전체 공고를 모은다(PR #134 코드리뷰 반영). */
+export function useJobPostingOptionsQuery() {
+  return useQuery({
+    queryKey: applicantKeys.jobPostingOptions(),
+    queryFn: fetchAllJobPostings,
   });
 }
 
@@ -52,5 +68,12 @@ export function useApplicantActionMutation() {
       queryClient.invalidateQueries({ queryKey: applicantKeys.detail(variables.applicationId) });
       queryClient.invalidateQueries({ queryKey: applicantKeys.history(variables.applicationId) });
     },
+  });
+}
+
+/** 공고별 지원자 자료 일괄 다운로드(ZIP). 서버 상태를 바꾸지 않으니 쿼리 무효화는 하지 않는다. */
+export function useExportJobApplicationsMutation() {
+  return useMutation({
+    mutationFn: (jobId: number) => exportJobApplications(jobId),
   });
 }

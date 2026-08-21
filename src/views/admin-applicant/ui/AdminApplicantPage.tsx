@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import {
@@ -53,6 +54,7 @@ const MINE_SCOPE_SIZE = 100;
  * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
 export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageProps) {
+  const router = useRouter();
   const [scope, setScope] = useState<ApplicantScope>('mine');
   const [page, setPage] = useState(0);
   const [jobIdFilter, setJobIdFilter] = useState<number | null>(null);
@@ -131,6 +133,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
             </div>
             <button
               type="button"
+              onClick={() => router.push('/admin/applicants?variant=download')}
               className="bg-primary-700 flex h-[56px] items-center justify-center rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
             >
               자료 일괄 다운로드
@@ -257,7 +260,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
         </div>
       )}
 
-      {isDownloadModalOpen && <DownloadModal applicants={applicants} />}
+      {isDownloadModalOpen && <DownloadModal />}
     </div>
   );
 }
