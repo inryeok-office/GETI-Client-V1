@@ -39,13 +39,37 @@ export interface JobCompanySummary {
   logoUrl: string | null;
 }
 
+/**
+ * 지원 불가 사유(`JobApplicationEligibilityReason`, GETI-Server-V1
+ * `domain.application.entity.type.JobApplicationEligibilityReason`). 값 8개는 백엔드 소스로 확인했다.
+ */
+export type JobApplicationEligibilityReason =
+  | 'AVAILABLE'
+  | 'NOT_INTERNAL'
+  | 'NOT_ENROLLED'
+  | 'NOT_TARGET_GRADE'
+  | 'BEFORE_START'
+  | 'AFTER_END'
+  | 'ALREADY_APPLIED'
+  | 'JOB_NOT_PUBLISHED';
+
+/**
+ * `applicationStatus`에 실제로 나타나는 지원서 상태(`JobApplicationStatus`, GETI-Server-V1
+ * `domain.application.entity.type.JobApplicationStatus`). 전체 Enum은 이 6개 외에 REJECTED ·
+ * FORWARDED · WITHDRAWN도 있지만, 이 필드는 "활성" 지원서(`ACTIVE_JOB_APPLICATION_STATUSES`,
+ * `JobApplicationEligibility.kt`)가 있을 때만 채워져 그 셋은 여기 나타나지 않는다
+ * (취소·반려 후에는 활성 지원서가 없어 재지원할 수 있고, 그때 이 필드는 null이다).
+ */
+export type ActiveJobApplicationStatus =
+  'DRAFT' | 'SUBMITTED' | 'EDIT_REQUESTED' | 'EDIT_ALLOWED' | 'REVISION_REQUESTED' | 'APPROVED';
+
 /** 지원 가능 여부 스냅샷. 목록·상세 응답에 공통으로 포함된다. */
 export interface JobApplicationEligibility {
   canApply: boolean;
-  eligibilityReason: string;
+  eligibilityReason: JobApplicationEligibilityReason;
   eligibilityMessage: string;
   applicationId: number | null;
-  applicationStatus: string | null;
+  applicationStatus: ActiveJobApplicationStatus | null;
   availableActions: string[];
 }
 
