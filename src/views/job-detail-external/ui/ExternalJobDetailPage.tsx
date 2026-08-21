@@ -169,7 +169,10 @@ export function ExternalJobDetailPage({ jobId }: ExternalJobDetailPageProps) {
             />
 
             <AiAnalysisBox analysis={job.aiAnalysis} />
-            <OrganizationInfoBox name={job.company?.name ?? '기업 정보 없음'} homepageLabel="기업 홈페이지" />
+            <OrganizationInfoBox
+              name={job.company?.name ?? '기업 정보 없음'}
+              homepageLabel="기업 홈페이지"
+            />
             <AttachmentList attachments={[]} />
           </div>
         </div>

@@ -117,7 +117,11 @@ export function AiAnalysisBox({ analysis }: AiAnalysisBoxProps) {
             />
           )}
           {analysis.difficulty && (
-            <TagSection title="난이도" items={[DIFFICULTY_LABEL[analysis.difficulty]]} tone="neutral" />
+            <TagSection
+              title="난이도"
+              items={[DIFFICULTY_LABEL[analysis.difficulty]]}
+              tone="neutral"
+            />
           )}
         </>
       )}

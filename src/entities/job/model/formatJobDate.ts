@@ -1,5 +1,8 @@
 /** `endDate`에서 D-day 숫자와 "MM.DD 마감" 라벨을 계산한다(목록 카드용). 마감일이 없으면(상시 채용) 둘 다 없다. */
-export function formatDeadline(endDate: string | null): { dDay: number | null; deadlineLabel: string } {
+export function formatDeadline(endDate: string | null): {
+  dDay: number | null;
+  deadlineLabel: string;
+} {
   if (!endDate) return { dDay: null, deadlineLabel: '상시 채용' };
 
   const end = new Date(endDate);

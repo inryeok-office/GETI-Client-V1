@@ -76,7 +76,11 @@ export function JobList({
 
       {showPagination && totalPages > 1 && (
         <div className="mt-[32px]">
-          <JobPagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
+          <JobPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
     </div>
