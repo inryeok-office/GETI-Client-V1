@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { APPLICANT_STATUS_LABEL, type ApplicantStatus } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
@@ -60,6 +60,25 @@ export function ApplicantFilterBar({
 }: ApplicantFilterBarProps) {
   const [openFilter, setOpenFilter] = useState<LocalFilterKey | 'job' | 'status' | null>(null);
   const [selected, setSelected] = useState<Partial<Record<LocalFilterKey, string>>>({});
+  const openDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openFilter) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenFilter(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenFilter(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openFilter]);
 
   const selectLocalOption = (key: LocalFilterKey, option: string) => {
     setSelected((prev) => {
@@ -93,7 +112,11 @@ export function ApplicantFilterBar({
         const selectedOption = selected[filter.key];
 
         return (
-          <div key={filter.key} className="relative h-full flex-1">
+          <div
+            key={filter.key}
+            ref={filter.key === openFilter ? openDropdownRef : undefined}
+            className="relative h-full flex-1"
+          >
             <button
               type="button"
               onClick={() => setOpenFilter((prev) => (prev === filter.key ? null : filter.key))}
@@ -133,7 +156,10 @@ export function ApplicantFilterBar({
         );
       })}
 
-      <div className="relative h-full flex-1">
+      <div
+        ref={openFilter === 'job' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
         <button
           type="button"
           onClick={() => setOpenFilter((prev) => (prev === 'job' ? null : 'job'))}
@@ -184,7 +210,10 @@ export function ApplicantFilterBar({
         )}
       </div>
 
-      <div className="relative h-full flex-1">
+      <div
+        ref={openFilter === 'status' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
         <button
           type="button"
           onClick={() => setOpenFilter((prev) => (prev === 'status' ? null : 'status'))}

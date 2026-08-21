@@ -316,9 +316,28 @@ function ProfileImageField() {
 
 function MajorSelect({ value, onChange }: { value: string; onChange: (major: string) => void }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsMenuOpen(false);
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         aria-label="전공"
@@ -326,11 +345,6 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
         aria-expanded={isMenuOpen}
         className="flex h-[58px] w-full items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
         onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            setIsMenuOpen(false);
-          }
-        }}
       >
         <span>{value}</span>
         <Icon name="chevronDown" className="h-3 w-6 text-neutral-600" />
@@ -341,7 +355,7 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
         <div
           role="listbox"
           aria-label="전공 목록"
-          className="absolute top-[66px] left-0 z-20 flex w-full flex-col rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
+          className="absolute top-[66px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {MY_PROFILE_MAJORS.map((major) => {
             const isSelected = value === major;

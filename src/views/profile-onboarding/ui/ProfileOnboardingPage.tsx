@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
@@ -65,6 +65,25 @@ export function ProfileOnboardingPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
   const [isMajorMenuOpen, setIsMajorMenuOpen] = useState(true);
+  const majorFieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMajorMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!majorFieldRef.current?.contains(event.target as Node)) setIsMajorMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMajorMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMajorMenuOpen]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -145,7 +164,7 @@ export function ProfileOnboardingPage() {
               </div>
 
               <div className="flex items-start gap-2">
-                <div className="relative flex w-[384px] flex-col">
+                <div ref={majorFieldRef} className="relative flex w-[384px] flex-col">
                   <FieldLabel isRequired>전공</FieldLabel>
                   <button
                     type="button"
@@ -163,7 +182,7 @@ export function ProfileOnboardingPage() {
                     <div
                       role="listbox"
                       aria-label="전공"
-                      className="absolute top-[100px] left-0 z-20 flex w-full flex-col rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                      className="absolute top-[100px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
                     >
                       {MAJORS.map((major, index) => {
                         const isHighlighted =

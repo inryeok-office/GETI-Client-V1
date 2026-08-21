@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { Icon } from '@/shared/ui/icon';
+
 export interface DropdownOption {
   label: string;
   value: string;
@@ -108,28 +110,31 @@ export function DropdownField({
           id={listboxId}
           role="listbox"
           aria-labelledby={generatedId}
-          className={`absolute z-20 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)] ${label ? 'top-[90px]' : 'top-[64px]'}`}
+          className={`absolute z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)] ${label ? 'top-[90px]' : 'top-[64px]'}`}
         >
-          {options.map((option) => (
-            <li key={option.value} role="none">
-              <button
-                type="button"
-                role="option"
-                aria-selected={value === option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center rounded-lg px-4 text-left tracking-[-0.14px] transition-colors focus:outline-none ${isLargeText ? 'text-base leading-[1.6]' : 'text-sm leading-[21px]'} ${
-                  value === option.value
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'bg-white text-neutral-900'
-                }`}
-              >
-                {option.label}
-              </button>
-            </li>
-          ))}
+          {options.map((option) => {
+            const isSelected = value === option.value;
+
+            return (
+              <li key={option.value} role="none">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center justify-between rounded-lg px-4 text-left tracking-[-0.14px] transition-colors focus:outline-none ${isLargeText ? 'text-base leading-[1.6]' : 'text-sm leading-[21px]'} ${
+                    isSelected ? 'bg-primary-50 text-primary-700' : 'bg-white text-neutral-900'
+                  }`}
+                >
+                  {option.label}
+                  {isSelected && <Icon name="check" className="size-5 shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 

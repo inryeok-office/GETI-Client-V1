@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   type DiscordDelivery,
@@ -85,12 +85,31 @@ export function AdminDiscordPostPage({
 }: AdminDiscordPostPageProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
+  const openDropdownRef = useRef<HTMLDivElement>(null);
   const showError = variant === 'error';
+
+  useEffect(() => {
+    if (!openFilter) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenFilter(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenFilter(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openFilter]);
 
   const selectOption = (key: FilterKey, option: string) => {
     setSelected((prev) => {
       const next = { ...prev };
-      if (option === CLEAR_VALUE[key]) {
+      if (option === CLEAR_VALUE[key] || prev[key] === option) {
         delete next[key];
       } else {
         next[key] = option;
@@ -139,7 +158,11 @@ export function AdminDiscordPostPage({
                 const selectedOption = selected[item.key];
 
                 return (
-                  <div key={item.key} className="relative h-[56px] w-[272px]">
+                  <div
+                    key={item.key}
+                    ref={item.key === openFilter ? openDropdownRef : undefined}
+                    className="relative h-[56px] w-[272px]"
+                  >
                     <button
                       type="button"
                       onClick={() => setOpenFilter((prev) => (prev === item.key ? null : item.key))}
