@@ -5,16 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  ALLOWED_ATTACHMENT_MIME_TYPES,
-  MAX_ATTACHMENT_COUNT,
-  MAX_ATTACHMENT_SIZE_BYTES,
-  formatFileSize,
   useCreateJobApplicationDraftMutation,
   useJobApplicationActionMutation,
   useSaveJobApplicationDraftMutation,
-  useUploadApplicationFileMutation,
   type ApplicantProfile,
-  type ApplicationAttachment,
 } from '@/entities/job-application';
 import {
   ApplicantInfoSection,
@@ -59,11 +53,15 @@ export interface JobApplyPageProps {
 /**
  * 학교 공고 지원서 작성 화면. 진입하면 `POST /jobs/{jobId}/applications`로 실제 초안을 만든다.
  * 지원자 정보(이름 · 기수 · 학과 · 이메일)는 서버가 자동으로 채워 읽기 전용으로 보여주고,
- * 연락처 · 개인정보 동의 · 첨부파일 · 임시저장 · 제출 · 철회는 실제 API로 연결했다(Issue #123).
+ * 연락처 · 개인정보 동의 · 임시저장 · 제출 · 철회는 실제 API로 연결했다(Issue #123). 제출은 먼저
+ * 현재 연락처 · 개인정보 동의 값을 임시저장(PATCH)으로 반영하고, 그 요청이 성공한 뒤에만 SUBMIT을
+ * 실행한다 — 그렇지 않으면 임시저장을 누르지 않고 값만 바꿔 제출했을 때 서버에 이전 값이 남는다
+ * (PR #133 코드리뷰 반영).
  *
- * 지원서 문항(`QuestionsSection`)과 자기소개(`ApplicantInfoSection`)는 저장할 방법이 없어 답변란을
- * 편집 불가로 막았다 — 실제 폼의 필드 id를 모르는 채로 입력을 받으면 정상 입력처럼 보이다 임시저장 ·
- * 제출 시 조용히 사라진다(PR #133 코드리뷰 반영). 같은 이유로 목업 문항 답변은 제출 필수 조건에서도
+ * 지원서 문항(`QuestionsSection`)과 자기소개(`ApplicantInfoSection`), 첨부파일(`AttachmentUploadSection`)은
+ * 저장할 방법이 없어 입력을 막았다 — 실제 폼의 필드 id를 모르는 채로 입력 · 업로드를 받으면 정상
+ * 처리된 것처럼 보이다 임시저장 · 제출 시 조용히 사라지거나(문항 답변) 지원서에 묶이지 않는 고아
+ * 파일만 남긴다(첨부파일)(PR #133 코드리뷰 반영). 같은 이유로 목업 문항 답변은 제출 필수 조건에서도
  * 뺐다 — 그 공고 폼에 실제 필수 문항이 있으면 서버가 `APPLICATION_REQUIRED_ANSWER_MISSING`으로
  * 거부한다(정상 동작).
  *
@@ -80,7 +78,6 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   const createDraftMutation = useCreateJobApplicationDraftMutation();
   const saveDraftMutation = useSaveJobApplicationDraftMutation();
   const actionMutation = useJobApplicationActionMutation();
-  const uploadFileMutation = useUploadApplicationFileMutation();
 
   const [applicationId, setApplicationId] = useState<number | null>(null);
   const [draftLoadState, setDraftLoadState] = useState<DraftLoadState>(() =>
@@ -89,7 +86,6 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
 
   const [profile, setProfile] = useState<ApplicantProfile>(EMPTY_PROFILE);
   const [consentChecked, setConsentChecked] = useState(false);
-  const [attachments, setAttachments] = useState<ApplicationAttachment[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -139,54 +135,6 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
     if (!isDirty) setIsDirty(true);
   }
 
-  function handleAddFiles(files: FileList) {
-    markDirty();
-
-    // 검증과 항목 생성은 setState updater 밖에서 순수하게 계산한다(개수 초과는 이번 배치에서
-    // 앞서 추가된 파일 수까지 누적해서 판단해야 해서 attachments.length를 기준으로 직접 센다).
-    let runningCount = attachments.length;
-    const newEntries = Array.from(files).map((file) => {
-      const id = `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const fileSize = formatFileSize(file.size);
-
-      let uploadError: ApplicationAttachment['uploadError'] = null;
-      if (runningCount >= MAX_ATTACHMENT_COUNT) uploadError = 'countExceeded';
-      else if (file.size > MAX_ATTACHMENT_SIZE_BYTES) uploadError = 'sizeExceeded';
-      else if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) uploadError = 'invalidFormat';
-      else runningCount += 1;
-
-      return { id, file, entry: { id, fileName: file.name, fileSize, uploadError, fileId: null } };
-    });
-
-    setAttachments((prev) => [...prev, ...newEntries.map(({ entry }) => entry)]);
-
-    // 검증을 통과한 파일만 실제로 업로드한다. mutateAsync로 파일별 결과를 각자의 id에 반영해
-    // 같은 mutation 인스턴스를 여러 번 호출하며 결과가 뒤섞이지 않게 한다.
-    newEntries
-      .filter(({ entry }) => entry.uploadError === null)
-      .forEach(({ id, file }) => {
-        uploadFileMutation.mutateAsync(file).then(
-          (uploaded) => {
-            setAttachments((current) =>
-              current.map((item) => (item.id === id ? { ...item, fileId: uploaded.fileId } : item)),
-            );
-          },
-          () => {
-            setAttachments((current) =>
-              current.map((item) =>
-                item.id === id ? { ...item, uploadError: 'uploadFailed' } : item,
-              ),
-            );
-          },
-        );
-      });
-  }
-
-  function handleRemoveAttachment(id: string) {
-    setAttachments((prev) => prev.filter((file) => file.id !== id));
-    markDirty();
-  }
-
   function handleSaveDraft() {
     if (applicationId === null) return;
 
@@ -210,10 +158,22 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
     if (!consentChecked || profile.phone.trim() === '' || applicationId === null) return;
 
     setDialog('submitting');
-    actionMutation.mutate(
-      { applicationId, action: 'SUBMIT' },
+    // 연락처 · 개인정보 동의는 임시저장(PATCH)으로만 서버에 반영되므로, 화면의 현재 값을 먼저
+    // 저장하고 그 요청이 성공한 뒤에만 SUBMIT을 실행한다 — 순서를 보장하지 않으면 임시저장을
+    // 누르지 않고 값만 바꿔 제출했을 때 서버에 이전 값이 남는다(PR #133 코드리뷰 반영).
+    saveDraftMutation.mutate(
+      { applicationId, contactPhone: profile.phone, privacyConsent: consentChecked },
       {
-        onSuccess: () => setDialog('submitted'),
+        onSuccess: () => {
+          setIsDirty(false);
+          actionMutation.mutate(
+            { applicationId, action: 'SUBMIT' },
+            {
+              onSuccess: () => setDialog('submitted'),
+              onError: () => setDialog('submit-failed'),
+            },
+          );
+        },
         onError: () => setDialog('submit-failed'),
       },
     );
@@ -268,11 +228,7 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
 
             <QuestionsSection questions={MOCK_APPLICATION_QUESTIONS} />
 
-            <AttachmentUploadSection
-              attachments={attachments}
-              onAddFiles={handleAddFiles}
-              onRemove={handleRemoveAttachment}
-            />
+            <AttachmentUploadSection />
 
             <div className="flex w-full flex-col gap-[12px] rounded-[16px] bg-white p-[32px]">
               <ConsentSection
