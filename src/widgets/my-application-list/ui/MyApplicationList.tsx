@@ -2,26 +2,37 @@ import type { ApplicationListItem } from '@/entities/my-application';
 
 import { ApplicationListCard } from './ApplicationListCard';
 import { MyApplicationListEmpty } from './MyApplicationListEmpty';
+import { MyApplicationPagination } from './MyApplicationPagination';
 
 export type MyApplicationListStatus = 'empty' | 'success';
 
 interface MyApplicationListProps {
   status: MyApplicationListStatus;
   applications: ApplicationListItem[];
+  /** `GET /me/job-applications` 응답의 전체 지원 내역 건수(현재 페이지 항목 수가 아니다). */
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
   /** 상세 페이지 경로를 만들 기준. 예: "/applications" */
   detailBasePath: string;
+  /** 페이지네이션 링크를 만들 기준 경로. 예: "/applications" */
+  basePath: string;
 }
 
 /**
- * 내 지원 목록 위젯. "지원 내역 N건" 카운트 + 빈 · 카드 목록을 조합한다.
- * `status`와 `applications`는 아직 API 연동 전이라 호출부에서 목업 값을 넘겨준다.
+ * 내 지원 목록 위젯. "지원 내역 N건" 카운트 + 빈 · 카드 목록 + 페이지네이션을 조합한다.
+ * `currentPage`/`totalPages`는 `GET /me/job-applications` 응답의 페이지 정보를 그대로 받는다.
  */
 export function MyApplicationList({
   status,
   applications,
+  totalCount,
+  currentPage,
+  totalPages,
   detailBasePath,
+  basePath,
 }: MyApplicationListProps) {
-  const count = status === 'success' ? applications.length : 0;
+  const count = status === 'success' ? totalCount : 0;
 
   return (
     <div className="flex w-full flex-col gap-[24px]">
@@ -40,6 +51,14 @@ export function MyApplicationList({
             />
           ))}
         </div>
+      )}
+
+      {status === 'success' && totalPages > 1 && (
+        <MyApplicationPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          basePath={basePath}
+        />
       )}
     </div>
   );

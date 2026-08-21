@@ -1,6 +1,12 @@
 'use client';
 
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
   executeMyApplicationAction,
@@ -19,10 +25,12 @@ export const myApplicationKeys = {
   history: (applicationId: number) => [...myApplicationKeys.all, 'history', applicationId] as const,
 };
 
+/** 페이지를 옮길 때 이전 페이지 데이터를 유지해(placeholderData) 매번 로딩 상태로 깜빡이지 않는다. */
 export function useMyApplicationListQuery(params: FetchMyApplicationListParams = {}) {
   return useQuery({
     queryKey: myApplicationKeys.list(params),
     queryFn: () => fetchMyApplicationList(params),
+    placeholderData: keepPreviousData,
   });
 }
 

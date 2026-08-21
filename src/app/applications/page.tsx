@@ -1,5 +1,10 @@
 import { MyApplicationListPage } from '@/views/my-application-list';
 
-export default function Page() {
-  return <MyApplicationListPage />;
+interface PageProps {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function Page({ searchParams }: PageProps) {
+  const { page } = await searchParams;
+  return <MyApplicationListPage page={page} />;
 }
