@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  MyApplicationAction,
   MyApplicationDetailApiResponse,
   MyApplicationHistoryEntry,
   MyApplicationListApiResponse,
@@ -40,6 +41,23 @@ export async function fetchMyApplicationHistory(
 ): Promise<MyApplicationHistoryEntry[]> {
   const { data } = await api.get<ApiResponse<MyApplicationHistoryEntry[]>>(
     `${DETAIL_BASE_PATH}/${applicationId}/history`,
+  );
+  return data.data;
+}
+
+export interface ExecuteMyApplicationActionParams {
+  applicationId: number;
+  action: MyApplicationAction;
+}
+
+/** `POST /job-applications/{id}/actions` — 지원 취소 · 수정 권한 요청 등 학생 Action 수행. */
+export async function executeMyApplicationAction({
+  applicationId,
+  action,
+}: ExecuteMyApplicationActionParams): Promise<MyApplicationDetailApiResponse> {
+  const { data } = await api.post<ApiResponse<MyApplicationDetailApiResponse>>(
+    `${DETAIL_BASE_PATH}/${applicationId}/actions`,
+    { action },
   );
   return data.data;
 }

@@ -2,11 +2,15 @@ export { ApplicationStatusBadge } from './ui/ApplicationStatusBadge';
 
 export {
   myApplicationKeys,
+  useMyApplicationActionMutation,
   useMyApplicationDetailQuery,
   useMyApplicationHistoryQuery,
   useMyApplicationListQuery,
 } from './api/useMyApplicationQueries';
-export type { FetchMyApplicationListParams } from './api/myApplicationApi';
+export type {
+  ExecuteMyApplicationActionParams,
+  FetchMyApplicationListParams,
+} from './api/myApplicationApi';
 
 export {
   mapMyApplicationDetail,
@@ -23,6 +27,7 @@ export type {
   ApplicationAttachment,
   RevisionRequest,
   ApplicationDetail,
+  MyApplicationAction,
   MyApplicationApiStatus,
   MyApplicationListApiItem,
   MyApplicationListApiResponse,

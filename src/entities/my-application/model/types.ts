@@ -117,6 +117,13 @@ export interface MyApplicationDetailApiResponse {
   availableActions: string[];
 }
 
+/**
+ * GETI-Server `JobApplicationAction`과 동일하다(SUBMIT/REQUEST_EDIT/RESUBMIT/WITHDRAW). 지원
+ * 상세 화면은 이 중 WITHDRAW · REQUEST_EDIT만 쓴다(SUBMIT은 지원서 작성 화면, RESUBMIT은 재작성
+ * UI가 아직 없어 Issue #129 범위 밖).
+ */
+export type MyApplicationAction = 'SUBMIT' | 'REQUEST_EDIT' | 'RESUBMIT' | 'WITHDRAW';
+
 /** `GET /job-applications/{id}/history` 항목. `entities/applicant`의 `ApplicantHistoryEntry`와 같은 DTO다. */
 export interface MyApplicationHistoryEntry {
   historyId: number;
