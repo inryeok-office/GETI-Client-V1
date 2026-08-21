@@ -67,7 +67,14 @@ export function ExternalJobDetailPage({ jobId }: ExternalJobDetailPageProps) {
 
   const isClosed = job.status === 'CLOSED';
   const hasUrl = job.externalUrl !== null;
-  const canApplyNow = job.application.canApply && hasUrl && !isClosed;
+  /**
+   * 외부 공고는 지원서가 우리 사이트가 아니라 외부 채용 페이지에서 이뤄지므로, 내부 지원
+   * 자격(`job.application.canApply`)과 무관하게 공고 상태·URL 유무로만 이동 가능 여부를
+   * 판단한다. `computeEligibilityReason`은 applicationMethod가 EXTERNAL이면 항상
+   * NOT_INTERNAL을 반환해 canApply가 늘 false이므로, 이 값을 조건에 넣으면 마감 전인 유효한
+   * 외부 공고까지 버튼이 항상 비활성화된다(PR #132 코드리뷰 반영).
+   */
+  const canApplyNow = hasUrl && !isClosed;
   const { dDay } = formatDeadline(job.endDate);
 
   const rows: ApplyInfoRow[] = [
@@ -109,9 +116,7 @@ export function ExternalJobDetailPage({ jobId }: ExternalJobDetailPageProps) {
     ? '모집이 마감되어 지원할 수 없습니다.'
     : !hasUrl
       ? '원문 URL을 확인할 수 없어 지원이 불가능합니다.'
-      : !job.application.canApply
-        ? job.application.eligibilityMessage
-        : '외부 채용 페이지로 이동합니다.';
+      : '외부 채용 페이지로 이동합니다.';
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
