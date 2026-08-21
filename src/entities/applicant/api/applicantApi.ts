@@ -83,8 +83,7 @@ export async function exportJobApplications(jobId: number): Promise<ExportedFile
   });
   const contentDisposition = response.headers['content-disposition'] as string | undefined;
   const filename =
-    contentDisposition?.match(EXPORT_FILENAME_PATTERN)?.[1] ??
-    `job-${jobId}-applications.zip`;
+    contentDisposition?.match(EXPORT_FILENAME_PATTERN)?.[1] ?? `job-${jobId}-applications.zip`;
 
   return { blob: response.data, filename };
 }
