@@ -124,6 +124,31 @@ describe('인증 인터셉터', () => {
     });
     expect(getAccessToken()).toBeNull();
   });
+
+  it('responseType이 blob인 요청이 오류를 받으면 Blob 안의 JSON을 파싱해 code를 꺼낸다', async () => {
+    const errorBody = {
+      success: false,
+      error: { code: 'FILE_ARCHIVE_EMPTY', message: '내려받을 자료가 없습니다.', status: 404 },
+    };
+    stubServer(
+      () =>
+        new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, null, {
+          status: 404,
+          data: new Blob([JSON.stringify(errorBody)], { type: 'application/json' }),
+          statusText: '',
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+        }),
+    );
+
+    await expect(
+      api.get('/api/v1/admin/jobs/1/applications/export', { responseType: 'blob' }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: 'FILE_ARCHIVE_EMPTY',
+      message: '내려받을 자료가 없습니다.',
+    });
+  });
 });
 
 describe('toApiError', () => {
