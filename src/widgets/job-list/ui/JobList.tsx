@@ -1,6 +1,6 @@
 import { JobCard, type JobListItem } from '@/entities/job';
 
-import { JobFilterSection } from './JobFilterBar';
+import { JobFilterSection, type FilterKey } from './JobFilterBar';
 import { JobListEmpty } from './JobListEmpty';
 import { JobListError } from './JobListError';
 import { JobListSkeleton } from './JobListSkeleton';
@@ -19,6 +19,9 @@ interface JobListProps {
   onSearchQueryChange: (query: string) => void;
   includeClosed: boolean;
   onIncludeClosedChange: (includeClosed: boolean) => void;
+  selectedFilters: Partial<Record<FilterKey, string>>;
+  onSelectedFiltersChange: (next: Partial<Record<FilterKey, string>>) => void;
+  activeFilterCount: number;
   onRetry: () => void;
 }
 
@@ -37,6 +40,9 @@ export function JobList({
   onSearchQueryChange,
   includeClosed,
   onIncludeClosedChange,
+  selectedFilters,
+  onSelectedFiltersChange,
+  activeFilterCount,
   onRetry,
 }: JobListProps) {
   const showCount = status === 'success' || status === 'pageLoading';
@@ -50,6 +56,9 @@ export function JobList({
         onSearchQueryChange={onSearchQueryChange}
         includeClosed={includeClosed}
         onIncludeClosedChange={onIncludeClosedChange}
+        selected={selectedFilters}
+        onSelectedChange={onSelectedFiltersChange}
+        activeFilterCount={activeFilterCount}
       />
 
       {(showCount || status === 'empty') && (

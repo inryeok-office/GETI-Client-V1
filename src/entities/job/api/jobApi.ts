@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  JobApplicationMethod,
   JobDetail,
   JobPostingType,
   JobSearchResponse,
@@ -14,6 +15,7 @@ const BASE_PATH = '/api/v1/jobs';
 export interface FetchJobListParams {
   query?: string;
   postingType?: JobPostingType;
+  applicationMethod?: JobApplicationMethod;
   status?: PublicJobStatus;
   sourceName?: string;
   targetGrade?: number;

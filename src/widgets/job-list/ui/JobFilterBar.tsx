@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/shared/ui/icon';
 
-type FilterKey = 'applyType' | 'job' | 'companyType' | 'source' | 'status';
+export type FilterKey = 'applyType' | 'job' | 'companyType' | 'source' | 'status';
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'applyType', label: '지원 유형' },
@@ -48,14 +48,29 @@ interface JobFilterSectionProps {
   /** "마감 공고 포함" 토글. `openOnly` 파라미터에 실제로 연결된다(켜짐 = openOnly false). */
   includeClosed: boolean;
   onIncludeClosedChange: (includeClosed: boolean) => void;
+  /** 5개 드롭다운 선택 상태. 검색·페이지와 함께 URL에 동기화할 수 있도록 부모가 소유한다. */
+  selected: Partial<Record<FilterKey, string>>;
+  onSelectedChange: (next: Partial<Record<FilterKey, string>>) => void;
+  /**
+   * 배지에 표시할 "적용 중" 필터 개수. `selected`에 값이 있어도 실제 목록 조회에 반영되지
+   * 않는 선택(직무 · 기업 유형 · 출처, "모집 상태"의 "마감 임박")은 세지 않는다 — 적용되지
+   * 않는데 적용된 것처럼 보이면 안 된다(PR #132 코드리뷰 반영). 부모가 실제 쿼리 파라미터
+   * 매핑 결과를 기준으로 계산해서 넘긴다.
+   */
+  activeFilterCount: number;
 }
 
 /**
  * 채용 공고 목록 필터 바 + 필터 적용 배지.
- * 검색창과 "마감 공고 포함" 토글은 실제 목록 조회(`query`·`openOnly`)에 연결돼 있다(Issue #122).
- * 5개 드롭다운(지원 유형 · 직무 · 기업 유형 · 출처 · 모집 상태)은 대응하는 API 파라미터가
- * 없거나(직무) 실제 값을 확인하지 못해(기업 유형 · 출처 · 모집 상태 세부 구분) 선택 UI만
- * 동작하고 목록 조회에는 반영되지 않는 로컬 상태로 남겨뒀다.
+ * 검색창과 "마감 공고 포함" 토글, "지원 유형"(→ `applicationMethod`) · "모집 상태"(→
+ * `status`)는 실제 목록 조회에 연결돼 있다(Issue #122, PR #132 코드리뷰 반영). "직무" ·
+ * "기업 유형" · "출처"는 선택 UI만 동작하고 조회에는 반영되지 않는다 — "직무"는 대응 API
+ * 파라미터가 아예 없고, "기업 유형"은 Figma 라벨(대기업 · 중견 · 중소 · 스타트업 · 공기업)이
+ * 백엔드 `CompanyType` Enum(GENERAL · PUBLIC_ENTERPRISE · PUBLIC_INSTITUTION · FOREIGN · ETC)과
+ * 대응하지 않고, "출처"는 서버 `sourceName` 필터가 `jobs.source_name`(수집원 코드, 예:
+ * "SARAMIN")과 정확히 일치해야 하는데 공개 출처 목록 API(`GET /api/v1/job-sources`)는 그
+ * 코드를 내려주지 않아(표시용 한글 이름만 제공) 실제 값을 확정할 수 없다 — 부모가 넘기는
+ * `activeFilterCount`에는 셋 다 포함되지 않는다.
  */
 export function JobFilterSection({
   showActiveFilters,
@@ -63,12 +78,12 @@ export function JobFilterSection({
   onSearchQueryChange,
   includeClosed,
   onIncludeClosedChange,
+  selected,
+  onSelectedChange,
+  activeFilterCount,
 }: JobFilterSectionProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
-  const [selected, setSelected] = useState<Partial<Record<FilterKey, string>>>({});
   const openDropdownRef = useRef<HTMLDivElement>(null);
-
-  const activeFilterCount = Object.keys(selected).length;
 
   useEffect(() => {
     if (!openFilter) return;
@@ -89,20 +104,18 @@ export function JobFilterSection({
   }, [openFilter]);
 
   const selectOption = (key: FilterKey, option: string) => {
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (option === '전체' || prev[key] === option) {
-        delete next[key];
-      } else {
-        next[key] = option;
-      }
-      return next;
-    });
+    const next = { ...selected };
+    if (option === '전체' || selected[key] === option) {
+      delete next[key];
+    } else {
+      next[key] = option;
+    }
+    onSelectedChange(next);
     setOpenFilter(null);
   };
 
   const resetFilters = () => {
-    setSelected({});
+    onSelectedChange({});
   };
 
   return (

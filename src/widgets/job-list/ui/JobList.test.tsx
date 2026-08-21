@@ -49,6 +49,9 @@ function renderJobList(overrides: Partial<ComponentProps<typeof JobList>> = {}) 
     onSearchQueryChange: vi.fn(),
     includeClosed: true,
     onIncludeClosedChange: vi.fn(),
+    selectedFilters: {},
+    onSelectedFiltersChange: vi.fn(),
+    activeFilterCount: 0,
     onRetry: vi.fn(),
     ...overrides,
   };
