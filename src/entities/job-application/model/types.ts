@@ -25,10 +25,7 @@ export interface ApplicationQuestion {
  * uploadFailed는 그 검사를 통과했는데도 실제 업로드 요청 자체가 실패한 경우다.
  */
 export type AttachmentUploadError =
-  | 'sizeExceeded'
-  | 'invalidFormat'
-  | 'countExceeded'
-  | 'uploadFailed';
+  'sizeExceeded' | 'invalidFormat' | 'countExceeded' | 'uploadFailed';
 
 /** 지원서에 첨부한 파일. */
 export interface ApplicationAttachment {

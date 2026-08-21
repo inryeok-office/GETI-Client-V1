@@ -45,7 +45,10 @@ export function ApplicantInfoSection({
       <div className="flex flex-col gap-[8px]">
         <FieldRow>
           <ReadOnlyField label="이름" value={profile.name} />
-          <ReadOnlyField label="기수" value={profile.cohort !== null ? `${profile.cohort}기` : null} />
+          <ReadOnlyField
+            label="기수"
+            value={profile.cohort !== null ? `${profile.cohort}기` : null}
+          />
         </FieldRow>
         <FieldRow>
           <ReadOnlyField label="학과" value={profile.department} />

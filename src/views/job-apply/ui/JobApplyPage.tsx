@@ -151,13 +151,22 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
 
       setAttachments((prev) => {
         if (prev.length >= MAX_ATTACHMENT_COUNT) {
-          return [...prev, { id, fileName: file.name, fileSize, uploadError: 'countExceeded', fileId: null }];
+          return [
+            ...prev,
+            { id, fileName: file.name, fileSize, uploadError: 'countExceeded', fileId: null },
+          ];
         }
         if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-          return [...prev, { id, fileName: file.name, fileSize, uploadError: 'sizeExceeded', fileId: null }];
+          return [
+            ...prev,
+            { id, fileName: file.name, fileSize, uploadError: 'sizeExceeded', fileId: null },
+          ];
         }
         if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) {
-          return [...prev, { id, fileName: file.name, fileSize, uploadError: 'invalidFormat', fileId: null }];
+          return [
+            ...prev,
+            { id, fileName: file.name, fileSize, uploadError: 'invalidFormat', fileId: null },
+          ];
         }
 
         uploadFileMutation.mutate(file, {
@@ -168,7 +177,9 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
           },
           onError: () => {
             setAttachments((current) =>
-              current.map((item) => (item.id === id ? { ...item, uploadError: 'uploadFailed' } : item)),
+              current.map((item) =>
+                item.id === id ? { ...item, uploadError: 'uploadFailed' } : item,
+              ),
             );
           },
         });
