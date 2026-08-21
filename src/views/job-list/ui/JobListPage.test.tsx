@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { JobListPage } from './JobListPage';
@@ -116,6 +117,22 @@ describe('JobListPage', () => {
   it('URL로 복원한 page는 최초 마운트 후 디바운스 시점(300ms)이 지나도 그대로 유지된다', () => {
     vi.useFakeTimers();
     render(<JobListPage initialSearchParams={{ page: '2' }} />);
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
+    expect(lastReplacedParams().get('page')).toBe('2');
+  });
+
+  it('StrictMode의 effect 이중 실행에서도 URL로 복원한 page가 유지된다', () => {
+    vi.useFakeTimers();
+    render(
+      <StrictMode>
+        <JobListPage initialSearchParams={{ page: '2' }} />
+      </StrictMode>,
+    );
 
     act(() => {
       vi.advanceTimersByTime(300);

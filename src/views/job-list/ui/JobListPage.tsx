@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   mapJobSummaryToListItem,
@@ -98,24 +98,25 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
   );
 
   /**
-   * 최초 마운트 시점에는 디바운스를 건너뛴다 — 이 useEffect는 마운트 때도 한 번 실행되는데,
-   * 그대로 두면 `initialSearchParams`로 복원한 page(예: URL의 page=2)가 300ms 뒤
-   * setPage(0)에 덮여 사라진다. 사용자가 실제로 검색어를 바꿨을 때만 페이지를 0으로
-   * 되돌려야 한다(PR #132 코드리뷰 반영).
+   * 페이지 초기화는 여기(디바운스 effect)가 아니라 `handleSearchInputChange`(실제 입력
+   * 이벤트)에서 동기로 처리한다. isFirstRender 같은 ref로 "최초 실행만 건너뛰기"를
+   * 흉내 내면 React Strict Mode(개발 환경, Next도 동일)가 effect를 setup→cleanup→setup으로
+   * 한 번 더 실행할 때 첫 setup에서 ref가 이미 false로 바뀌어 있어 두 번째 setup이 그대로
+   * 타이머를 등록해 버린다 — `initialSearchParams`로 복원한 page가 300ms 뒤 사라지는 문제가
+   * 그대로 재현된다. 이 effect는 디바운스된 `searchQuery` 커밋만 담당해 실행 횟수와 무관하게
+   * 안전하다(PR #132 코드리뷰 반영).
    */
-  const isFirstRender = useRef(true);
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
     const timer = setTimeout(() => {
       setSearchQuery(searchInput);
-      setPage(0);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+    setPage(0);
+  };
 
   const applicationMethod = selectedFilters.applyType
     ? APPLY_TYPE_TO_METHOD[selectedFilters.applyType]
@@ -193,7 +194,7 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
             totalPages={listQuery.data?.totalPages ?? 0}
             onPageChange={(nextPage) => setPage(nextPage - 1)}
             searchQuery={searchInput}
-            onSearchQueryChange={setSearchInput}
+            onSearchQueryChange={handleSearchInputChange}
             includeClosed={includeClosed}
             onIncludeClosedChange={handleIncludeClosedChange}
             selectedFilters={selectedFilters}
