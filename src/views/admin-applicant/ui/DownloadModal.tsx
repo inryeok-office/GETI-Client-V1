@@ -151,10 +151,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             지원자
           </p>
-          <div
-            ref={openField === 'applicants' ? openDropdownRef : undefined}
-            className="relative"
-          >
+          <div ref={openField === 'applicants' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'applicants' ? null : 'applicants'))}
@@ -196,10 +193,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             포함 자료
           </p>
-          <div
-            ref={openField === 'materials' ? openDropdownRef : undefined}
-            className="relative"
-          >
+          <div ref={openField === 'materials' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'materials' ? null : 'materials'))}
