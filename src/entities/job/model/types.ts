@@ -1,6 +1,3 @@
-/** 공고 출처. 어드민에서 직접 등록(internal), 학교 등록(school), 외부 기업 등록(external)으로 구분한다. */
-export type JobSource = 'internal' | 'school' | 'external';
-
 /** 채용 공고 목록 카드에 필요한 최소 정보. */
 export interface JobListItem {
   id: string;
@@ -23,7 +20,93 @@ export interface JobListItem {
   detailHref: string;
 }
 
-/** 공고 상세에 첨부된 파일. */
+/** `GET /api/v1/jobs`(GETI-Server `JobSearchController`)의 공고 유형. */
+export type JobPostingType = 'GENERAL' | 'MOU' | 'SCHOOL';
+
+/** 지원 방식. 학교 내부 지원서(INTERNAL)인지 외부 채용 페이지(EXTERNAL)인지 — 목록 카드의 "학교"/"외부" 배지를 여기서 결정한다. */
+export type JobApplicationMethod = 'INTERNAL' | 'EXTERNAL';
+
+/** 공개 목록 조회에서 필터로 받는 상태. 관리자 전용(DRAFT/DELETED)은 여기 없다. */
+export type PublicJobStatus = 'PUBLISHED' | 'CLOSED';
+
+export type JobSort = 'LATEST' | 'DEADLINE' | 'VIEWS';
+export type JobSortDirection = 'ASC' | 'DESC';
+
+export interface JobCompanySummary {
+  companyId: number;
+  name: string;
+  /** presigned URL. 만료될 수 있다. */
+  logoUrl: string | null;
+}
+
+/**
+ * 지원 불가 사유(`JobApplicationEligibilityReason`, GETI-Server-V1
+ * `domain.application.entity.type.JobApplicationEligibilityReason`). 값 8개는 백엔드 소스로 확인했다.
+ */
+export type JobApplicationEligibilityReason =
+  | 'AVAILABLE'
+  | 'NOT_INTERNAL'
+  | 'NOT_ENROLLED'
+  | 'NOT_TARGET_GRADE'
+  | 'BEFORE_START'
+  | 'AFTER_END'
+  | 'ALREADY_APPLIED'
+  | 'JOB_NOT_PUBLISHED';
+
+/**
+ * `applicationStatus`에 실제로 나타나는 지원서 상태(`JobApplicationStatus`, GETI-Server-V1
+ * `domain.application.entity.type.JobApplicationStatus`). 전체 Enum은 이 6개 외에 REJECTED ·
+ * FORWARDED · WITHDRAWN도 있지만, 이 필드는 "활성" 지원서(`ACTIVE_JOB_APPLICATION_STATUSES`,
+ * `JobApplicationEligibility.kt`)가 있을 때만 채워져 그 셋은 여기 나타나지 않는다
+ * (취소·반려 후에는 활성 지원서가 없어 재지원할 수 있고, 그때 이 필드는 null이다).
+ */
+export type ActiveJobApplicationStatus =
+  'DRAFT' | 'SUBMITTED' | 'EDIT_REQUESTED' | 'EDIT_ALLOWED' | 'REVISION_REQUESTED' | 'APPROVED';
+
+/** 지원 가능 여부 스냅샷. 목록·상세 응답에 공통으로 포함된다. */
+export interface JobApplicationEligibility {
+  canApply: boolean;
+  eligibilityReason: JobApplicationEligibilityReason;
+  eligibilityMessage: string;
+  applicationId: number | null;
+  applicationStatus: ActiveJobApplicationStatus | null;
+  availableActions: string[];
+}
+
+/** `GET /api/v1/jobs` 목록 항목(`JobSummaryResponse`). */
+export interface JobSummary {
+  jobId: number;
+  title: string;
+  postingType: JobPostingType;
+  applicationMethod: JobApplicationMethod;
+  status: PublicJobStatus;
+  /** 공고 등록 후 기업이 삭제되면 null. */
+  company: JobCompanySummary | null;
+  startDate: string | null;
+  /** 마감일. null이면 상시 채용(마감 없음). */
+  endDate: string | null;
+  targetGrade: number | null;
+  capacity: number | null;
+  location: string | null;
+  employmentType: string | null;
+  firstComeServed: boolean;
+  viewCount: number;
+  publishedAt: string | null;
+  application: JobApplicationEligibility;
+  bookmarked: boolean;
+}
+
+export interface JobSearchResponse {
+  content: JobSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+/** 공고 상세에 첨부된 파일. `JobDetailResponse`에 대응 필드가 아직 없어 항상 빈 배열이다(Issue #122). */
 export interface JobAttachment {
   id: string;
   fileName: string;
@@ -31,69 +114,58 @@ export interface JobAttachment {
   fileSize: string;
 }
 
-/** AI 공고 분석 진행 상태. */
-export type AiAnalysisStatus = 'pending' | 'done' | 'failed';
+export type JobAiAnalysisStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type AiFitLevel = 'SUITABLE' | 'CONDITIONAL' | 'UNSUITABLE';
+export type AiDifficulty = 'EASY' | 'NORMAL' | 'HARD';
 
-export interface AiAnalysis {
-  status: AiAnalysisStatus;
-  /** 상태 배지 문구를 기본값("분석중"/"분석 완료"/"분석 실패") 대신 다른 문구로 바꾼다(예: "재분석 중"). */
-  statusLabel?: string;
-  /** pending · failed 상태에서 보여줄 제목(예: "AI가 공고를 분석하고 있습니다."). */
-  title?: string;
-  /** pending · failed 상태에서 보여줄 설명(예: "잠시만 기다려주세요."). */
-  description?: string;
-  /** done 상태일 때만 의미 있는 나머지 필드. */
-  keySummary?: string;
-  requiredTools?: string[];
-  preferredSkills?: string[];
-  fitTags?: string[];
-  difficulty?: string;
+export interface JobAiSkill {
+  techStackId: number | null;
+  name: string;
 }
 
-/** 학교 · 외부 공고 상세가 공통으로 가지는 필드. */
-export interface JobDetailBase {
-  id: string;
-  title: string;
-  organizationName: string;
-  organizationDescription: string;
-  viewCount: number;
-  applyStartDate: string;
-  applyEndDate: string;
-  dDayLabel: string;
-  /** 지원 유형(예: "외부 지원", "교내 지원서 작성"). */
-  applyType: string;
-  introduction: string;
-  responsibilities: string[];
-  requirements: string[];
-  preferences: string[];
-  workConditions: string[];
-  hiringProcess: string[];
-  attachments: JobAttachment[];
-  aiAnalysis: AiAnalysis;
+/** `JobDetailResponse.aiAnalysis`. 분석이 아직 시작되지 않았으면 응답 자체가 null이다. */
+export interface JobAiAnalysis {
+  status: JobAiAnalysisStatus;
+  isReanalysis: boolean;
+  summary: string | null;
+  requiredSkills: JobAiSkill[];
+  preferredSkills: JobAiSkill[];
+  highSchoolGraduateFit: AiFitLevel | null;
+  entryLevelFit: AiFitLevel | null;
+  difficulty: AiDifficulty | null;
+  canReanalyze: boolean;
+  remainingReanalysisCount: number;
+  analyzedAt: string | null;
 }
 
 /**
- * 지원 가능 여부. 지원 정보 박스의 배지 색상 · 지원 버튼 활성화 여부 · 안내 문구를 함께 결정한다.
- * beforePeriod는 안내 문구에 모집 시작일(`applyStartDate`)을 그대로 사용한다.
+ * `GET /api/v1/jobs/{jobId}`(`JobDetailResponse`) 상세 응답.
+ * `content`는 "공고 소개 · 주요 업무 · 자격 요건 · ..."로 나뉜 구조화된 필드가 아니라
+ * 마크다운 본문 하나다 — 섹션을 나누는 확정된 규칙이 없어 그대로 렌더링한다(Issue #122).
  */
-export type ApplyEligibility =
-  'available' | 'ineligible' | 'beforePeriod' | 'closed' | 'alreadyApplied';
-
-export interface SchoolJobDetail extends JobDetailBase {
-  source: 'school';
-  /** 지원 대상(예: "OO고 3학년 재학생"). */
-  applyTarget: string;
-  /** 지원 가능 여부. */
-  applyEligibility: ApplyEligibility;
-  /** 공고를 확인할 수 없는 경우(비공개 · 삭제)의 사유. 정상 공고는 null. */
-  unavailableReason: '비공개' | '삭제' | null;
-}
-
-export interface ExternalJobDetail extends JobDetailBase {
-  source: 'external';
-  isClosed: boolean;
-  /** 공고 출처(예: "네이버 채용"). */
-  sourceLabel: string;
-  /** 원문 채용 페이지 URL. 확인할 수 없는 경우 null. */
-  originalUrl: string | null;
+export interface JobDetail {
+  jobId: number;
+  title: string;
+  postingType: JobPostingType;
+  applicationMethod: JobApplicationMethod;
+  status: PublicJobStatus;
+  company: JobCompanySummary | null;
+  content: string | null;
+  /** EXTERNAL일 때만 값이 있을 수 있다. */
+  externalUrl: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  targetGrade: number | null;
+  capacity: number | null;
+  location: string | null;
+  employmentType: string | null;
+  firstComeServed: boolean;
+  viewCount: number;
+  publishedAt: string | null;
+  closedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  aiAnalysis: JobAiAnalysis | null;
+  application: JobApplicationEligibility;
+  bookmarked: boolean;
 }

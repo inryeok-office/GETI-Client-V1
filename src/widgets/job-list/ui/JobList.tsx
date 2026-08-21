@@ -1,6 +1,6 @@
 import { JobCard, type JobListItem } from '@/entities/job';
 
-import { JobFilterSection } from './JobFilterBar';
+import { JobFilterSection, type FilterKey } from './JobFilterBar';
 import { JobListEmpty } from './JobListEmpty';
 import { JobListError } from './JobListError';
 import { JobListSkeleton } from './JobListSkeleton';
@@ -14,14 +14,20 @@ interface JobListProps {
   totalCount: number;
   currentPage: number;
   totalPages: number;
-  /** 페이지네이션 링크를 만들 기준 경로. 예: "/jobs" */
-  basePath: string;
+  onPageChange: (page: number) => void;
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  includeClosed: boolean;
+  onIncludeClosedChange: (includeClosed: boolean) => void;
+  selectedFilters: Partial<Record<FilterKey, string>>;
+  onSelectedFiltersChange: (next: Partial<Record<FilterKey, string>>) => void;
+  activeFilterCount: number;
+  onRetry: () => void;
 }
 
 /**
  * 채용 공고 목록 위젯. 필터 바 + 그리드(로딩 · 에러 · 빈 · 목록) + 페이지네이션을 조합한다.
- * 디자인 단계라 `status`와 `jobs`는 호출부에서 목업 값을 넘겨준다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
+ * `jobs`·`status`는 실제 `GET /api/v1/jobs` 조회 결과다(Issue #122).
  */
 export function JobList({
   status,
@@ -29,14 +35,31 @@ export function JobList({
   totalCount,
   currentPage,
   totalPages,
-  basePath,
+  onPageChange,
+  searchQuery,
+  onSearchQueryChange,
+  includeClosed,
+  onIncludeClosedChange,
+  selectedFilters,
+  onSelectedFiltersChange,
+  activeFilterCount,
+  onRetry,
 }: JobListProps) {
   const showCount = status === 'success' || status === 'pageLoading';
   const showPagination = status === 'success' || status === 'pageLoading';
 
   return (
     <div>
-      <JobFilterSection showActiveFilters={status === 'success'} />
+      <JobFilterSection
+        showActiveFilters={status === 'success'}
+        searchQuery={searchQuery}
+        onSearchQueryChange={onSearchQueryChange}
+        includeClosed={includeClosed}
+        onIncludeClosedChange={onIncludeClosedChange}
+        selected={selectedFilters}
+        onSelectedChange={onSelectedFiltersChange}
+        activeFilterCount={activeFilterCount}
+      />
 
       {(showCount || status === 'empty') && (
         <div className="mt-[32px] flex items-center justify-between px-[4px]">
@@ -49,7 +72,7 @@ export function JobList({
 
       <div className="mt-[24px]">
         {(status === 'initialLoading' || status === 'pageLoading') && <JobListSkeleton />}
-        {status === 'error' && <JobListError />}
+        {status === 'error' && <JobListError onRetry={onRetry} />}
         {status === 'empty' && <JobListEmpty />}
         {status === 'success' && (
           <div className="grid grid-cols-1 gap-x-[32px] gap-y-[16px] sm:grid-cols-2 lg:grid-cols-3">
@@ -60,9 +83,13 @@ export function JobList({
         )}
       </div>
 
-      {showPagination && (
+      {showPagination && totalPages > 1 && (
         <div className="mt-[32px]">
-          <JobPagination currentPage={currentPage} totalPages={totalPages} basePath={basePath} />
+          <JobPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
     </div>
