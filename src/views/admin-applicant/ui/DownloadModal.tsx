@@ -9,10 +9,27 @@ import {
   useJobPostingOptionsQuery,
 } from '@/entities/applicant';
 import type { ExportedFile } from '@/entities/applicant';
+import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 
 /** 다운로드에 항상 포함되는 자료 종류. Figma 예시(인적사항 · 답변 · 첨부파일)를 그대로 옮겼다. */
 const MATERIAL_LABELS = ['인적사항', '답변', '첨부파일'];
+
+/**
+ * export 실패 사유별 안내 문구. 이슈 #120은 대상 공고에 대한 권한이 없으면(403) 사용자에게
+ * 알려야 한다고 명시하는데, 403 · 자료 없음(404 `FILE_ARCHIVE_EMPTY`) · 용량 초과(413,
+ * `FILE_ARCHIVE_TOO_LARGE`, GETI-Server `JobApplicationExportController`)는 모두 재시도로
+ * 해결되지 않으므로 "잠시 후 다시 시도" 문구 하나로 뭉뚱그리지 않는다(PR #134 코드리뷰 반영).
+ */
+function getExportErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 403) return '이 공고의 자료를 다운로드할 권한이 없습니다.';
+    if (error.code === 'FILE_ARCHIVE_EMPTY') return '선택한 공고에는 내려받을 자료가 없습니다.';
+    if (error.status === 413) return '다운로드 허용 개수 또는 용량을 초과했습니다.';
+  }
+
+  return '다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+}
 
 /** Blob 응답을 브라우저가 파일로 내려받도록 임시 링크를 만들어 클릭한다. */
 function saveExportedFile({ blob, filename }: ExportedFile) {
@@ -212,7 +229,7 @@ export function DownloadModal() {
 
         {exportMutation.isError && (
           <p className="text-status-error text-[14px] leading-[1.5] tracking-[-0.14px]">
-            다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.
+            {getExportErrorMessage(exportMutation.error)}
           </p>
         )}
 
