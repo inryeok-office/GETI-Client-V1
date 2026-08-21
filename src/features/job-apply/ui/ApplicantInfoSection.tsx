@@ -5,23 +5,17 @@ import type { ApplicantProfile } from '@/entities/job-application';
 interface ApplicantInfoSectionProps {
   profile: ApplicantProfile;
   onPhoneChange: (value: string) => void;
-  introduction: string;
-  onIntroductionChange: (value: string) => void;
 }
 
 /**
  * 지원서 작성의 지원자 정보 카드. 이름 · 기수 · 학과 · 이메일은 초안 생성 시 학교 등록 정보에서
  * 서버가 자동으로 채워 응답하는 값이라 읽기 전용이고, 연락처만 실제로 수정할 수 있다(Issue #123).
  * "학번" 필드는 서버가 절대 줄 수 없는 값이라(members 테이블에 컬럼 없음) 뺐다.
- * "자기소개"(introduction)는 API 어디에도 대응 필드가 없어 로컬 상태로만 유지하고 서버엔 보내지 않는다.
+ * "자기소개"는 API 어디에도 대응 필드가 없어 저장할 방법이 없다 — 입력한 내용이 사라지는 것처럼
+ * 보이지 않도록 편집을 막고 안내 문구를 보여준다(PR #133 코드리뷰 반영).
  * 간격 · 색상은 Figma(node 500:2568)의 지원자 정보 카드 값을 그대로 옮겼다.
  */
-export function ApplicantInfoSection({
-  profile,
-  onPhoneChange,
-  introduction,
-  onIntroductionChange,
-}: ApplicantInfoSectionProps) {
+export function ApplicantInfoSection({ profile, onPhoneChange }: ApplicantInfoSectionProps) {
   return (
     <section className="flex w-full flex-col gap-[32px] rounded-[16px] bg-white px-[32px] py-[40px]">
       <div className="flex flex-col gap-[8px] border-b border-[#e5e5e5] pb-[12px]">
@@ -31,14 +25,14 @@ export function ApplicantInfoSection({
             학교에 등록된 기본 정보는 자동으로 입력됩니다.
           </p>
         </div>
-        <div className="flex w-full flex-col">
+        <div className="flex w-full flex-col gap-[4px]">
           <textarea
-            value={introduction}
-            onChange={(event) => onIntroductionChange(event.target.value)}
-            placeholder="자신의 관심 분야와 경험을 간단하게 소개해 주세요."
-            className="h-[112px] w-full resize-none rounded-[8px] border border-[#e5e5e5] p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] placeholder:text-[#a3a3a3] focus:outline-none"
+            value=""
+            readOnly
+            placeholder="자기소개는 현재 저장되지 않아 입력할 수 없습니다."
+            className="h-[112px] w-full cursor-default resize-none rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5] p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] placeholder:text-[#a3a3a3] focus:outline-none"
           />
-          <div className="h-[24px] w-full" />
+          <div className="h-[20px] w-full" />
         </div>
       </div>
 

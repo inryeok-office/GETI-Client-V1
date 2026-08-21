@@ -61,10 +61,11 @@ export interface JobApplyPageProps {
  * 지원자 정보(이름 · 기수 · 학과 · 이메일)는 서버가 자동으로 채워 읽기 전용으로 보여주고,
  * 연락처 · 개인정보 동의 · 첨부파일 · 임시저장 · 제출 · 철회는 실제 API로 연결했다(Issue #123).
  *
- * 지원서 문항(`QuestionsSection`)은 학생이 실제 문항을 조회할 API가 없어 mock을 그대로 보여주고,
- * 그 답변은 임시저장 · 제출 요청에 포함하지 않는다 — 실제 폼의 필드 id를 모르는 채로 보내면 항상
- * 실패하거나 잘못된 데이터가 남는다. 같은 이유로 "제출하기"는 그 공고 폼에 실제 필수 문항이 있으면
- * 서버가 `APPLICATION_REQUIRED_ANSWER_MISSING`으로 거부한다 — 정상적인 동작이다.
+ * 지원서 문항(`QuestionsSection`)과 자기소개(`ApplicantInfoSection`)는 저장할 방법이 없어 답변란을
+ * 편집 불가로 막았다 — 실제 폼의 필드 id를 모르는 채로 입력을 받으면 정상 입력처럼 보이다 임시저장 ·
+ * 제출 시 조용히 사라진다(PR #133 코드리뷰 반영). 같은 이유로 목업 문항 답변은 제출 필수 조건에서도
+ * 뺐다 — 그 공고 폼에 실제 필수 문항이 있으면 서버가 `APPLICATION_REQUIRED_ANSWER_MISSING`으로
+ * 거부한다(정상 동작).
  *
  * 이미 활성 지원서가 있으면(409 `ACTIVE_APPLICATION_EXISTS`) 이어서 작성하는 기능은 구현하지
  * 못했다 — 학생이 자신의 기존 초안을 조회하는 API가 아직 없다(GETI-Server Issue #184/PR #186 미병합).
@@ -87,8 +88,6 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   );
 
   const [profile, setProfile] = useState<ApplicantProfile>(EMPTY_PROFILE);
-  const [introduction, setIntroduction] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [consentChecked, setConsentChecked] = useState(false);
   const [attachments, setAttachments] = useState<ApplicationAttachment[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -126,15 +125,13 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
-  const errorQuestionIds = hasAttemptedSubmit
-    ? new Set(MOCK_APPLICATION_QUESTIONS.filter((q) => !answers[q.id]?.trim()).map((q) => q.id))
-    : new Set<string>();
   const hasConsentError = hasAttemptedSubmit && !consentChecked;
+  const hasPhoneError = hasAttemptedSubmit && profile.phone.trim() === '';
   const validationMessage = !hasAttemptedSubmit
     ? null
     : hasConsentError
       ? '개인정보 이용 및 수집에 동의해 주세요.'
-      : errorQuestionIds.size > 0 || profile.phone.trim() === ''
+      : hasPhoneError
         ? '필수 항목을 모두 입력해 주세요.'
         : null;
 
@@ -214,9 +211,7 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
 
   function handleSubmit() {
     setHasAttemptedSubmit(true);
-    const requiredAnswered =
-      profile.phone.trim() !== '' && MOCK_APPLICATION_QUESTIONS.every((q) => answers[q.id]?.trim());
-    if (!consentChecked || !requiredAnswered || applicationId === null) return;
+    if (!consentChecked || profile.phone.trim() === '' || applicationId === null) return;
 
     setDialog('submitting');
     actionMutation.mutate(
@@ -273,22 +268,9 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
                 setProfile((prev) => ({ ...prev, phone: value }));
                 markDirty();
               }}
-              introduction={introduction}
-              onIntroductionChange={(value) => {
-                setIntroduction(value);
-                markDirty();
-              }}
             />
 
-            <QuestionsSection
-              questions={MOCK_APPLICATION_QUESTIONS}
-              answers={answers}
-              onAnswerChange={(id, value) => {
-                setAnswers((prev) => ({ ...prev, [id]: value }));
-                markDirty();
-              }}
-              errorQuestionIds={errorQuestionIds}
-            />
+            <QuestionsSection questions={MOCK_APPLICATION_QUESTIONS} />
 
             <AttachmentUploadSection
               attachments={attachments}
