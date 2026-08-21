@@ -142,48 +142,44 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   function handleAddFiles(files: FileList) {
     markDirty();
 
-    Array.from(files).forEach((file) => {
+    // 검증과 항목 생성은 setState updater 밖에서 순수하게 계산한다(개수 초과는 이번 배치에서
+    // 앞서 추가된 파일 수까지 누적해서 판단해야 해서 attachments.length를 기준으로 직접 센다).
+    let runningCount = attachments.length;
+    const newEntries = Array.from(files).map((file) => {
       const id = `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const fileSize = formatFileSize(file.size);
 
-      setAttachments((prev) => {
-        if (prev.length >= MAX_ATTACHMENT_COUNT) {
-          return [
-            ...prev,
-            { id, fileName: file.name, fileSize, uploadError: 'countExceeded', fileId: null },
-          ];
-        }
-        if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-          return [
-            ...prev,
-            { id, fileName: file.name, fileSize, uploadError: 'sizeExceeded', fileId: null },
-          ];
-        }
-        if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) {
-          return [
-            ...prev,
-            { id, fileName: file.name, fileSize, uploadError: 'invalidFormat', fileId: null },
-          ];
-        }
+      let uploadError: ApplicationAttachment['uploadError'] = null;
+      if (runningCount >= MAX_ATTACHMENT_COUNT) uploadError = 'countExceeded';
+      else if (file.size > MAX_ATTACHMENT_SIZE_BYTES) uploadError = 'sizeExceeded';
+      else if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) uploadError = 'invalidFormat';
+      else runningCount += 1;
 
-        uploadFileMutation.mutate(file, {
-          onSuccess: (uploaded) => {
+      return { id, file, entry: { id, fileName: file.name, fileSize, uploadError, fileId: null } };
+    });
+
+    setAttachments((prev) => [...prev, ...newEntries.map(({ entry }) => entry)]);
+
+    // 검증을 통과한 파일만 실제로 업로드한다. mutateAsync로 파일별 결과를 각자의 id에 반영해
+    // 같은 mutation 인스턴스를 여러 번 호출하며 결과가 뒤섞이지 않게 한다.
+    newEntries
+      .filter(({ entry }) => entry.uploadError === null)
+      .forEach(({ id, file }) => {
+        uploadFileMutation.mutateAsync(file).then(
+          (uploaded) => {
             setAttachments((current) =>
               current.map((item) => (item.id === id ? { ...item, fileId: uploaded.fileId } : item)),
             );
           },
-          onError: () => {
+          () => {
             setAttachments((current) =>
               current.map((item) =>
                 item.id === id ? { ...item, uploadError: 'uploadFailed' } : item,
               ),
             );
           },
-        });
-
-        return [...prev, { id, fileName: file.name, fileSize, uploadError: null, fileId: null }];
+        );
       });
-    });
   }
 
   function handleRemoveAttachment(id: string) {
