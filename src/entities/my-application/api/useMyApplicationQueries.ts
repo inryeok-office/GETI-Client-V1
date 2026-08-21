@@ -1,11 +1,13 @@
 'use client';
 
-import { skipToken, useQuery } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  executeMyApplicationAction,
   fetchMyApplicationDetail,
   fetchMyApplicationHistory,
   fetchMyApplicationList,
+  type ExecuteMyApplicationActionParams,
   type FetchMyApplicationListParams,
 } from './myApplicationApi';
 
@@ -37,5 +39,23 @@ export function useMyApplicationHistoryQuery(applicationId: number | null) {
   return useQuery({
     queryKey: myApplicationKeys.history(applicationId ?? -1),
     queryFn: applicationId === null ? skipToken : () => fetchMyApplicationHistory(applicationId),
+  });
+}
+
+/** 지원 취소 · 수정 권한 요청 등 학생 Action. 성공하면 해당 지원서의 상세 · 이력을 다시 불러온다. */
+export function useMyApplicationActionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ExecuteMyApplicationActionParams) => executeMyApplicationAction(params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: myApplicationKeys.detail(variables.applicationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: myApplicationKeys.history(variables.applicationId),
+      });
+      queryClient.invalidateQueries({ queryKey: myApplicationKeys.all });
+    },
   });
 }

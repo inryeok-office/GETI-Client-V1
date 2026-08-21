@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import {
   ApplicationStatusBadge,
   mapMyApplicationDetail,
+  useMyApplicationActionMutation,
   useMyApplicationDetailQuery,
   useMyApplicationHistoryQuery,
   type ApplicationDetail,
@@ -22,15 +23,15 @@ export interface MyApplicationDetailPageProps {
   /** 라우트 파라미터의 지원서 ID 문자열. */
   applicationId: string;
   listHref: string;
-  /** ?variant= 값. 모달 · 토스트 상태를 화면 확인용으로 바로 띄운다. */
+  /** ?variant=cancel-confirm이면 지원 취소 확인 모달을 바로 띄운다. */
   variant?: string;
 }
 
 /**
  * 지원 상세 화면. `GET /job-applications/{id}`(entities/my-application)로 실제 데이터를 불러온다.
- * "지원 취소"/"수정 권한 요청" 액션은 아직 API 연동 전이라(별도 이슈 범위) 버튼을 눌러도
- * 결과 동작(API 호출) 없이 모달 · 토스트만 뜬다 — 다만 availableActions에 없는 Action의
- * 버튼은 애초에 보여주지 않는다.
+ * "지원 취소"(WITHDRAW) · "수정 권한 요청"(REQUEST_EDIT) 버튼은 `POST
+ * /job-applications/{id}/actions`를 실제로 호출한다(Issue #129) — availableActions에 없는
+ * Action의 버튼은 애초에 보여주지 않는다.
  */
 export function MyApplicationDetailPage({
   applicationId,
@@ -41,6 +42,7 @@ export function MyApplicationDetailPage({
   const numericApplicationId = Number.isInteger(parsedApplicationId) ? parsedApplicationId : null;
   const detailQuery = useMyApplicationDetailQuery(numericApplicationId);
   const historyQuery = useMyApplicationHistoryQuery(numericApplicationId);
+  const actionMutation = useMyApplicationActionMutation();
 
   const [dialog, setDialog] = useState<DialogState>(
     variant === 'cancel-confirm' ? 'cancelConfirm' : null,
@@ -51,14 +53,38 @@ export function MyApplicationDetailPage({
       ? mapMyApplicationDetail(detailQuery.data, historyQuery.data)
       : null;
 
-  useEffect(() => {
-    if (variant === 'request-completed') {
-      showToast({ tone: 'success', message: '수정 권한 요청이 완료되었습니다.' });
-    }
-    if (variant === 'request-failed') {
-      showToast({ tone: 'error', message: '수정 권한 요청에 실패했습니다. 다시 시도해 주세요.' });
-    }
-  }, [variant]);
+  function handleWithdrawConfirm() {
+    if (numericApplicationId === null) return;
+    actionMutation.mutate(
+      { applicationId: numericApplicationId, action: 'WITHDRAW' },
+      {
+        onSuccess: () => setDialog(null),
+        onError: () =>
+          showToast({ tone: 'error', message: '지원 취소에 실패했습니다. 다시 시도해 주세요.' }),
+      },
+    );
+  }
+
+  function handleRequestEditClick() {
+    if (numericApplicationId === null) return;
+    actionMutation.mutate(
+      { applicationId: numericApplicationId, action: 'REQUEST_EDIT' },
+      {
+        onSuccess: () =>
+          showToast({ tone: 'success', message: '수정 권한 요청이 완료되었습니다.' }),
+        onError: () =>
+          showToast({
+            tone: 'error',
+            message: '수정 권한 요청에 실패했습니다. 다시 시도해 주세요.',
+          }),
+      },
+    );
+  }
+
+  const isWithdrawPending =
+    actionMutation.isPending && actionMutation.variables?.action === 'WITHDRAW';
+  const isRequestEditPending =
+    actionMutation.isPending && actionMutation.variables?.action === 'REQUEST_EDIT';
 
   const isLoading =
     numericApplicationId !== null && (detailQuery.isLoading || historyQuery.isLoading);
@@ -100,6 +126,8 @@ export function MyApplicationDetailPage({
           <ApplicationDetailBody
             application={application}
             onCancelClick={() => setDialog('cancelConfirm')}
+            onRequestEditClick={handleRequestEditClick}
+            isRequestEditPending={isRequestEditPending}
           />
         )}
       </main>
@@ -120,13 +148,16 @@ export function MyApplicationDetailPage({
               <button
                 type="button"
                 onClick={() => setDialog(null)}
-                className="flex-1 rounded-[8px] border border-[#e5e5e5] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]"
+                disabled={isWithdrawPending}
+                className="flex-1 rounded-[8px] border border-[#e5e5e5] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] disabled:opacity-50"
               >
                 닫기
               </button>
               <button
                 type="button"
-                className="flex-1 rounded-[8px] bg-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+                onClick={handleWithdrawConfirm}
+                disabled={isWithdrawPending}
+                className="flex-1 rounded-[8px] bg-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white disabled:opacity-50"
               >
                 지원 취소
               </button>
@@ -141,6 +172,8 @@ export function MyApplicationDetailPage({
 interface ApplicationDetailBodyProps {
   application: ApplicationDetail;
   onCancelClick: () => void;
+  onRequestEditClick: () => void;
+  isRequestEditPending: boolean;
 }
 
 /**
@@ -148,7 +181,12 @@ interface ApplicationDetailBodyProps {
  * 바로 읽을 수 있어(useState lazy initializer), 데이터 도착 후 state를 다시 맞추는 effect가
  * 필요 없다.
  */
-function ApplicationDetailBody({ application, onCancelClick }: ApplicationDetailBodyProps) {
+function ApplicationDetailBody({
+  application,
+  onCancelClick,
+  onRequestEditClick,
+  isRequestEditPending,
+}: ApplicationDetailBodyProps) {
   const [showDeletedBanner, setShowDeletedBanner] = useState(application.isJobDeleted);
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(application.questions.map((question) => [question.id, question.answer])),
@@ -303,7 +341,9 @@ function ApplicationDetailBody({ application, onCancelClick }: ApplicationDetail
           {application.availableActions.includes('REQUEST_EDIT') && (
             <button
               type="button"
-              className="rounded-[8px] border border-[#d4d4d4] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]"
+              onClick={onRequestEditClick}
+              disabled={isRequestEditPending}
+              className="rounded-[8px] border border-[#d4d4d4] bg-white px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] disabled:opacity-50"
             >
               수정 권한 요청
             </button>
