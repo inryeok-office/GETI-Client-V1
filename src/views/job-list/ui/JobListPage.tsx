@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   mapJobSummaryToListItem,
@@ -97,7 +97,19 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     readSelectedFilters(initialSearchParams),
   );
 
+  /**
+   * 최초 마운트 시점에는 디바운스를 건너뛴다 — 이 useEffect는 마운트 때도 한 번 실행되는데,
+   * 그대로 두면 `initialSearchParams`로 복원한 page(예: URL의 page=2)가 300ms 뒤
+   * setPage(0)에 덮여 사라진다. 사용자가 실제로 검색어를 바꿨을 때만 페이지를 0으로
+   * 되돌려야 한다(PR #132 코드리뷰 반영).
+   */
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setSearchQuery(searchInput);
       setPage(0);

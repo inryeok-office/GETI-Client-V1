@@ -79,7 +79,7 @@ describe('JobListPage', () => {
     expect(lastReplacedParams().get('applyType')).toBe('외부 지원');
   });
 
-  it('"모집 상태"에서 마감 임박을 골라도 조회 파라미터에는 반영하지 않는다(서버에 대응 값이 없음)', () => {
+  it('"모집 상태"의 마감 임박 옵션은 비활성화되어 선택되지 않는다(서버에 대응 값이 없음)', () => {
     render(<JobListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: '모집 상태' }));
@@ -87,6 +87,15 @@ describe('JobListPage', () => {
 
     const lastParams = mockUseJobListQuery.mock.calls.at(-1)?.[0];
     expect(lastParams.status).toBeUndefined();
+    expect(lastReplacedParams().get('status')).toBeNull();
+  });
+
+  it('"직무" · "기업 유형" · "출처" 버튼은 비활성화되어 있다(대응하는 조회 파라미터가 없음)', () => {
+    render(<JobListPage />);
+
+    expect(screen.getByRole('button', { name: '직무' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '기업 유형' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '출처' })).toBeDisabled();
   });
 
   it('검색어를 입력하면 디바운스 뒤 query와 URL을 갱신한다', () => {
@@ -102,5 +111,17 @@ describe('JobListPage', () => {
       expect.objectContaining({ query: '카카오' }),
     );
     expect(lastReplacedParams().get('q')).toBe('카카오');
+  });
+
+  it('URL로 복원한 page는 최초 마운트 후 디바운스 시점(300ms)이 지나도 그대로 유지된다', () => {
+    vi.useFakeTimers();
+    render(<JobListPage initialSearchParams={{ page: '2' }} />);
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
+    expect(lastReplacedParams().get('page')).toBe('2');
   });
 });
