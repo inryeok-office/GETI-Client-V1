@@ -11,10 +11,11 @@ import { Icon } from '@/shared/ui/icon';
 const MATERIAL_LABELS = ['인적사항', '답변', '첨부파일'];
 
 /**
- * 모달이 자체적으로 조회하는 지원자 목록의 상한. `GET /admin/job-applications`에 "전체 조회"
- * 파라미터가 없어 큰 size로 한 번에 받아 그 안에서 공고 · 지원자를 추린다(목록 페이지의
- * `MINE_SCOPE_SIZE`와 동일한 패턴) — 지원자 수가 이 값을 넘는 조합에서는 일부 공고/지원자가
- * 여전히 누락될 수 있다. 관리자용 공고 목록 API가 생기면 그걸로 교체해야 한다.
+ * "공고" 드롭다운 선택지를 만들기 위해 모달이 자체적으로 조회하는 지원자 목록의 상한.
+ * 관리자용 "공고 목록" API가 아직 없어(GETI-Server-V1 #60 "관리자 목록"은 후속으로 남음)
+ * `GET /admin/job-applications`를 큰 size로 한 번에 받아 그 안에서 공고를 추린다(목록
+ * 페이지의 `MINE_SCOPE_SIZE`와 동일한 패턴) — 공고 수가 이 값을 넘는 지원자 조합에서는
+ * 드롭다운에 일부 공고가 빠질 수 있다. 관리자용 공고 목록 API가 생기면 그걸로 교체해야 한다.
  */
 const DOWNLOAD_SCOPE_SIZE = 100;
 
@@ -39,8 +40,10 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  * 선택할 수 없는 안내 전용 필드로 두고, "공고" 선택 하나만 실제 다운로드에 연결한다.
  *
  * 공고 · 지원자 데이터는 목록 화면에 지금 로드돼 있는(페이지네이션 · 필터가 걸린) 배열을
- * 그대로 쓰지 않고, 모달이 직접 큰 size로 다시 조회해 만든다(`DOWNLOAD_SCOPE_SIZE` 참고) —
- * 그래야 다른 페이지 · 필터에만 있는 공고나 지원자도 선택지에 나타난다.
+ * 그대로 쓰지 않는다. "공고" 드롭다운은 모달이 직접 큰 size로 다시 조회해 만들고
+ * (`DOWNLOAD_SCOPE_SIZE` 참고), "지원자" 명수는 `GET /admin/job-applications?jobId=`로
+ * 선택한 공고 기준으로 별도 조회해 정확한 `totalElements`를 쓴다 — 그래야 다른 페이지 ·
+ * 필터에만 있는 공고도 선택지에 나타나고, 지원자 수도 100건 상한에 걸리지 않는다.
  *
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
@@ -85,9 +88,11 @@ export function DownloadModal() {
   }, [isJobDropdownOpen]);
 
   const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
-  const applicantCountForSelectedJob = applicants.filter(
-    (applicant) => applicant.jobId === selectedJobId,
-  ).length;
+  /** 선택한 공고의 지원자 수. 100건 상한이 있는 `listQuery`가 아니라 jobId로 직접 조회해 정확한 값을 쓴다. */
+  const applicantCountQuery = useApplicantListQuery(
+    { jobId: selectedJobId, size: 1 },
+    { enabled: selectedJobId !== undefined },
+  );
 
   const handleSelectJob = (jobId: number) => {
     setPickedJobId(jobId);
@@ -191,7 +196,11 @@ export function DownloadModal() {
                 className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-neutral-50 p-[16px] text-left"
               >
                 <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-500">
-                  전체 지원자 {applicantCountForSelectedJob}명
+                  {applicantCountQuery.isLoading
+                    ? '지원자 수를 불러오는 중...'
+                    : applicantCountQuery.isError
+                      ? '지원자 수를 불러오지 못했습니다'
+                      : `전체 지원자 ${applicantCountQuery.data?.totalElements ?? 0}명`}
                 </span>
               </div>
             </div>

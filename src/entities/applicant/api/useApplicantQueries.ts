@@ -19,10 +19,15 @@ export const applicantKeys = {
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
 
-export function useApplicantListQuery(params: FetchApplicantListParams = {}) {
+/** `options.enabled`이 false면 아직 값을 정하지 못한 파라미터(예: 아직 안 고른 jobId)로 요청을 보내지 않는다. */
+export function useApplicantListQuery(
+  params: FetchApplicantListParams = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: applicantKeys.list(params),
     queryFn: () => fetchApplicantList(params),
+    enabled: options.enabled,
   });
 }
 
