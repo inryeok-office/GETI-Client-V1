@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { type ApplicantListItem } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
@@ -47,6 +47,25 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
     MATERIAL_OPTIONS.map((material) => material.key),
   );
   const [openField, setOpenField] = useState<DownloadField | null>(null);
+  const openDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openField) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenField(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenField(null);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openField]);
 
   const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
   const applicantsForSelectedJob = applicants.filter(
@@ -91,7 +110,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             공고
           </p>
-          <div className="relative">
+          <div ref={openField === 'job' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'job' ? null : 'job'))}
@@ -132,7 +151,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             지원자
           </p>
-          <div className="relative">
+          <div ref={openField === 'applicants' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'applicants' ? null : 'applicants'))}
@@ -174,7 +193,7 @@ export function DownloadModal({ applicants }: DownloadModalProps) {
           <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
             포함 자료
           </p>
-          <div className="relative">
+          <div ref={openField === 'materials' ? openDropdownRef : undefined} className="relative">
             <button
               type="button"
               onClick={() => setOpenField((prev) => (prev === 'materials' ? null : 'materials'))}
