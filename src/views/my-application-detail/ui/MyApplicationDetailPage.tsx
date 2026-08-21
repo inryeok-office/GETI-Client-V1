@@ -177,9 +177,9 @@ interface ApplicationDetailBodyProps {
 }
 
 /**
- * 상세 데이터가 도착한 뒤에만 마운트된다 — `showDeletedBanner`/`answers` 초기값을 `application`에서
- * 바로 읽을 수 있어(useState lazy initializer), 데이터 도착 후 state를 다시 맞추는 effect가
- * 필요 없다.
+ * 상세 데이터가 도착한 뒤에만 마운트된다 — `showDeletedBanner` 초기값을 `application`에서 바로
+ * 읽을 수 있어(useState lazy initializer), 데이터 도착 후 state를 다시 맞추는 effect가 필요 없다.
+ * 지원서 문항 답변은 저장 · 제출 동작이 없어(재작성 UI는 범위 밖) `readOnly`로만 보여준다.
  */
 function ApplicationDetailBody({
   application,
@@ -188,9 +188,6 @@ function ApplicationDetailBody({
   isRequestEditPending,
 }: ApplicationDetailBodyProps) {
   const [showDeletedBanner, setShowDeletedBanner] = useState(application.isJobDeleted);
-  const [answers, setAnswers] = useState<Record<string, string>>(() =>
-    Object.fromEntries(application.questions.map((question) => [question.id, question.answer])),
-  );
 
   return (
     <>
@@ -273,12 +270,10 @@ function ApplicationDetailBody({
               <p className="text-[16px] leading-[1.6] tracking-[-0.16px]">{item.question}</p>
             </div>
             <textarea
-              value={answers[item.id] ?? ''}
-              onChange={(event) =>
-                setAnswers((prev) => ({ ...prev, [item.id]: event.target.value }))
-              }
+              value={item.answer}
+              readOnly
               rows={1}
-              className="h-[56px] w-full resize-none overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5] p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] focus:outline-none"
+              className="h-[56px] w-full cursor-default resize-none overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5] p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] focus:outline-none"
             />
           </div>
         ))}
@@ -289,8 +284,11 @@ function ApplicationDetailBody({
           첨부 파일
         </h2>
         {application.attachments.map((file) => (
-          <div
+          <a
             key={file.id}
+            href={file.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-[12px] rounded-[8px] border border-[#e5e5e5] p-[12px]"
           >
             <span className="flex size-[36px] shrink-0 items-center justify-center rounded-[8px] bg-[#f5f5f5]">
@@ -305,7 +303,7 @@ function ApplicationDetailBody({
               </p>
             </div>
             <Icon name="download" className="size-[20px] shrink-0 text-[#404040]" />
-          </div>
+          </a>
         ))}
       </div>
 

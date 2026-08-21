@@ -25,6 +25,7 @@ export interface ApplicationAttachment {
   id: string;
   fileName: string;
   fileSize: string;
+  downloadUrl: string;
 }
 
 /** 기업이 보낸 수정·보완 요청. 이전에 거부된 적이 있으면 거부 사유가 함께 붙는다. */

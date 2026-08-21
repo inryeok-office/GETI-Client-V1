@@ -128,6 +128,7 @@ export function mapMyApplicationDetail(
       id: String(file.fileId),
       fileName: file.originalName,
       fileSize: formatFileSize(file.size),
+      downloadUrl: file.downloadUrl,
     })),
     revisionRequest:
       detail.status === 'REVISION_REQUESTED' && detail.statusReason

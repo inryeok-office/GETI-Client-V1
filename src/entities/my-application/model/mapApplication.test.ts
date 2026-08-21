@@ -156,8 +156,15 @@ describe('mapMyApplicationDetail', () => {
     ]);
   });
 
-  it('첨부파일 크기를 사람이 읽는 표기로 바꾼다', () => {
+  it('첨부파일 크기를 사람이 읽는 표기로 바꾸고 downloadUrl을 보존한다', () => {
     const detail = mapMyApplicationDetail(DETAIL, []);
-    expect(detail.attachments).toEqual([{ id: '1', fileName: 'resume.pdf', fileSize: '1.0 KB' }]);
+    expect(detail.attachments).toEqual([
+      {
+        id: '1',
+        fileName: 'resume.pdf',
+        fileSize: '1.0 KB',
+        downloadUrl: '/api/v1/files/1/download',
+      },
+    ]);
   });
 });
