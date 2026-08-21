@@ -1,25 +1,14 @@
-import { MyApplicationList, type MyApplicationListStatus } from '@/widgets/my-application-list';
+'use client';
+
+import { mapMyApplicationListItems, useMyApplicationListQuery } from '@/entities/my-application';
+import { PageState } from '@/shared/ui/page-state';
+import { MyApplicationList } from '@/widgets/my-application-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-import { MOCK_APPLICATIONS } from '../model/mock';
-
-const VARIANT_TO_STATUS: Record<string, MyApplicationListStatus> = {
-  success: 'success',
-  empty: 'empty',
-};
-
-interface MyApplicationListPageProps {
-  searchParams: Promise<{ variant?: string }>;
-}
-
-/**
- * 내 지원 목록 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용하고,
- * `?variant=empty`로 빈 상태를 확인할 수 있다.
- */
-export async function MyApplicationListPage({ searchParams }: MyApplicationListPageProps) {
-  const { variant } = await searchParams;
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
-  const applications = status === 'success' ? MOCK_APPLICATIONS : [];
+/** 내 지원 목록 화면. `GET /me/job-applications`(entities/my-application)로 실제 데이터를 불러온다. */
+export function MyApplicationListPage() {
+  const listQuery = useMyApplicationListQuery();
+  const applications = mapMyApplicationListItems(listQuery.data?.content ?? []);
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
@@ -35,11 +24,27 @@ export async function MyApplicationListPage({ searchParams }: MyApplicationListP
           </p>
         </div>
 
-        <MyApplicationList
-          status={status}
-          applications={applications}
-          detailBasePath="/applications"
-        />
+        {listQuery.isLoading && (
+          <PageState
+            variant="loading"
+            title="지원 내역을 불러오는 중입니다."
+            description="잠시만 기다려 주세요."
+          />
+        )}
+        {listQuery.isError && (
+          <PageState
+            variant="error"
+            title="지원 내역을 불러오지 못했습니다."
+            description="잠시 후 다시 시도해 주세요."
+          />
+        )}
+        {listQuery.isSuccess && (
+          <MyApplicationList
+            status={applications.length === 0 ? 'empty' : 'success'}
+            applications={applications}
+            detailBasePath="/applications"
+          />
+        )}
       </main>
     </div>
   );
