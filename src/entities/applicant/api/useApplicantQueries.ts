@@ -5,6 +5,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import {
   executeApplicantAction,
   exportJobApplications,
+  fetchAllJobPostings,
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
@@ -15,6 +16,7 @@ import {
 export const applicantKeys = {
   all: ['applicants'] as const,
   list: (params: FetchApplicantListParams) => [...applicantKeys.all, 'list', params] as const,
+  jobPostingOptions: () => [...applicantKeys.all, 'job-posting-options'] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
@@ -28,6 +30,14 @@ export function useApplicantListQuery(
     queryKey: applicantKeys.list(params),
     queryFn: () => fetchApplicantList(params),
     enabled: options.enabled,
+  });
+}
+
+/** 다운로드 모달의 "공고" 드롭다운. 상한 없이 전체 공고를 모은다(PR #134 코드리뷰 반영). */
+export function useJobPostingOptionsQuery() {
+  return useQuery({
+    queryKey: applicantKeys.jobPostingOptions(),
+    queryFn: fetchAllJobPostings,
   });
 }
 

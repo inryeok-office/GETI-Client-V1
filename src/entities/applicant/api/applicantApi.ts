@@ -64,6 +64,40 @@ export async function executeApplicantAction({
   return data.data;
 }
 
+export interface JobPostingOption {
+  jobId: number;
+  title: string;
+}
+
+const JOB_POSTING_PAGE_SIZE = 100;
+
+/**
+ * 다운로드 모달의 "공고" 드롭다운 선택지를 만들기 위해 `GET /admin/job-applications`를 `totalPages`
+ * 끝까지 순회하며 jobId를 추린다. 관리자 전용 "공고 목록" API가 아직 없어(GETI-Server-V1 #60
+ * "관리자 목록"은 후속으로 남음) 지원자 목록에서 우회 추출해야 하는데, 한 페이지만 보면 한 공고
+ * 지원자가 페이지 대부분을 차지하거나 전체 지원자가 페이지 크기를 넘을 때 이후 공고가 선택지에서
+ * 누락된다(PR #134 코드리뷰 반영) — 그래서 페이지 크기가 아니라 상한 없이 모든 페이지를 모은다.
+ */
+export async function fetchAllJobPostings(): Promise<JobPostingOption[]> {
+  const first = await fetchApplicantList({ page: 0, size: JOB_POSTING_PAGE_SIZE });
+  const restPages = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      fetchApplicantList({ page: index + 1, size: JOB_POSTING_PAGE_SIZE }),
+    ),
+  );
+
+  const jobPostings = new Map<number, JobPostingOption>();
+  for (const { content } of [first, ...restPages]) {
+    for (const applicant of content) {
+      jobPostings.set(applicant.jobId, {
+        jobId: applicant.jobId,
+        title: applicant.jobTitle ?? 'ㅡ',
+      });
+    }
+  }
+  return Array.from(jobPostings.values());
+}
+
 export interface ExportedFile {
   blob: Blob;
   filename: string;

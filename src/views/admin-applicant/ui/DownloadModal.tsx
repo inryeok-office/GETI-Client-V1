@@ -3,21 +3,16 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { useApplicantListQuery, useExportJobApplicationsMutation } from '@/entities/applicant';
+import {
+  useApplicantListQuery,
+  useExportJobApplicationsMutation,
+  useJobPostingOptionsQuery,
+} from '@/entities/applicant';
 import type { ExportedFile } from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
 
 /** 다운로드에 항상 포함되는 자료 종류. Figma 예시(인적사항 · 답변 · 첨부파일)를 그대로 옮겼다. */
 const MATERIAL_LABELS = ['인적사항', '답변', '첨부파일'];
-
-/**
- * "공고" 드롭다운 선택지를 만들기 위해 모달이 자체적으로 조회하는 지원자 목록의 상한.
- * 관리자용 "공고 목록" API가 아직 없어(GETI-Server-V1 #60 "관리자 목록"은 후속으로 남음)
- * `GET /admin/job-applications`를 큰 size로 한 번에 받아 그 안에서 공고를 추린다(목록
- * 페이지의 `MINE_SCOPE_SIZE`와 동일한 패턴) — 공고 수가 이 값을 넘는 지원자 조합에서는
- * 드롭다운에 일부 공고가 빠질 수 있다. 관리자용 공고 목록 API가 생기면 그걸로 교체해야 한다.
- */
-const DOWNLOAD_SCOPE_SIZE = 100;
 
 /** Blob 응답을 브라우저가 파일로 내려받도록 임시 링크를 만들어 클릭한다. */
 function saveExportedFile({ blob, filename }: ExportedFile) {
@@ -40,28 +35,18 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  * 선택할 수 없는 안내 전용 필드로 두고, "공고" 선택 하나만 실제 다운로드에 연결한다.
  *
  * 공고 · 지원자 데이터는 목록 화면에 지금 로드돼 있는(페이지네이션 · 필터가 걸린) 배열을
- * 그대로 쓰지 않는다. "공고" 드롭다운은 모달이 직접 큰 size로 다시 조회해 만들고
- * (`DOWNLOAD_SCOPE_SIZE` 참고), "지원자" 명수는 `GET /admin/job-applications?jobId=`로
+ * 그대로 쓰지 않는다. "공고" 드롭다운은 `useJobPostingOptionsQuery`가 전체 지원자 목록을
+ * 상한 없이 끝까지 페이지네이션해 만들고, "지원자" 명수는 `GET /admin/job-applications?jobId=`로
  * 선택한 공고 기준으로 별도 조회해 정확한 `totalElements`를 쓴다 — 그래야 다른 페이지 ·
- * 필터에만 있는 공고도 선택지에 나타나고, 지원자 수도 100건 상한에 걸리지 않는다.
+ * 필터에만 있는 공고도 선택지에 나타난다.
  *
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
 export function DownloadModal() {
   const router = useRouter();
   const exportMutation = useExportJobApplicationsMutation();
-  const listQuery = useApplicantListQuery({ page: 0, size: DOWNLOAD_SCOPE_SIZE });
-  const applicants = listQuery.data?.content ?? [];
-
-  /** 등록된 공고 목록. 지원자 데이터에서 jobId가 겹치지 않는 조합만 추린다. */
-  const jobPostings = Array.from(
-    new Map(
-      applicants.map((applicant) => [
-        applicant.jobId,
-        { jobId: applicant.jobId, title: applicant.jobTitle ?? 'ㅡ' },
-      ]),
-    ).values(),
-  );
+  const jobPostingsQuery = useJobPostingOptionsQuery();
+  const jobPostings = jobPostingsQuery.data ?? [];
 
   /** 아직 아무 공고도 직접 고르지 않았으면(undefined) 첫 번째 공고를 기본값으로 쓴다. */
   const [pickedJobId, setPickedJobId] = useState<number | undefined>(undefined);
@@ -88,7 +73,7 @@ export function DownloadModal() {
   }, [isJobDropdownOpen]);
 
   const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
-  /** 선택한 공고의 지원자 수. 100건 상한이 있는 `listQuery`가 아니라 jobId로 직접 조회해 정확한 값을 쓴다. */
+  /** 선택한 공고의 지원자 수. jobId로 직접 조회해 정확한 `totalElements`를 쓴다. */
   const applicantCountQuery = useApplicantListQuery(
     { jobId: selectedJobId, size: 1 },
     { enabled: selectedJobId !== undefined },
@@ -124,18 +109,18 @@ export function DownloadModal() {
           </p>
         </div>
 
-        {listQuery.isLoading ? (
+        {jobPostingsQuery.isLoading ? (
           <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
             공고 목록을 불러오는 중입니다...
           </p>
-        ) : listQuery.isError ? (
+        ) : jobPostingsQuery.isError ? (
           <div className="flex flex-col gap-[8px]">
             <p className="text-status-error text-[14px] leading-[1.5] tracking-[-0.14px]">
               공고 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
             </p>
             <button
               type="button"
-              onClick={() => listQuery.refetch()}
+              onClick={() => jobPostingsQuery.refetch()}
               className="self-start rounded-[8px] border border-neutral-200 px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700 focus:outline-none"
             >
               다시 시도
@@ -243,7 +228,7 @@ export function DownloadModal() {
             type="button"
             onClick={handleDownload}
             disabled={
-              selectedJobId === undefined || exportMutation.isPending || listQuery.isLoading
+              selectedJobId === undefined || exportMutation.isPending || jobPostingsQuery.isLoading
             }
             className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
           >
