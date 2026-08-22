@@ -47,6 +47,7 @@ const BASE_JOB: JobDetail = {
     availableActions: [],
   },
   bookmarked: false,
+  files: [],
 };
 
 function mockJob(overrides: Partial<JobDetail> = {}) {
