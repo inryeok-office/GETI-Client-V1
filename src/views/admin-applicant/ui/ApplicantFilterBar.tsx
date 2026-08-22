@@ -59,8 +59,11 @@ interface ApplicantFilterBarProps {
  * `GET /admin/job-applications`가 GETI-Server-V1 #181로 `applicantName` · `cohort` ·
  * `department` · `companyId` 파라미터를 새로 지원해, 검색창 · 기수 · 학과 · 기업이 실제 목록
  * 조회에 연결됐다(부모가 값을 들고 있는 controlled 필드). "기업"의 선택지는
- * `useCompanyOptionsQuery`(`GET /api/v1/companies`, Issue #137)로 채운다. "공고" · "상태"는
- * 기존대로 `jobId` · `status`에 연결돼 있다.
+ * `useCompanyOptionsQuery`(`GET /api/v1/companies`, Issue #137)로 채운다. 조회 실패 시엔
+ * 버튼을 비활성화하는 대신 오류 문구를 직접 보여주고 버튼 클릭으로 `refetch()`할 수 있게
+ * 하며(비활성 버튼은 키보드 포커스를 받지 못하고 `title` 툴팁도 보장되지 않는다, PR #138
+ * 코드리뷰 반영), 진짜 빈 목록(오류 없이 0건)은 "등록된 기업이 없습니다"로 구분한다. "공고" ·
+ * "상태"는 기존대로 `jobId` · `status`에 연결돼 있다.
  */
 export function ApplicantFilterBar({
   searchValue,
@@ -240,22 +243,46 @@ export function ApplicantFilterBar({
       >
         <button
           type="button"
-          onClick={() => setOpenFilter((prev) => (prev === 'company' ? null : 'company'))}
-          disabled={companyOptionsQuery.isError || companyOptions.length === 0}
-          title={companyOptionsQuery.isError ? '기업 목록을 불러오지 못했습니다.' : undefined}
-          className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => {
+            if (companyOptionsQuery.isError) {
+              companyOptionsQuery.refetch();
+              return;
+            }
+            setOpenFilter((prev) => (prev === 'company' ? null : 'company'));
+          }}
+          disabled={
+            !companyOptionsQuery.isError &&
+            !companyOptionsQuery.isLoading &&
+            companyOptions.length === 0
+          }
+          className={`flex h-full w-full items-center justify-between rounded-[8px] border py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+            companyOptionsQuery.isError
+              ? 'border-status-error text-status-error'
+              : 'border-neutral-200 bg-white text-neutral-600'
+          }`}
         >
           <span className="truncate">
             {companyOptionsQuery.isLoading
               ? '기업 불러오는 중...'
-              : (selectedCompanyName ?? '기업')}
+              : companyOptionsQuery.isError
+                ? '기업 목록을 불러오지 못했습니다. 다시 시도'
+                : companyOptions.length === 0
+                  ? '등록된 기업이 없습니다'
+                  : (selectedCompanyName ?? '기업')}
           </span>
           <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
-            <Icon name="chevronRight" className="h-[20px] w-[10px] rotate-90 text-neutral-600" />
+            <Icon
+              name={companyOptionsQuery.isError ? 'refresh' : 'chevronRight'}
+              className={
+                companyOptionsQuery.isError
+                  ? 'text-status-error size-[14px]'
+                  : 'h-[20px] w-[10px] rotate-90 text-neutral-600'
+              }
+            />
           </span>
         </button>
 
-        {openFilter === 'company' && (
+        {openFilter === 'company' && !companyOptionsQuery.isError && (
           <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
             <button
               type="button"
