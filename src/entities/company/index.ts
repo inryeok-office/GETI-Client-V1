@@ -1,5 +1,8 @@
 export { CompanyCard } from './ui/CompanyCard';
 
+export { companyKeys, useCompanyOptionsQuery } from './api/useCompanyQueries';
+export type { CompanyOption } from './api/companyApi';
+
 export {
   ADMIN_COMPANY_JOB_STATUS_LABEL,
   ADMIN_COMPANY_TYPE_LABEL,
