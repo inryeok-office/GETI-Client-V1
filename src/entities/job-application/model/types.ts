@@ -11,12 +11,24 @@ export interface ApplicantProfile {
   phone: string;
 }
 
-/** 지원서 문항 하나. 공고마다 개수 · 내용이 다르다. 학생용 문항 조회 API가 없어 지금은 mock으로만 보여준다(Issue #123). */
+/** `FormFieldResponse.type`. FILE은 `QuestionsSection`이 아니라 `AttachmentUploadSection`이 답변을 받는다. */
+export type ApplicationQuestionType =
+  'TEXT' | 'TEXTAREA' | 'SINGLE_SELECT' | 'MULTI_SELECT' | 'FILE';
+
+/**
+ * 지원서 문항 하나(`FormFieldResponse`). 공고마다 개수 · 내용 · 타입이 다르다
+ * (GETI-Server-V1 #217/#234로 `JobApplicationDraftResponse.questions`에 노출됨).
+ */
 export interface ApplicationQuestion {
-  id: string;
-  /** "문항 1" 같은 순번 라벨. */
-  order: string;
-  question: string;
+  fieldId: string;
+  type: ApplicationQuestionType;
+  title: string;
+  description: string | null;
+  required: boolean;
+  /** 문항 표시 순서. 1부터 시작하는 실제 값이라 화면의 "문항 N" 라벨에 그대로 쓴다. */
+  order: number;
+  /** SINGLE_SELECT · MULTI_SELECT일 때만 값이 있다. */
+  options: string[] | null;
 }
 
 /**
@@ -49,7 +61,11 @@ export type JobApplicationStatus =
   | 'FORWARDED'
   | 'WITHDRAWN';
 
-/** `JobApplicationDraftResponse.answers[]`. fieldId는 실제 폼의 문항 id라 지금은 알 방법이 없다. */
+/**
+ * `JobApplicationDraftResponse.answers[]`. `fieldId`는 같은 응답의 `questions[].fieldId`와
+ * 매칭된다. `value`는 문항 타입에 따라 모양이 다르다 — TEXT · TEXTAREA · SINGLE_SELECT는
+ * 문자열, MULTI_SELECT는 문자열 배열, FILE은 `value` 대신 `fileIds`를 쓴다.
+ */
 export interface ApplicationAnswer {
   fieldId: string;
   value: unknown;
@@ -81,6 +97,8 @@ export interface JobApplicationDraft {
   applicantMajors: string[];
   applicantDesiredJob: string | null;
   applicantTechStacks: string[];
+  /** 이 공고 Form Version에 실제로 연결된 문항 구조(GETI-Server-V1 #217/#234). */
+  questions: ApplicationQuestion[];
   answers: ApplicationAnswer[];
   files: JobApplicationDraftFile[];
   submittedAt: string | null;

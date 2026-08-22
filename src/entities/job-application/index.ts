@@ -1,4 +1,5 @@
 export { formatFileSize } from './model/formatFileSize';
+export { isNonFileAnswerEmpty } from './model/answerValidation';
 export {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_COUNT,
@@ -19,6 +20,7 @@ export type {
 export type {
   ApplicantProfile,
   ApplicationQuestion,
+  ApplicationQuestionType,
   AttachmentUploadError,
   ApplicationAttachment,
   ApplicationAnswer,
