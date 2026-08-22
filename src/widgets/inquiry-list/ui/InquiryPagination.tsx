@@ -69,9 +69,15 @@ function PageLink({ ariaLabel, children, disabled, href }: PageLinkProps) {
 
   if (disabled) {
     return (
-      <span aria-hidden="true" className={`${className} opacity-40`}>
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        aria-label={ariaLabel}
+        className={`${className} cursor-not-allowed opacity-40`}
+      >
         {children}
-      </span>
+      </button>
     );
   }
 
