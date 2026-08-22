@@ -2,25 +2,25 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { APPLICANT_STATUS_LABEL, type ApplicantStatus } from '@/entities/applicant';
+import {
+  APPLICANT_STATUS_LABEL,
+  type ApplicantDepartment,
+  type ApplicantStatus,
+} from '@/entities/applicant';
 import { Icon } from '@/shared/ui/icon';
 
-type LocalFilterKey = 'cohort' | 'department' | 'company';
+/** 기수 드롭다운 선택지 → `cohort` 파라미터. Figma 라벨(8기 · 9기 · 10기)을 그대로 옮겼다. */
+const COHORT_OPTIONS: { label: string; value: number }[] = [
+  { label: '8기', value: 8 },
+  { label: '9기', value: 9 },
+  { label: '10기', value: 10 },
+];
 
-/**
- * 로컬 전용(API 미지원) 드롭다운 선택지. Figma가 캡처한 값을 그대로 옮겼다.
- * "전체"를 선택하면 해당 필터를 해제한 것으로 본다.
- */
-const LOCAL_DROPDOWN_OPTIONS: Record<LocalFilterKey, string[]> = {
-  cohort: ['전체', '8기', '9기', '10기'],
-  department: ['전체', '소프트웨어개발과', '스마트IoT과', 'AI과'],
-  company: ['전체', '플로우테크', '네오스튜디오', '그린랩스'],
-};
-
-const LOCAL_FILTERS: { key: LocalFilterKey; label: string }[] = [
-  { key: 'cohort', label: '기수' },
-  { key: 'department', label: '학과' },
-  { key: 'company', label: '기업' },
+/** 학과 드롭다운 선택지 → `department` 파라미터. 서버 `DepartmentType` Enum 3값과 1:1 대응한다. */
+const DEPARTMENT_OPTIONS: { label: string; value: ApplicantDepartment }[] = [
+  { label: '소프트웨어개발과', value: 'SW_DEVELOPMENT' },
+  { label: '스마트IoT과', value: 'SMART_IOT' },
+  { label: 'AI과', value: 'AI' },
 ];
 
 const STATUS_OPTIONS: { label: string; value: ApplicantStatus | null }[] = [
@@ -35,7 +35,15 @@ interface JobOption {
   title: string;
 }
 
+type OpenFilter = 'cohort' | 'department' | 'job' | 'status';
+
 interface ApplicantFilterBarProps {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  selectedCohort: number | null;
+  onCohortChange: (cohort: number | null) => void;
+  selectedDepartment: ApplicantDepartment | null;
+  onDepartmentChange: (department: ApplicantDepartment | null) => void;
   jobOptions: JobOption[];
   selectedJobId: number | null;
   onJobChange: (jobId: number | null) => void;
@@ -45,21 +53,26 @@ interface ApplicantFilterBarProps {
 
 /**
  * 검색창 + 필터 드롭다운 5개(기수 · 학과 · 공고 · 기업 · 상태).
- * `GET /admin/job-applications`가 `jobId` · `status`만 필터로 받아서("공고" · "상태"),
- * 이 둘은 실제 목록 조회에 연결돼 있다(부모가 값을 들고 있는 controlled 드롭다운).
- * 기수 · 학과 · 기업은 API에 대응하는 필터 파라미터가 아예 없어(Issue #97 상세 요구사항),
- * 선택 UI만 동작하고 목록 조회에는 안 넘어가는 로컬 전용 상태로 남겨뒀다.
- * 검색창도 입력만 되고 실제 검색 동작은 없다(같은 이유).
+ * `GET /admin/job-applications`가 GETI-Server-V1 #181로 `applicantName` · `cohort` ·
+ * `department` 파라미터를 새로 지원해, 검색창 · 기수 · 학과가 실제 목록 조회에 연결됐다
+ * (부모가 값을 들고 있는 controlled 필드). "공고" · "상태"는 기존대로 `jobId` · `status`에
+ * 연결돼 있다. "기업"만 `companyId` 자체는 API에 있지만 실제 기업 목록 조회 수단이 아직
+ * 없어(아래 "기업" 드롭다운 주석 참고) 선택 자체를 비활성화한다.
  */
 export function ApplicantFilterBar({
+  searchValue,
+  onSearchChange,
+  selectedCohort,
+  onCohortChange,
+  selectedDepartment,
+  onDepartmentChange,
   jobOptions,
   selectedJobId,
   onJobChange,
   selectedStatus,
   onStatusChange,
 }: ApplicantFilterBarProps) {
-  const [openFilter, setOpenFilter] = useState<LocalFilterKey | 'job' | 'status' | null>(null);
-  const [selected, setSelected] = useState<Partial<Record<LocalFilterKey, string>>>({});
+  const [openFilter, setOpenFilter] = useState<OpenFilter | null>(null);
   const openDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,22 +93,15 @@ export function ApplicantFilterBar({
     };
   }, [openFilter]);
 
-  const selectLocalOption = (key: LocalFilterKey, option: string) => {
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (option === '전체' || prev[key] === option) {
-        delete next[key];
-      } else {
-        next[key] = option;
-      }
-      return next;
-    });
-    setOpenFilter(null);
-  };
-
   const selectedJobTitle = jobOptions.find((job) => job.jobId === selectedJobId)?.title;
   const selectedStatusLabel =
     selectedStatus === null ? undefined : APPLICANT_STATUS_LABEL[selectedStatus];
+  const selectedCohortLabel = COHORT_OPTIONS.find(
+    (option) => option.value === selectedCohort,
+  )?.label;
+  const selectedDepartmentLabel = DEPARTMENT_OPTIONS.find(
+    (option) => option.value === selectedDepartment,
+  )?.label;
 
   return (
     <div className="flex h-[56px] w-full gap-[16px]">
@@ -103,58 +109,140 @@ export function ApplicantFilterBar({
         <Icon name="search" className="size-[20px] text-neutral-500" />
         <input
           type="text"
+          value={searchValue}
+          onChange={(event) => onSearchChange(event.target.value)}
           placeholder="학생 이름 검색"
           className="w-full text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none"
         />
       </div>
 
-      {LOCAL_FILTERS.map((filter) => {
-        const selectedOption = selected[filter.key];
+      <div
+        ref={openFilter === 'cohort' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
+        <button
+          type="button"
+          onClick={() => setOpenFilter((prev) => (prev === 'cohort' ? null : 'cohort'))}
+          className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
+        >
+          <span className="truncate">{selectedCohortLabel ?? '기수'}</span>
+          <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+            <Icon name="chevronRight" className="h-[20px] w-[10px] rotate-90 text-neutral-600" />
+          </span>
+        </button>
 
-        return (
-          <div
-            key={filter.key}
-            ref={filter.key === openFilter ? openDropdownRef : undefined}
-            className="relative h-full flex-1"
-          >
+        {openFilter === 'cohort' && (
+          <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
             <button
               type="button"
-              onClick={() => setOpenFilter((prev) => (prev === filter.key ? null : filter.key))}
-              className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
+              onClick={() => {
+                onCohortChange(null);
+                setOpenFilter(null);
+              }}
+              className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                selectedCohort === null ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+              }`}
             >
-              <span className="truncate">{selectedOption ?? filter.label}</span>
-              <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
-                <Icon
-                  name="chevronRight"
-                  className="h-[20px] w-[10px] rotate-90 text-neutral-600"
-                />
-              </span>
+              전체
+              {selectedCohort === null && <Icon name="check" className="size-[20px]" />}
             </button>
+            {COHORT_OPTIONS.map((option) => {
+              const isSelected = selectedCohort === option.value;
 
-            {openFilter === filter.key && (
-              <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
-                {LOCAL_DROPDOWN_OPTIONS[filter.key].map((option) => {
-                  const isSelected = selectedOption ? selectedOption === option : option === '전체';
-
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => selectLocalOption(filter.key, option)}
-                      className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
-                        isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
-                      }`}
-                    >
-                      {option}
-                      {isSelected && <Icon name="check" className="size-[20px]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onCohortChange(isSelected ? null : option.value);
+                    setOpenFilter(null);
+                  }}
+                  className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                    isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+                  }`}
+                >
+                  {option.label}
+                  {isSelected && <Icon name="check" className="size-[20px]" />}
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        )}
+      </div>
+
+      <div
+        ref={openFilter === 'department' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
+        <button
+          type="button"
+          onClick={() => setOpenFilter((prev) => (prev === 'department' ? null : 'department'))}
+          className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none"
+        >
+          <span className="truncate">{selectedDepartmentLabel ?? '학과'}</span>
+          <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+            <Icon name="chevronRight" className="h-[20px] w-[10px] rotate-90 text-neutral-600" />
+          </span>
+        </button>
+
+        {openFilter === 'department' && (
+          <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+            <button
+              type="button"
+              onClick={() => {
+                onDepartmentChange(null);
+                setOpenFilter(null);
+              }}
+              className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                selectedDepartment === null ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+              }`}
+            >
+              전체
+              {selectedDepartment === null && <Icon name="check" className="size-[20px]" />}
+            </button>
+            {DEPARTMENT_OPTIONS.map((option) => {
+              const isSelected = selectedDepartment === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onDepartmentChange(isSelected ? null : option.value);
+                    setOpenFilter(null);
+                  }}
+                  className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                    isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+                  }`}
+                >
+                  {option.label}
+                  {isSelected && <Icon name="check" className="size-[20px]" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/*
+        GETI-Server-V1 #181의 `companyId` 필터는 이미 있지만, 그 값을 채울 실제 기업 목록 조회
+        (`GET /api/v1/companies`, entities/company API 신설)가 아직 없어(이 범위인 Issue #135를
+        넘어섬) "직무" · "기업 유형" · "출처"(widgets/job-list의 JobFilterBar, PR #132 코드리뷰
+        반영)와 같은 이유로 버튼 자체를 비활성화한다.
+      */}
+      <div className="relative h-full flex-1">
+        <button
+          type="button"
+          disabled
+          title="기업 목록 조회 API가 아직 없어 선택할 수 없습니다."
+          className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className="truncate">기업</span>
+          <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+            <Icon name="chevronRight" className="h-[20px] w-[10px] rotate-90 text-neutral-600" />
+          </span>
+        </button>
+      </div>
 
       <div
         ref={openFilter === 'job' ? openDropdownRef : undefined}

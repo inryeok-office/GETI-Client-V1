@@ -1,14 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   useApplicantDetailQuery,
   useApplicantListQuery,
+  type ApplicantDepartment,
   type ApplicantStatus,
 } from '@/entities/applicant';
-import { useMyProfileQuery } from '@/entities/member';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
 
@@ -32,24 +32,21 @@ const SCOPE_TABS: { value: ApplicantScope; label: string }[] = [
 ];
 
 const PAGE_SIZE = 20;
-/**
- * "담당 공고" 탭은 서버에 담당자 필터 파라미터가 없어 클라이언트에서 managerMemberId로 거른다.
- * 페이지네이션까지 하면 다음 페이지에 있는 내 담당 지원자를 놓치므로, 대신 한 번에 더 큰
- * 페이지(100건)를 가져와 그 안에서 거른다 — 100건을 넘는 지원자 수에서는 여전히 누락될 수 있다.
- * 서버에 담당자 필터 파라미터가 추가되면 이 상한을 없애야 한다.
- */
-const MINE_SCOPE_SIZE = 100;
+/** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). widgets/job-list와 동일한 값. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
  * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
  * `GET /admin/job-applications`로 목록을, `applicantId`가 있으면 `GET /admin/job-applications/{id}`로
  * 상세를 함께 불러온다(entities/applicant의 TanStack Query 훅).
- * "담당 공고 / 전체보기" 탭은 서버 필터가 아니라, `GET /me/profile`로 얻은 내 memberId와
- * 각 지원서의 managerMemberId를 클라이언트에서 비교해 걸러낸다(기능명세서: 기본은 담당 공고).
- * `ApplicantFilterBar`의 "공고" · "상태"는 API가 받는 jobId · status 파라미터에 실제로
- * 연결했다. 기수 · 학과 · 기업은 API에 대응하는 필터 파라미터가 아예 없어(Issue #97 상세
- * 요구사항) 선택 UI만 동작하는 로컬 상태로 남아 있다.
+ * "담당 공고 / 전체보기" 탭은 GETI-Server-V1 #181로 추가된 `mineOnly` 쿼리 파라미터에 연결된다
+ * (서버가 Authentication Principal 기준으로 스코프를 계산한다 — 이전에는 `GET /me/profile`
+ * 비교 + 100건 상한 우회로 클라이언트에서 직접 걸렀다, Issue #135).
+ * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 공고 · 상태는 각각 `applicantName`(디바운스) ·
+ * `cohort` · `department` · `jobId` · `status` 파라미터에 실제로 연결돼 있다. "기업"만
+ * `companyId` 필터 자체는 있지만 실제 기업 목록 조회 수단이 없어 선택을 비활성화해 뒀다
+ * (`ApplicantFilterBar` 주석 참고).
  * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
  * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
@@ -59,12 +56,29 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
   const [page, setPage] = useState(0);
   const [jobIdFilter, setJobIdFilter] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(null);
+  const [cohortFilter, setCohortFilter] = useState<number | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState<ApplicantDepartment | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  /** JobListPage와 동일한 디바운스 effect. searchQuery 커밋만 담당해 Strict Mode 이중 실행에도 안전하다. */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const listQuery = useApplicantListQuery({
-    ...(scope === 'all' ? { page, size: PAGE_SIZE } : { page: 0, size: MINE_SCOPE_SIZE }),
+    page,
+    size: PAGE_SIZE,
     jobId: jobIdFilter ?? undefined,
     status: statusFilter ?? undefined,
+    cohort: cohortFilter ?? undefined,
+    department: departmentFilter ?? undefined,
+    applicantName: searchQuery.trim() || undefined,
+    mineOnly: scope === 'mine',
   });
-  const myProfileQuery = useMyProfileQuery();
 
   /**
    * "공고" 필터 드롭다운 선택지. 지금 불러온 목록(`listQuery.data.content`)에 실제로 등장하는
@@ -81,16 +95,10 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
   const detailQuery = useApplicantDetailQuery(detailApplicationId);
   const isDownloadModalOpen = variant === 'download';
 
-  const allApplicants = listQuery.data?.content ?? [];
-  const applicants =
-    scope === 'all'
-      ? allApplicants
-      : allApplicants.filter(
-          (applicant) => applicant.managerMemberId === myProfileQuery.data?.memberId,
-        );
-  const totalCount = scope === 'all' ? (listQuery.data?.totalElements ?? 0) : applicants.length;
-  const isListLoading = listQuery.isLoading || (scope === 'mine' && myProfileQuery.isLoading);
-  const isListError = listQuery.isError || (scope === 'mine' && myProfileQuery.isError);
+  const applicants = listQuery.data?.content ?? [];
+  const totalCount = listQuery.data?.totalElements ?? 0;
+  const isListLoading = listQuery.isLoading;
+  const isListError = listQuery.isError;
 
   function selectScope(nextScope: ApplicantScope) {
     setScope(nextScope);
@@ -104,6 +112,21 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
 
   function selectStatusFilter(status: ApplicantStatus | null) {
     setStatusFilter(status);
+    setPage(0);
+  }
+
+  function selectCohortFilter(cohort: number | null) {
+    setCohortFilter(cohort);
+    setPage(0);
+  }
+
+  function selectDepartmentFilter(department: ApplicantDepartment | null) {
+    setDepartmentFilter(department);
+    setPage(0);
+  }
+
+  function handleSearchInputChange(value: string) {
+    setSearchInput(value);
     setPage(0);
   }
 
@@ -141,6 +164,12 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
           </div>
 
           <ApplicantFilterBar
+            searchValue={searchInput}
+            onSearchChange={handleSearchInputChange}
+            selectedCohort={cohortFilter}
+            onCohortChange={selectCohortFilter}
+            selectedDepartment={departmentFilter}
+            onDepartmentChange={selectDepartmentFilter}
             jobOptions={jobOptions}
             selectedJobId={jobIdFilter}
             onJobChange={selectJobFilter}
@@ -183,10 +212,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
             />
             <button
               type="button"
-              onClick={() => {
-                listQuery.refetch();
-                myProfileQuery.refetch();
-              }}
+              onClick={() => listQuery.refetch()}
               className="bg-primary-700 rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
             >
               다시 시도
@@ -212,7 +238,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
 
             <ApplicantTable applicants={applicants} />
 
-            {scope === 'all' && listQuery.data && listQuery.data.totalPages > 1 && (
+            {listQuery.data && listQuery.data.totalPages > 1 && (
               <div className="flex items-center justify-center gap-[12px]">
                 <button
                   type="button"
