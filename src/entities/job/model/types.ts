@@ -108,7 +108,8 @@ export interface JobSearchResponse {
 
 /**
  * 공고 상세에 첨부된 파일(`JobFileResponse`, GETI-Server-V1 Issue #126). `downloadUrl`은
- * presigned URL이라 별도 다운로드 API 호출 없이 그대로 링크로 쓸 수 있다.
+ * presigned URL이라 별도 다운로드 API 호출은 없다 — `AttachmentList`가 이 URL을 fetch해
+ * Blob으로 저장한다(실패를 감지해 토스트로 알리기 위해, `<a href>` 새 창 이동 대신 이 방식을 쓴다).
  */
 export interface JobAttachment {
   fileId: number;

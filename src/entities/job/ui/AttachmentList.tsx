@@ -1,4 +1,5 @@
 import { Icon } from '@/shared/ui/icon';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import { formatAttachmentSize, getFileExtensionLabel } from '../model/formatAttachmentMeta';
 import type { JobAttachment } from '../model/types';
@@ -8,12 +9,38 @@ interface AttachmentListProps {
 }
 
 /**
+ * `downloadUrl`(presigned URL)을 fetch해 Blob으로 받은 뒤 `<a download>`로 저장한다. 평범한
+ * `<a href={downloadUrl}>` 새 창 이동으로는 실패(만료된 서명, Storage 오류 등)를 감지할 JS
+ * 지점이 없어 Issue #146의 "다운로드 실패 시 에러 처리" 완료 조건을 만족할 수 없다 — 그래서
+ * fetch로 바꿨다. Storage 버킷에 이 Origin을 향한 CORS 허용이 안 돼 있으면 이 fetch 자체가
+ * (`response.ok` 이전에) 막힐 수 있는데, 그 경우도 동일하게 catch돼 오류 토스트로 뜬다.
+ */
+async function downloadAttachment(file: JobAttachment) {
+  try {
+    const response = await fetch(file.downloadUrl);
+    if (!response.ok) throw new Error(`다운로드 응답 실패: ${response.status}`);
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = file.originalName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    showToast({ tone: 'error', message: `${file.originalName} 다운로드에 실패했습니다.` });
+  }
+}
+
+/**
  * 공고 상세의 첨부파일 목록 박스. 학교 · 외부 공고 상세가 공통으로 사용한다.
  * 간격 · 색상은 Figma(외부 공고 상세 500:3221 / 학교 공고 상세 500:3458)의 첨부파일 박스 값을
  * 그대로 옮겼다. Figma는 다운로드 아이콘만 별도 요소로 두고 파일 정보 텍스트는 클릭 대상이
- * 아니다 — 행 전체를 링크로 만들지 않는다.
- * 다운로드는 `downloadUrl`(presigned URL)로 바로 연결한다 — 별도 다운로드 API 호출이 없다
- * (GETI-Server-V1 Issue #126).
+ * 아니다 — 행 전체를 클릭 대상으로 만들지 않는다. 다운로드 실패 토스트는 Figma에 해당 상태가
+ * 없어 다른 화면과 같은 기본 위치(`showToast` 기본 `top`)를 그대로 쓴다. 로딩 상태는 상세
+ * 조회 자체의 기존 로딩을 따르고 첨부파일만 별도로 추가하지 않는다(Issue #146 요구사항).
  */
 export function AttachmentList({ attachments }: AttachmentListProps) {
   return (
@@ -39,16 +66,21 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 </p>
               </div>
             </div>
-            <a href={file.downloadUrl} aria-label={`${file.originalName} 다운로드`}>
+            <button
+              type="button"
+              onClick={() => downloadAttachment(file)}
+              aria-label={`${file.originalName} 다운로드`}
+            >
               <Icon
                 name="download"
                 className="size-[20px] shrink-0 text-[#404040]"
                 aria-hidden="true"
               />
-            </a>
+            </button>
           </div>
         ))
       )}
+      <AppToaster />
     </section>
   );
 }
