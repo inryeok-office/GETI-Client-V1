@@ -1,4 +1,3 @@
-export { formatFileSize } from './model/formatFileSize';
 export {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_COUNT,
