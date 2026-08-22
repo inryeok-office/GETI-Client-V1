@@ -1,9 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import {
+  APPLICANT_STATUS_LABEL,
   useApplicantDetailQuery,
   useApplicantListQuery,
   type ApplicantDepartment,
@@ -17,11 +18,28 @@ import { ApplicantFilterBar } from './ApplicantFilterBar';
 import { ApplicantTable } from './ApplicantTable';
 import { DownloadModal } from './DownloadModal';
 
+/**
+ * 목록 화면(`/admin/applicants`)과 상세 화면(`/admin/applicants/[applicantId]`) 둘 다
+ * Server Component(`app/(admin)/admin/applicants/**\/page.tsx`)가 넘겨주는 초기 URL
+ * 쿼리스트링. `views/job-list`의 `JobListSearchParams`와 같은 패턴이다.
+ */
+export interface AdminApplicantSearchParams {
+  q?: string;
+  page?: string;
+  scope?: string;
+  jobId?: string;
+  status?: string;
+  cohort?: string;
+  department?: string;
+  companyId?: string;
+}
+
 interface AdminApplicantPageProps {
   /** /admin/applicants/[applicantId]로 들어왔을 때 그 id가 있으면 상세 패널을 목록 위에 띄운다. */
   applicantId?: string;
   /** ?variant=download일 때 자료 일괄 다운로드 모달을 띄운다. */
   variant?: 'download';
+  initialSearchParams?: AdminApplicantSearchParams;
 }
 
 type ApplicantScope = 'mine' | 'all';
@@ -35,6 +53,72 @@ const PAGE_SIZE = 20;
 /** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). widgets/job-list와 동일한 값. */
 const SEARCH_DEBOUNCE_MS = 300;
 
+const VALID_DEPARTMENTS: ApplicantDepartment[] = ['SW_DEVELOPMENT', 'SMART_IOT', 'AI'];
+
+function parseJobId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function parseStatus(value?: string): ApplicantStatus | null {
+  return value !== undefined && value in APPLICANT_STATUS_LABEL ? (value as ApplicantStatus) : null;
+}
+
+function parseCohort(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseDepartment(value?: string): ApplicantDepartment | null {
+  return VALID_DEPARTMENTS.includes(value as ApplicantDepartment)
+    ? (value as ApplicantDepartment)
+    : null;
+}
+
+function parseCompanyId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+interface FilterState {
+  searchQuery: string;
+  scope: ApplicantScope;
+  jobIdFilter: number | null;
+  statusFilter: ApplicantStatus | null;
+  cohortFilter: number | null;
+  departmentFilter: ApplicantDepartment | null;
+  companyIdFilter: number | null;
+  page: number;
+}
+
+/**
+ * 현재 검색 · 필터 · 담당 범위 · 페이지를 쿼리스트링으로 만든다. URL 동기화 effect와 "상세
+ * 보기" 링크(`ApplicantTable`) · 다운로드 모달 진입 링크가 모두 이 함수를 공유해, 조회
+ * 조건이 화면 전환 후에도 유지된다(PR #136 코드리뷰 반영 — `ApplicantTable`의 상세 링크가
+ * 쿼리스트링을 안 붙여 상세 화면 진입 시 필터가 풀리던 문제).
+ */
+function buildFilterSearchParams({
+  searchQuery,
+  scope,
+  jobIdFilter,
+  statusFilter,
+  cohortFilter,
+  departmentFilter,
+  companyIdFilter,
+  page,
+}: FilterState): URLSearchParams {
+  const params = new URLSearchParams();
+  if (searchQuery) params.set('q', searchQuery);
+  if (scope === 'all') params.set('scope', 'all');
+  if (jobIdFilter !== null) params.set('jobId', String(jobIdFilter));
+  if (statusFilter !== null) params.set('status', statusFilter);
+  if (cohortFilter !== null) params.set('cohort', String(cohortFilter));
+  if (departmentFilter !== null) params.set('department', departmentFilter);
+  if (companyIdFilter !== null) params.set('companyId', String(companyIdFilter));
+  if (page > 0) params.set('page', String(page + 1));
+  return params;
+}
+
 /**
  * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
  * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
@@ -46,28 +130,118 @@ const SEARCH_DEBOUNCE_MS = 300;
  * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 기업 · 공고 · 상태는 각각 `applicantName`(디바운스) ·
  * `cohort` · `department` · `companyId` · `jobId` · `status` 파라미터에 실제로 연결돼 있다
  * (기업 목록은 `entities/company`의 `useCompanyOptionsQuery`, Issue #137).
+ * 검색 · 필터 · 담당 범위 · 페이지는 `JobListPage`와 동일하게 URL 쿼리스트링과 동기화한다 —
+ * 최초 값은 Server Component가 넘겨준 `initialSearchParams`에서 복원하고, 변경 시
+ * `router.replace`로 반영한다(새로고침 · 뒤로가기에도 조회 조건이 유지된다, PR #136 코드리뷰 반영).
  * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
  * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
-export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageProps) {
+export function AdminApplicantPage({
+  applicantId,
+  variant,
+  initialSearchParams,
+}: AdminApplicantPageProps) {
   const router = useRouter();
-  const [scope, setScope] = useState<ApplicantScope>('mine');
-  const [page, setPage] = useState(0);
-  const [jobIdFilter, setJobIdFilter] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(null);
-  const [cohortFilter, setCohortFilter] = useState<number | null>(null);
-  const [departmentFilter, setDepartmentFilter] = useState<ApplicantDepartment | null>(null);
-  const [companyIdFilter, setCompanyIdFilter] = useState<number | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const pathname = usePathname();
+  const [scope, setScope] = useState<ApplicantScope>(() =>
+    initialSearchParams?.scope === 'all' ? 'all' : 'mine',
+  );
+  const [page, setPage] = useState(() => {
+    const raw = Number(initialSearchParams?.page);
+    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+  });
+  const [jobIdFilter, setJobIdFilter] = useState<number | null>(() =>
+    parseJobId(initialSearchParams?.jobId),
+  );
+  const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(() =>
+    parseStatus(initialSearchParams?.status),
+  );
+  const [cohortFilter, setCohortFilter] = useState<number | null>(() =>
+    parseCohort(initialSearchParams?.cohort),
+  );
+  const [departmentFilter, setDepartmentFilter] = useState<ApplicantDepartment | null>(() =>
+    parseDepartment(initialSearchParams?.department),
+  );
+  const [companyIdFilter, setCompanyIdFilter] = useState<number | null>(() =>
+    parseCompanyId(initialSearchParams?.companyId),
+  );
+  const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
+  const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
 
-  /** JobListPage와 동일한 디바운스 effect. searchQuery 커밋만 담당해 Strict Mode 이중 실행에도 안전하다. */
+  /**
+   * JobListPage와 동일한 디바운스 effect. 페이지 초기화는 여기가 아니라 실제 입력 이벤트
+   * (`handleSearchInputChange`)에서 동기로 처리한다 — 이 effect는 디바운스된 searchQuery
+   * 커밋만 담당해 React Strict Mode의 이중 실행에도 안전하다(JobListPage 주석 참고).
+   */
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchQuery(searchInput);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  /** "상세 보기" 링크(`ApplicantTable`)에 이어 붙일 쿼리스트링. `variant`는 포함하지 않는다. */
+  const filterQueryString = buildFilterSearchParams({
+    searchQuery,
+    scope,
+    jobIdFilter,
+    statusFilter,
+    cohortFilter,
+    departmentFilter,
+    companyIdFilter,
+    page,
+  }).toString();
+
+  /** 검색 · 필터 · 담당 범위 · 페이지가 바뀔 때마다 URL 쿼리스트링을 갱신한다. */
+  useEffect(() => {
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      companyIdFilter,
+      page,
+    });
+    if (variant === 'download') params.set('variant', 'download');
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [
+    searchQuery,
+    scope,
+    jobIdFilter,
+    statusFilter,
+    cohortFilter,
+    departmentFilter,
+    companyIdFilter,
+    page,
+    variant,
+    pathname,
+    router,
+  ]);
+
+  /**
+   * 다운로드 모달 열기. 필터가 걸려 있어도 그대로 유지한 채 이동한다(PR #136 코드리뷰 반영 —
+   * 이전엔 `/admin/applicants?variant=download`로 하드코딩해 필터가 순간적으로 사라졌었다).
+   * 모달은 상세 화면이 아니라 항상 목록 경로에서 여는 게 의도라 `pathname` 대신 목록 경로를
+   * 고정으로 쓴다.
+   */
+  function openDownloadModal() {
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      companyIdFilter,
+      page,
+    });
+    params.set('variant', 'download');
+    router.push(`/admin/applicants?${params.toString()}`);
+  }
 
   const listQuery = useApplicantListQuery({
     page,
@@ -100,6 +274,19 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
   const totalCount = listQuery.data?.totalElements ?? 0;
   const isListLoading = listQuery.isLoading;
   const isListError = listQuery.isError;
+  /**
+   * "담당 공고" 탭의 빈 상태 문구는 아무 검색·필터도 없을 때만 쓴다. 검색어나 기수 · 학과 ·
+   * 공고 · 상태 필터가 걸려 있는데 결과가 0건이면, 담당 지원자가 아예 없는 게 아니라 그
+   * 조건에 맞는 사람이 없는 것뿐이라 "전체보기"와 같은 문구를 보여준다(PR #136 코드리뷰 반영).
+   */
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    jobIdFilter !== null ||
+    statusFilter !== null ||
+    cohortFilter !== null ||
+    departmentFilter !== null ||
+    companyIdFilter !== null,
+  );
 
   function selectScope(nextScope: ApplicantScope) {
     setScope(nextScope);
@@ -162,7 +349,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
             </div>
             <button
               type="button"
-              onClick={() => router.push('/admin/applicants?variant=download')}
+              onClick={openDownloadModal}
               className="bg-primary-700 flex h-[56px] items-center justify-center rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
             >
               자료 일괄 다운로드
@@ -232,7 +419,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
               variant="empty"
               title="등록된 지원자가 없습니다."
               description={
-                scope === 'mine'
+                scope === 'mine' && !hasActiveFilters
                   ? '내가 담당하는 공고에 지원한 학생이 아직 없습니다.'
                   : '조건에 맞는 지원자가 아직 없습니다.'
               }
@@ -244,7 +431,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
               총 {totalCount}명
             </p>
 
-            <ApplicantTable applicants={applicants} />
+            <ApplicantTable applicants={applicants} queryString={filterQueryString} />
 
             {listQuery.data && listQuery.data.totalPages > 1 && (
               <div className="flex items-center justify-center gap-[12px]">
