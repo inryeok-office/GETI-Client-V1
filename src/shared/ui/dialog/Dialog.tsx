@@ -22,13 +22,13 @@ export function Dialog({
   actionsClassName = 'mt-6 flex justify-end gap-2',
   actions,
   children,
-  contentClassName = 'mt-3 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600',
+  contentClassName = 'text-body mt-3 text-neutral-600',
   isOpen,
   onClose,
   overlayClassName = 'bg-neutral-900/40',
   panelClassName = 'w-full max-w-md rounded-xl bg-white p-6 shadow-lg',
   title,
-  titleClassName = 'text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900',
+  titleClassName = 'text-web-heading-3 text-neutral-900',
 }: DialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const titleId = useId();
