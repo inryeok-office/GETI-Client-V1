@@ -1,16 +1,25 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DiscordDelivery, DiscordDeliveryListResponse } from '@/entities/discord-delivery';
+import type {
+  DiscordDelivery,
+  DiscordDeliveryListResponse,
+  RetryDiscordDeliveryParams,
+} from '@/entities/discord-delivery';
 
 import { AdminDiscordPostPage } from './AdminDiscordPostPage';
 
-const { mockUseDiscordDeliveryListQuery, mockUseRetryDiscordDeliveryMutation, mockMutate } =
-  vi.hoisted(() => ({
-    mockUseDiscordDeliveryListQuery: vi.fn(),
-    mockUseRetryDiscordDeliveryMutation: vi.fn(),
-    mockMutate: vi.fn(),
-  }));
+const {
+  mockUseDiscordDeliveryListQuery,
+  mockUseRetryDiscordDeliveryMutation,
+  mockMutate,
+  mockRouterReplace,
+} = vi.hoisted(() => ({
+  mockUseDiscordDeliveryListQuery: vi.fn(),
+  mockUseRetryDiscordDeliveryMutation: vi.fn(),
+  mockMutate: vi.fn(),
+  mockRouterReplace: vi.fn(),
+}));
 
 vi.mock('@/entities/discord-delivery', async () => {
   const actual = await vi.importActual<typeof import('@/entities/discord-delivery')>(
@@ -22,6 +31,11 @@ vi.mock('@/entities/discord-delivery', async () => {
     useRetryDiscordDeliveryMutation: mockUseRetryDiscordDeliveryMutation,
   };
 });
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: mockRouterReplace }),
+  usePathname: () => '/admin/discord-posts',
+}));
 
 function listResult(overrides: Partial<ReturnType<typeof emptyListResult>> = {}) {
   return { ...emptyListResult(), ...overrides };
@@ -39,6 +53,20 @@ function emptyListResult() {
   };
 
   return { data, isLoading: false, isError: false, refetch: vi.fn() };
+}
+
+interface RetryMutationResult {
+  mutate: typeof mockMutate;
+  isPending: boolean;
+  variables: RetryDiscordDeliveryParams | undefined;
+}
+
+function retryMutationResult(overrides: Partial<RetryMutationResult> = {}): RetryMutationResult {
+  return { ...idleRetryMutation(), ...overrides };
+}
+
+function idleRetryMutation(): RetryMutationResult {
+  return { mutate: mockMutate, isPending: false, variables: undefined };
 }
 
 const JOB_DELIVERY: DiscordDelivery = {
@@ -61,6 +89,14 @@ const JOB_DELIVERY: DiscordDelivery = {
   lastSyncedAt: '2026-08-01T14:32:20',
 };
 
+const PROGRAM_DELIVERY: DiscordDelivery = {
+  ...JOB_DELIVERY,
+  deliveryId: 4,
+  targetType: 'PROGRAM',
+  targetId: 40,
+  targetName: '현직자 프론트엔드 특강',
+};
+
 const INQUIRY_DELIVERY: DiscordDelivery = {
   ...JOB_DELIVERY,
   deliveryId: 2,
@@ -81,7 +117,7 @@ const STALE_FAILED_DELIVERY: DiscordDelivery = {
 
 beforeEach(() => {
   mockUseDiscordDeliveryListQuery.mockReturnValue(listResult());
-  mockUseRetryDiscordDeliveryMutation.mockReturnValue({ mutate: mockMutate });
+  mockUseRetryDiscordDeliveryMutation.mockReturnValue(retryMutationResult());
 });
 
 afterEach(() => {
@@ -108,7 +144,7 @@ describe('AdminDiscordPostPage', () => {
     render(<AdminDiscordPostPage />);
 
     expect(screen.getByText('전송 이력을 불러오지 못했습니다.')).toBeInTheDocument();
-    screen.getByRole('button', { name: '다시 시도' }).click();
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(refetch).toHaveBeenCalled();
   });
 
@@ -166,16 +202,34 @@ describe('AdminDiscordPostPage', () => {
     );
 
     render(<AdminDiscordPostPage />);
-    screen.getByRole('button', { name: '재시도' }).click();
+    fireEvent.click(screen.getByRole('button', { name: '재시도' }));
 
     expect(mockMutate).toHaveBeenCalledWith(
       { targetType: 'JOB', targetId: 10 },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-        onSettled: expect.any(Function),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it('다른 항목이 재시도 중이면 모든 재시도 버튼을 비활성화하고, 그 항목만 "재시도 중…"을 보여준다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: {
+          ...emptyListResult().data,
+          content: [JOB_DELIVERY, PROGRAM_DELIVERY],
+          totalElements: 2,
+        },
       }),
     );
+    mockUseRetryDiscordDeliveryMutation.mockReturnValue(
+      retryMutationResult({ isPending: true, variables: { targetType: 'JOB', targetId: 10 } }),
+    );
+
+    render(<AdminDiscordPostPage />);
+
+    const retryButtons = screen.getAllByRole('button', { name: /재시도/ });
+    expect(retryButtons).toHaveLength(2);
+    expect(screen.getByRole('button', { name: '재시도 중…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '재시도' })).toBeDisabled();
   });
 
   it('detailId가 이미 불러온 목록에 있으면 상세 패널에 targetName과 재시도 여부를 보여준다', () => {
@@ -201,5 +255,45 @@ describe('AdminDiscordPostPage', () => {
     render(<AdminDiscordPostPage detailId="999" />);
 
     expect(screen.queryByText('Discord 전송 상세')).not.toBeInTheDocument();
+  });
+
+  it('2페이지 이상에서 "다음"을 누르면 "상세 보기"·닫기 링크에 page 쿼리스트링이 붙는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: {
+          ...emptyListResult().data,
+          content: [JOB_DELIVERY],
+          totalElements: 21,
+          totalPages: 2,
+          last: false,
+        },
+      }),
+    );
+
+    render(<AdminDiscordPostPage />);
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByRole('link', { name: '상세 보기' })).toHaveAttribute(
+      'href',
+      '/admin/discord-posts/1?page=2',
+    );
+  });
+
+  it('initialPage로 복원한 page는 상세 화면에서도 같은 목록 조회에 쓰인다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [JOB_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="1" initialPage="2" />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1 }),
+    );
+    expect(screen.getByRole('link', { name: '' })).toHaveAttribute(
+      'href',
+      '/admin/discord-posts?page=2',
+    );
   });
 });

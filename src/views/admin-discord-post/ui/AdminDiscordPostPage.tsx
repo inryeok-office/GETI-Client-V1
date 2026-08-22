@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import {
   DISCORD_DELIVERY_STATUS_LABEL,
@@ -67,6 +68,8 @@ function getRetryErrorMessage(error: unknown): string {
 interface AdminDiscordPostPageProps {
   /** /admin/discord-posts/[deliveryId]로 들어왔을 때 그 id가 있으면 상세 패널을 목록 위에 띄운다. */
   detailId?: string;
+  /** Server Component가 넘겨주는 초기 page 쿼리스트링(1부터 시작). */
+  initialPage?: string;
 }
 
 /**
@@ -75,26 +78,47 @@ interface AdminDiscordPostPageProps {
  *
  * 상세 패널은 별도 조회 API가 없다 — 목록 응답 항목이 상세에 필요한 값을 이미 전부 담고
  * 있어서(GETI-Server가 단건 조회를 따로 안 만든 이유이기도 하다), 이미 불러온 페이지의
- * `content`에서 deliveryId로 찾아 그대로 보여준다. 이 화면이 불러온 페이지 범위 밖의 id로
- * 직접 들어오면(딥링크 · 새로고침) 상세를 보여줄 수 없다 — 대상별 단건 조회 API
- * (`/admin/jobs/{id}/discord` 등)는 targetId 기준이라 delivery 단위 조회를 대신할 수 없다.
+ * `content`에서 deliveryId로 찾아 그대로 보여준다. `/admin/discord-posts/[deliveryId]`는
+ * 목록 페이지와 별개의 Route라 그대로 이동하면 컴포넌트가 다시 마운트되어 `page`가 0으로
+ * 리셋된다 — 2페이지 이상에서 "상세 보기"를 누르면 그 항목이 새로 불러온 0페이지
+ * `content`에 없어 패널이 열리지 않는 문제가 있었다(PR #142 코드리뷰 반영). 그래서 현재
+ * `page`를 URL 쿼리스트링(`?page=`)에 실어 "상세 보기"·닫기 링크에 그대로 이어 붙이고,
+ * Server Component가 그 값을 `initialPage`로 되돌려줘 같은 page를 다시 조회하게 한다.
+ * 그래도 페이지 범위 밖의 id로 직접 딥링크하면(예: 새로고침 전 다른 관리자가 페이지를
+ * 옮긴 경우) 상세를 보여줄 수 없다 — 대상별 단건 조회 API(`/admin/jobs/{id}/discord` 등)는
+ * targetId 기준이라 delivery 단위 조회를 대신할 수 없다.
  *
  * 재시도는 `canRetry`가 true인 항목에서만 노출한다. `JOB`/`PROGRAM`만 재시도 Endpoint가 있어
- * 대상 종류별로 다른 경로를 호출하고, `INQUIRY`는 버튼 자체를 보여주지 않는다.
+ * 대상 종류별로 다른 경로를 호출하고, `INQUIRY`는 버튼 자체를 보여주지 않는다. Mutation
+ * 인스턴스를 화면 전체에서 하나만 쓰고 `isPending` 동안 모든 재시도 버튼을 비활성화한다 —
+ * 행마다 로컬 상태로 관리하면 A를 재시도하는 중 B를 눌러 두 요청이 동시에 나갈 수 있고,
+ * 이후 콜백 순서가 어긋나 A 버튼이 요청 중인데도 다시 활성화될 수 있었다(PR #142 코드리뷰
+ * 반영). `retryMutation.variables`로 지금 재시도 중인 항목만 "재시도 중…" 문구를 보여준다.
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
  * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 사람이 읽을 채널 이름을 내려주는
- * API가 없어 Discord 채널 Snowflake(`channelId`)를 그대로 보여준다.
+ * API가 없어 Discord 채널 Snowflake(`channelId`)를 그대로 보여준다. 목록 응답의 `action`은
+ * Figma에 대응하는 표시 자리가 없어 이번 라운드에서는 화면에 노출하지 않는다(Issue #141 참고).
  *
  * 간격 · 색상은 Figma(node 586:15675, 드롭다운은 1227:14609 등, 상세 패널 실패는 586:15962,
  * 성공은 1343:14098)의 값을 그대로 옮겼다.
  */
-export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
-  const [page, setPage] = useState(0);
-  const [retryingDeliveryId, setRetryingDeliveryId] = useState<number | null>(null);
+export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPostPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [page, setPage] = useState(() => {
+    const raw = Number(initialPage);
+    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+  });
 
   const listQuery = useDiscordDeliveryListQuery({ page, size: PAGE_SIZE });
   const retryMutation = useRetryDiscordDeliveryMutation();
+
+  /** page가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
+  useEffect(() => {
+    const queryString = page > 0 ? `?page=${page + 1}` : '';
+    router.replace(`${pathname}${queryString}`, { scroll: false });
+  }, [page, pathname, router]);
 
   const deliveries = listQuery.data?.content ?? [];
   const isListLoading = listQuery.isLoading;
@@ -105,17 +129,26 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
     ? deliveries.find((delivery) => delivery.deliveryId === parsedDetailId)
     : undefined;
 
+  /** "상세 보기"·닫기 링크에 이어 붙일 현재 page 쿼리스트링. */
+  const pageQueryString = page > 0 ? `?page=${page + 1}` : '';
+
   function handleRetry(delivery: DiscordDelivery) {
     if (!isRetryableTargetType(delivery.targetType)) return;
 
-    setRetryingDeliveryId(delivery.deliveryId);
     retryMutation.mutate(
       { targetType: delivery.targetType, targetId: delivery.targetId },
       {
         onSuccess: () => showToast({ tone: 'success', message: '재시도를 요청했습니다.' }),
         onError: (error) => showToast({ tone: 'error', message: getRetryErrorMessage(error) }),
-        onSettled: () => setRetryingDeliveryId(null),
       },
+    );
+  }
+
+  function isRetryingDelivery(delivery: DiscordDelivery) {
+    return (
+      retryMutation.isPending &&
+      retryMutation.variables?.targetType === delivery.targetType &&
+      retryMutation.variables?.targetId === delivery.targetId
     );
   }
 
@@ -232,7 +265,7 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
                   {deliveries.map((delivery) => {
                     const canShowRetryButton =
                       delivery.canRetry && isRetryableTargetType(delivery.targetType);
-                    const isRetrying = retryingDeliveryId === delivery.deliveryId;
+                    const isRetrying = isRetryingDelivery(delivery);
 
                     return (
                       <div key={delivery.deliveryId} className="flex h-[62px] items-center">
@@ -269,7 +302,9 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
                         </div>
                         <div className="w-[250px] shrink-0 pr-[8px] pl-[16px]">
                           <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#17627a]">
-                            <Link href={`/admin/discord-posts/${delivery.deliveryId}`}>
+                            <Link
+                              href={`/admin/discord-posts/${delivery.deliveryId}${pageQueryString}`}
+                            >
                               상세 보기
                             </Link>
                             {canShowRetryButton && (
@@ -277,7 +312,7 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
                                 {'  ·  '}
                                 <button
                                   type="button"
-                                  disabled={isRetrying}
+                                  disabled={retryMutation.isPending}
                                   onClick={() => handleRetry(delivery)}
                                   className="disabled:cursor-not-allowed disabled:opacity-50"
                                 >
@@ -332,7 +367,7 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
               <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
                 Discord 전송 상세
               </p>
-              <Link href="/admin/discord-posts" className="focus:outline-none">
+              <Link href={`/admin/discord-posts${pageQueryString}`} className="focus:outline-none">
                 <Icon name="close" className="size-[20px] text-[#111]" />
               </Link>
             </div>
@@ -397,11 +432,11 @@ export function AdminDiscordPostPage({ detailId }: AdminDiscordPostPageProps) {
             {detail.canRetry && isRetryableTargetType(detail.targetType) && (
               <button
                 type="button"
-                disabled={retryingDeliveryId === detail.deliveryId}
+                disabled={retryMutation.isPending}
                 onClick={() => handleRetry(detail)}
                 className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {retryingDeliveryId === detail.deliveryId ? '재시도 중…' : '다시 전송'}
+                {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
               </button>
             )}
           </div>
