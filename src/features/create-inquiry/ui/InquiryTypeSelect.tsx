@@ -3,15 +3,21 @@
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import type { InquiryType } from '@/entities/inquiry';
 import { Icon } from '@/shared/ui/icon';
+
+export interface InquiryTypeOption {
+  label: string;
+  value: InquiryType;
+}
 
 interface InquiryTypeSelectProps {
   disabled?: boolean;
   errorMessage?: string;
   id?: string;
-  onChange: (value: string) => void;
-  options: string[];
-  value: string;
+  onChange: (value: InquiryType) => void;
+  options: readonly InquiryTypeOption[];
+  value: InquiryType | '';
 }
 
 export function InquiryTypeSelect({
@@ -28,6 +34,7 @@ export function InquiryTypeSelect({
   const selectId = id ?? generatedId;
   const errorId = errorMessage ? `${selectId}-error` : undefined;
   const listboxId = `${selectId}-listbox`;
+  const selectedOption = options.find((option) => option.value === value);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,7 +72,7 @@ export function InquiryTypeSelect({
         }`}
       >
         <span className={value ? 'text-[#111]' : 'text-[#525252]'}>
-          {value || '문의 유형을 선택해 주세요.'}
+          {selectedOption?.label ?? '문의 유형을 선택해 주세요.'}
         </span>
         <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center overflow-hidden">
           <Image
@@ -86,23 +93,23 @@ export function InquiryTypeSelect({
           className="absolute top-[64px] z-10 flex w-full flex-col gap-[2px] overflow-hidden rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
           {options.map((option) => {
-            const isSelected = value === option;
+            const isSelected = value === option.value;
 
             return (
-              <li key={option} role="none">
+              <li key={option.value} role="none">
                 <button
                   role="option"
                   aria-selected={isSelected}
                   type="button"
                   onClick={() => {
-                    onChange(option);
+                    onChange(option.value);
                     setIsOpen(false);
                   }}
                   className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] transition-colors hover:bg-[#f6fbfc] focus:bg-[#f6fbfc] focus:outline-none ${
                     isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'bg-white text-[#111]'
                   }`}
                 >
-                  {option}
+                  {option.label}
                   {isSelected && <Icon name="check" className="size-5 shrink-0" />}
                 </button>
               </li>
