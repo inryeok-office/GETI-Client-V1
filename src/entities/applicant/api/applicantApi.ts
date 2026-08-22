@@ -25,6 +25,8 @@ export interface FetchApplicantListParams {
   department?: ApplicantDepartment;
   /** true면 로그인한 사용자가 담당(또는 등록)한 공고의 지원서만 조회한다. GETI-Server-V1 #181. */
   mineOnly?: boolean;
+  /** GETI-Server-V1 #181. */
+  companyId?: number;
   page?: number;
   size?: number;
 }
