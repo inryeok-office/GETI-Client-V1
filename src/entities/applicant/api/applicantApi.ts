@@ -11,9 +11,20 @@ import type {
 const BASE_PATH = '/api/v1/admin/job-applications';
 const JOBS_BASE_PATH = '/api/v1/admin/jobs';
 
+/** `applicantDepartment` 필터 값. 회원 프로필의 department enum과 동일하다. */
+export type ApplicantDepartment = 'SW_DEVELOPMENT' | 'SMART_IOT' | 'AI';
+
 export interface FetchApplicantListParams {
   jobId?: number;
   status?: ApplicantStatus;
+  /** 지원자 이름 부분 검색(대소문자 무시). GETI-Server-V1 #181. */
+  applicantName?: string;
+  /** GETI-Server-V1 #181. */
+  cohort?: number;
+  /** GETI-Server-V1 #181. */
+  department?: ApplicantDepartment;
+  /** true면 로그인한 사용자가 담당(또는 등록)한 공고의 지원서만 조회한다. GETI-Server-V1 #181. */
+  mineOnly?: boolean;
   page?: number;
   size?: number;
 }

@@ -8,6 +8,7 @@ export {
   useJobPostingOptionsQuery,
 } from './api/useApplicantQueries';
 export type {
+  ApplicantDepartment,
   ExecuteApplicantActionParams,
   ExportedFile,
   FetchApplicantListParams,
