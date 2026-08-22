@@ -46,7 +46,7 @@ export function StatusDialog({
         >
           {icon}
           <div className="flex flex-col items-center gap-[12px] text-center">
-            <p className="text-body-lg font-semibold text-neutral-900">{title}</p>
+            <p className="text-body-lg font-semibold! text-neutral-900">{title}</p>
             <p className="text-body whitespace-pre-line text-neutral-600">{description}</p>
           </div>
         </div>

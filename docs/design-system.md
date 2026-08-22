@@ -30,10 +30,11 @@ Figma의 `brand` 팔레트는 코드에서 `primary`라는 이름을 사용합�
 | 성공 | `#22C55E` | `#F0FDF4` | `text-status-success`, `bg-status-success-subtle` |
 | 경고 | `#F59E0B` | `#FFF7DB` | `text-status-warning`, `bg-status-warning-subtle` |
 | 오류 | `#EF4444` | `#FEF2F2` | `text-status-error`, `bg-status-error-subtle` |
-| 정보 | `#3B82F6` | 화면별 확인 | `text-status-info` |
+| 정보 | `#3B82F6` | 미확정 | `text-status-info` |
 
 - 새 코드에서는 팔레트에 있는 색상을 `[#hex]`로 반복하지 않고 토큰 클래스를 사용합니다.
 - 색상만으로 상태를 전달하지 않습니다. 텍스트, 아이콘, `aria-invalid` 같은 의미 정보가 함께 있어야 합니다.
+- 정보 상태의 옅은 배경은 Figma Style Guide와 현재 코드에 확정된 값이나 사용처가 없어 아직 별도 Issue로 추적하지 않습니다. 실제 화면에서 필요해지면 해당 Figma 노드와 값을 확인하는 Issue를 먼저 만들고 `status-info-subtle` 토큰을 추가합니다.
 - Figma의 `Accent/Signature`, `AI`, `Deadline`, `New Job` 색은 사용 목적이 제한적이므로 전역 토큰으로 승격하지 않았습니다. 두 곳 이상에서 같은 의미로 사용될 때 별도 Issue로 추가합니다.
 
 ## 타이포그래피
@@ -58,7 +59,7 @@ Figma의 `brand` 팔레트는 코드에서 `primary`라는 이름을 사용합�
 
 - 제목은 문서 구조에 맞는 `h1`~`h3` 요소를 먼저 선택하고, 시각 크기는 토큰으로 정합니다.
 - 반응형 제목은 모바일 토큰을 기본으로 두고 웹 구간에서 덮습니다. 예: `text-mobile-heading-1 md:text-web-heading-1`.
-- Figma에 없는 굵기가 꼭 필요하면 가까운 토큰에 `font-semibold`처럼 굵기만 명시하며, 반복되면 새 토큰을 논의합니다.
+- Figma에 없는 굵기가 꼭 필요하면 가까운 토큰에 `font-semibold!`처럼 굵기만 명시합니다. `text-*` 토큰에도 굵기가 포함되므로 `!`로 의도한 재정의를 CSS 생성 순서와 무관하게 보장하며, 같은 조합이 반복되면 새 토큰을 논의합니다.
 
 ## 간격과 모서리
 
