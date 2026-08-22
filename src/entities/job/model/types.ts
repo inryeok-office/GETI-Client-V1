@@ -32,6 +32,17 @@ export type PublicJobStatus = 'PUBLISHED' | 'CLOSED';
 export type JobSort = 'LATEST' | 'DEADLINE' | 'VIEWS';
 export type JobSortDirection = 'ASC' | 'DESC';
 
+/**
+ * `GET /api/v1/job-sources`(`PublicJobSourceResponse`)의 출처 옵션. `sourceCode`가
+ * `GET /api/v1/jobs`의 `sourceName` 파라미터와 정확히 일치하는 값이다(GETI-Server-V1 #222).
+ */
+export interface JobSourceOption {
+  sourceId: number;
+  sourceCode: string;
+  name: string;
+  active: boolean;
+}
+
 export interface JobCompanySummary {
   companyId: number;
   name: string;

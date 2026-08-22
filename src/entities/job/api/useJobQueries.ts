@@ -2,12 +2,13 @@
 
 import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query';
 
-import { fetchJobDetail, fetchJobList, type FetchJobListParams } from './jobApi';
+import { fetchJobDetail, fetchJobList, fetchJobSources, type FetchJobListParams } from './jobApi';
 
 export const jobKeys = {
   all: ['jobs'] as const,
   list: (params: FetchJobListParams) => [...jobKeys.all, 'list', params] as const,
   detail: (jobId: number) => [...jobKeys.all, 'detail', jobId] as const,
+  sources: () => [...jobKeys.all, 'sources'] as const,
 };
 
 /**
@@ -27,5 +28,13 @@ export function useJobDetailQuery(jobId: number | null) {
   return useQuery({
     queryKey: jobKeys.detail(jobId ?? -1),
     queryFn: jobId === null ? skipToken : () => fetchJobDetail(jobId),
+  });
+}
+
+/** 공고 목록 "출처" 필터 드롭다운. 자주 바뀌지 않는 목록이라 상한 없이 전체를 모은다. */
+export function useJobSourcesQuery() {
+  return useQuery({
+    queryKey: jobKeys.sources(),
+    queryFn: fetchJobSources,
   });
 }
