@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -61,6 +61,7 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  */
 export function DownloadModal() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const exportMutation = useExportJobApplicationsMutation();
   const jobPostingsQuery = useJobPostingOptionsQuery();
   const jobPostings = jobPostingsQuery.data ?? [];
@@ -101,7 +102,16 @@ export function DownloadModal() {
     setIsJobDropdownOpen(false);
   };
 
-  const closeModal = () => router.push('/admin/applicants');
+  /**
+   * 현재 URL에서 `variant`만 지우고 나머지 검색·필터 쿼리스트링은 그대로 유지한 채 닫는다
+   * (PR #136 코드리뷰 반영 — 이전엔 `/admin/applicants`로 하드코딩해 닫을 때 필터가 사라졌었다).
+   */
+  const closeModal = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('variant');
+    const queryString = params.toString();
+    router.push(queryString ? `/admin/applicants?${queryString}` : '/admin/applicants');
+  };
 
   const handleDownload = () => {
     if (selectedJobId === undefined) return;

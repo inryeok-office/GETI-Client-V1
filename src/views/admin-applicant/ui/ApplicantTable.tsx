@@ -20,13 +20,20 @@ const TABLE_COLUMNS = [
 
 interface ApplicantTableProps {
   applicants: ApplicantListItem[];
+  /**
+   * 현재 검색 · 필터 · 페이지 쿼리스트링(`&` 없이 이어 붙일 형태, 없으면 빈 문자열). "상세
+   * 보기"에 그대로 붙여서, 상세 화면은 `/admin/applicants/[applicantId]`라는 별도 라우트라
+   * 이동하면 목록 화면이 새로 마운트되며 조회 조건이 초기화되는 문제를 막는다(PR #136 코드리뷰
+   * 반영).
+   */
+  queryString: string;
 }
 
 /**
  * 지원자 목록 테이블. "상세 보기"는 `/admin/applicants/[applicantId]`로 이동하는 실제 링크다.
  * 화면이 좁을 땐 이 박스 안에서만 가로 스크롤되게 했다(반응형은 Figma에 없는 부분).
  */
-export function ApplicantTable({ applicants }: ApplicantTableProps) {
+export function ApplicantTable({ applicants, queryString }: ApplicantTableProps) {
   return (
     <div className="overflow-x-auto rounded-[12px] border border-neutral-200 bg-white">
       <div className="flex min-w-[1620px] flex-col">
@@ -79,7 +86,7 @@ export function ApplicantTable({ applicants }: ApplicantTableProps) {
             </div>
             <div className="w-[210px] shrink-0 pr-[8px] pl-[16px]">
               <Link
-                href={`/admin/applicants/${applicant.applicationId}`}
+                href={`/admin/applicants/${applicant.applicationId}${queryString ? `?${queryString}` : ''}`}
                 className="text-primary-700 text-[14px] leading-[1.4] font-medium tracking-[-0.14px]"
               >
                 상세 보기
