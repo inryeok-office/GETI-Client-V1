@@ -9,11 +9,20 @@ describe('InquiryDetailContent', () => {
       <InquiryDetailContent
         inquiry={{
           inquiryId: '1',
+          inquiryType: 'ERROR',
           title: '문의 제목',
           status: 'ANSWERED',
           createdAt: '2026-08-08T10:00:00',
           content: '문의 내용입니다.',
-          answer: { content: '답변 내용입니다.', createdAt: '2026-08-09T10:00:00' },
+          files: [],
+          answers: [
+            {
+              answerId: '10',
+              content: '답변 내용입니다.',
+              createdAt: '2026-08-09T10:00:00',
+              files: [],
+            },
+          ],
         }}
       />,
     );
@@ -28,11 +37,13 @@ describe('InquiryDetailContent', () => {
       <InquiryDetailContent
         inquiry={{
           inquiryId: '2',
+          inquiryType: 'ETC',
           title: '문의 제목',
           status: 'RECEIVED',
           createdAt: '2026-08-08T10:00:00',
           content: '문의 내용입니다.',
-          answer: null,
+          files: [],
+          answers: [],
         }}
       />,
     );

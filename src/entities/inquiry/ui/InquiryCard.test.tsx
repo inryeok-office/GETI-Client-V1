@@ -9,6 +9,7 @@ describe('InquiryCard', () => {
       <InquiryCard
         inquiry={{
           inquiryId: '25',
+          inquiryType: 'ERROR',
           title: '문의 제목',
           status: 'ANSWERED',
           createdAt: '2026-08-09T10:00:00',
@@ -29,6 +30,7 @@ describe('InquiryCard', () => {
       <InquiryCard
         inquiry={{
           inquiryId: '26',
+          inquiryType: 'INCONVENIENCE',
           title: '처리 중 문의',
           status: 'IN_PROGRESS',
           createdAt: '2026-08-09T10:00:00',
@@ -37,5 +39,22 @@ describe('InquiryCard', () => {
     );
 
     expect(screen.getByText('답변 대기')).toBeInTheDocument();
+  });
+
+  it('종료된 문의를 답변 완료로 단정하지 않고 문의 종료로 표시한다', () => {
+    render(
+      <InquiryCard
+        inquiry={{
+          inquiryId: '27',
+          inquiryType: 'ETC',
+          title: '종료된 문의',
+          status: 'CLOSED',
+          createdAt: '2026-08-09T10:00:00',
+        }}
+      />,
+    );
+
+    expect(screen.getByText('문의 종료')).toBeInTheDocument();
+    expect(screen.queryByText('답변 완료')).not.toBeInTheDocument();
   });
 });
