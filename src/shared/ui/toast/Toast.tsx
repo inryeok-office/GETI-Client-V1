@@ -9,10 +9,10 @@ interface ToastProps {
 }
 
 const TONE_CLASSNAME: Record<ToastTone, string> = {
-  loading: 'justify-between bg-[#fafafa] border-[#e5e5e5]',
-  success: 'justify-between bg-[#f0fdf4] border-[#22c55e]',
+  loading: 'justify-between bg-neutral-50 border-neutral-200',
+  success: 'justify-between bg-status-success-subtle border-status-success',
   // 실패 토스트는 Figma에서 justify-between이 아니라 메시지-닫기 사이 고정 48px 간격을 쓴다.
-  error: 'gap-[48px] bg-[#fef2f2] border-[#ef4444]',
+  error: 'gap-[48px] bg-status-error-subtle border-status-error',
 };
 
 /**
@@ -31,14 +31,12 @@ export function Toast({ tone, message, onClose }: ToastProps) {
           <Icon name="spinner" className="size-[24px] shrink-0 animate-spin text-black" />
         )}
         {tone === 'success' && (
-          <Icon name="checkCircleFilled" className="size-[24px] shrink-0 text-[#22c55e]" />
+          <Icon name="checkCircleFilled" className="text-status-success size-[24px] shrink-0" />
         )}
         {tone === 'error' && (
-          <Icon name="alertCircleFilled" className="size-[20px] shrink-0 text-[#ef4444]" />
+          <Icon name="alertCircleFilled" className="text-status-error size-[20px] shrink-0" />
         )}
-        <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] whitespace-nowrap text-[#111]">
-          {message}
-        </p>
+        <p className="text-label whitespace-nowrap text-neutral-900">{message}</p>
       </div>
       <button
         type="button"
@@ -46,7 +44,7 @@ export function Toast({ tone, message, onClose }: ToastProps) {
         aria-label="알림 닫기"
         className="flex size-[20px] shrink-0 items-center justify-center"
       >
-        <Icon name="close" className="size-[11.67px] text-[#525252]" />
+        <Icon name="close" className="size-[11.67px] text-neutral-600" />
       </button>
     </div>
   );

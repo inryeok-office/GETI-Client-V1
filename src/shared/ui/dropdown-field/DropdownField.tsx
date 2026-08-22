@@ -66,7 +66,7 @@ export function DropdownField({
       {label ? (
         <label
           id={`${generatedId}-label`}
-          className={`mb-2 block tracking-[-0.16px] text-neutral-900 ${isLargeText ? 'text-base leading-[1.6] font-normal' : 'text-sm leading-[1.4] font-medium'}`}
+          className={`mb-2 block text-neutral-900 ${isLargeText ? 'text-body-lg' : 'text-label'}`}
         >
           {label}
         </label>
@@ -84,9 +84,7 @@ export function DropdownField({
         aria-invalid={errorMessage ? true : undefined}
         onClick={() => setIsOpen((current) => !current)}
         className={`focus:border-primary-300 flex w-full items-center justify-between rounded-lg border bg-white text-left transition-colors outline-none disabled:bg-neutral-100 ${controlClassName} ${
-          isLargeText
-            ? 'px-4 text-base leading-[1.6] font-normal tracking-[-0.16px]'
-            : 'pr-2 pl-4 text-sm leading-[1.4] font-medium tracking-[-0.14px]'
+          isLargeText ? 'text-body-lg px-4' : 'text-label pr-2 pl-4'
         } ${errorMessage ? 'border-status-error' : 'border-neutral-200'}`}
       >
         <span className={selectedOption ? 'text-neutral-900' : 'text-neutral-600'}>
@@ -110,7 +108,7 @@ export function DropdownField({
           id={listboxId}
           role="listbox"
           aria-labelledby={generatedId}
-          className={`absolute z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)] ${label ? 'top-[90px]' : 'top-[64px]'}`}
+          className={`shadow-raised absolute z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 ${label ? 'top-[90px]' : 'top-[64px]'}`}
         >
           {options.map((option) => {
             const isSelected = value === option.value;
@@ -125,7 +123,7 @@ export function DropdownField({
                     onChange(option.value);
                     setIsOpen(false);
                   }}
-                  className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center justify-between rounded-lg px-4 text-left tracking-[-0.14px] transition-colors focus:outline-none ${isLargeText ? 'text-base leading-[1.6]' : 'text-sm leading-[21px]'} ${
+                  className={`hover:bg-primary-50 focus:bg-primary-50 flex h-11 w-full items-center justify-between rounded-lg px-4 text-left transition-colors focus:outline-none ${isLargeText ? 'text-body-lg' : 'text-body'} ${
                     isSelected ? 'bg-primary-50 text-primary-700' : 'bg-white text-neutral-900'
                   }`}
                 >
@@ -139,7 +137,7 @@ export function DropdownField({
       ) : null}
 
       {errorMessage ? (
-        <p className="text-status-error mt-1.5 text-xs leading-[1.5]">{errorMessage}</p>
+        <p className="text-caption text-status-error mt-1.5">{errorMessage}</p>
       ) : null}
     </div>
   );
