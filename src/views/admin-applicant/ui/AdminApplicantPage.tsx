@@ -43,10 +43,9 @@ const SEARCH_DEBOUNCE_MS = 300;
  * "담당 공고 / 전체보기" 탭은 GETI-Server-V1 #181로 추가된 `mineOnly` 쿼리 파라미터에 연결된다
  * (서버가 Authentication Principal 기준으로 스코프를 계산한다 — 이전에는 `GET /me/profile`
  * 비교 + 100건 상한 우회로 클라이언트에서 직접 걸렀다, Issue #135).
- * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 공고 · 상태는 각각 `applicantName`(디바운스) ·
- * `cohort` · `department` · `jobId` · `status` 파라미터에 실제로 연결돼 있다. "기업"만
- * `companyId` 필터 자체는 있지만 실제 기업 목록 조회 수단이 없어 선택을 비활성화해 뒀다
- * (`ApplicantFilterBar` 주석 참고).
+ * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 기업 · 공고 · 상태는 각각 `applicantName`(디바운스) ·
+ * `cohort` · `department` · `companyId` · `jobId` · `status` 파라미터에 실제로 연결돼 있다
+ * (기업 목록은 `entities/company`의 `useCompanyOptionsQuery`, Issue #137).
  * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
  * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
  */
@@ -58,6 +57,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
   const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(null);
   const [cohortFilter, setCohortFilter] = useState<number | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState<ApplicantDepartment | null>(null);
+  const [companyIdFilter, setCompanyIdFilter] = useState<number | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -76,6 +76,7 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
     status: statusFilter ?? undefined,
     cohort: cohortFilter ?? undefined,
     department: departmentFilter ?? undefined,
+    companyId: companyIdFilter ?? undefined,
     applicantName: searchQuery.trim() || undefined,
     mineOnly: scope === 'mine',
   });
@@ -125,6 +126,11 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
     setPage(0);
   }
 
+  function selectCompanyFilter(companyId: number | null) {
+    setCompanyIdFilter(companyId);
+    setPage(0);
+  }
+
   function handleSearchInputChange(value: string) {
     setSearchInput(value);
     setPage(0);
@@ -170,6 +176,8 @@ export function AdminApplicantPage({ applicantId, variant }: AdminApplicantPageP
             onCohortChange={selectCohortFilter}
             selectedDepartment={departmentFilter}
             onDepartmentChange={selectDepartmentFilter}
+            selectedCompanyId={companyIdFilter}
+            onCompanyChange={selectCompanyFilter}
             jobOptions={jobOptions}
             selectedJobId={jobIdFilter}
             onJobChange={selectJobFilter}

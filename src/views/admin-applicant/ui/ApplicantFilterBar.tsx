@@ -7,6 +7,7 @@ import {
   type ApplicantDepartment,
   type ApplicantStatus,
 } from '@/entities/applicant';
+import { useCompanyOptionsQuery } from '@/entities/company';
 import { Icon } from '@/shared/ui/icon';
 
 /** 기수 드롭다운 선택지 → `cohort` 파라미터. Figma 라벨(8기 · 9기 · 10기)을 그대로 옮겼다. */
@@ -35,7 +36,7 @@ interface JobOption {
   title: string;
 }
 
-type OpenFilter = 'cohort' | 'department' | 'job' | 'status';
+type OpenFilter = 'cohort' | 'department' | 'company' | 'job' | 'status';
 
 interface ApplicantFilterBarProps {
   searchValue: string;
@@ -44,6 +45,8 @@ interface ApplicantFilterBarProps {
   onCohortChange: (cohort: number | null) => void;
   selectedDepartment: ApplicantDepartment | null;
   onDepartmentChange: (department: ApplicantDepartment | null) => void;
+  selectedCompanyId: number | null;
+  onCompanyChange: (companyId: number | null) => void;
   jobOptions: JobOption[];
   selectedJobId: number | null;
   onJobChange: (jobId: number | null) => void;
@@ -54,10 +57,10 @@ interface ApplicantFilterBarProps {
 /**
  * 검색창 + 필터 드롭다운 5개(기수 · 학과 · 공고 · 기업 · 상태).
  * `GET /admin/job-applications`가 GETI-Server-V1 #181로 `applicantName` · `cohort` ·
- * `department` 파라미터를 새로 지원해, 검색창 · 기수 · 학과가 실제 목록 조회에 연결됐다
- * (부모가 값을 들고 있는 controlled 필드). "공고" · "상태"는 기존대로 `jobId` · `status`에
- * 연결돼 있다. "기업"만 `companyId` 자체는 API에 있지만 실제 기업 목록 조회 수단이 아직
- * 없어(아래 "기업" 드롭다운 주석 참고) 선택 자체를 비활성화한다.
+ * `department` · `companyId` 파라미터를 새로 지원해, 검색창 · 기수 · 학과 · 기업이 실제 목록
+ * 조회에 연결됐다(부모가 값을 들고 있는 controlled 필드). "기업"의 선택지는
+ * `useCompanyOptionsQuery`(`GET /api/v1/companies`, Issue #137)로 채운다. "공고" · "상태"는
+ * 기존대로 `jobId` · `status`에 연결돼 있다.
  */
 export function ApplicantFilterBar({
   searchValue,
@@ -66,6 +69,8 @@ export function ApplicantFilterBar({
   onCohortChange,
   selectedDepartment,
   onDepartmentChange,
+  selectedCompanyId,
+  onCompanyChange,
   jobOptions,
   selectedJobId,
   onJobChange,
@@ -74,6 +79,8 @@ export function ApplicantFilterBar({
 }: ApplicantFilterBarProps) {
   const [openFilter, setOpenFilter] = useState<OpenFilter | null>(null);
   const openDropdownRef = useRef<HTMLDivElement>(null);
+  const companyOptionsQuery = useCompanyOptionsQuery();
+  const companyOptions = companyOptionsQuery.data ?? [];
 
   useEffect(() => {
     if (!openFilter) return;
@@ -102,6 +109,9 @@ export function ApplicantFilterBar({
   const selectedDepartmentLabel = DEPARTMENT_OPTIONS.find(
     (option) => option.value === selectedDepartment,
   )?.label;
+  const selectedCompanyName = companyOptions.find(
+    (company) => company.companyId === selectedCompanyId,
+  )?.name;
 
   return (
     <div className="flex h-[56px] w-full gap-[16px]">
@@ -224,24 +234,64 @@ export function ApplicantFilterBar({
         )}
       </div>
 
-      {/*
-        GETI-Server-V1 #181의 `companyId` 필터는 이미 있지만, 그 값을 채울 실제 기업 목록 조회
-        (`GET /api/v1/companies`, entities/company API 신설)가 아직 없어(이 범위인 Issue #135를
-        넘어섬) "직무" · "기업 유형" · "출처"(widgets/job-list의 JobFilterBar, PR #132 코드리뷰
-        반영)와 같은 이유로 버튼 자체를 비활성화한다.
-      */}
-      <div className="relative h-full flex-1">
+      <div
+        ref={openFilter === 'company' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
         <button
           type="button"
-          disabled
-          title="기업 목록 조회 API가 아직 없어 선택할 수 없습니다."
+          onClick={() => setOpenFilter((prev) => (prev === 'company' ? null : 'company'))}
+          disabled={companyOptionsQuery.isError || companyOptions.length === 0}
+          title={companyOptionsQuery.isError ? '기업 목록을 불러오지 못했습니다.' : undefined}
           className="flex h-full w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <span className="truncate">기업</span>
+          <span className="truncate">
+            {companyOptionsQuery.isLoading
+              ? '기업 불러오는 중...'
+              : (selectedCompanyName ?? '기업')}
+          </span>
           <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
             <Icon name="chevronRight" className="h-[20px] w-[10px] rotate-90 text-neutral-600" />
           </span>
         </button>
+
+        {openFilter === 'company' && (
+          <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+            <button
+              type="button"
+              onClick={() => {
+                onCompanyChange(null);
+                setOpenFilter(null);
+              }}
+              className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                selectedCompanyId === null ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+              }`}
+            >
+              전체
+              {selectedCompanyId === null && <Icon name="check" className="size-[20px]" />}
+            </button>
+            {companyOptions.map((company) => {
+              const isSelected = selectedCompanyId === company.companyId;
+
+              return (
+                <button
+                  key={company.companyId}
+                  type="button"
+                  onClick={() => {
+                    onCompanyChange(isSelected ? null : company.companyId);
+                    setOpenFilter(null);
+                  }}
+                  className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                    isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+                  }`}
+                >
+                  <span className="truncate">{company.name}</span>
+                  {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div
