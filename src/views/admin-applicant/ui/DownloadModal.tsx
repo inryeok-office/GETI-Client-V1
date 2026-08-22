@@ -4,16 +4,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  useApplicantListQuery,
   useExportJobApplicationsMutation,
+  useJobApplicantOptionsQuery,
   useJobPostingOptionsQuery,
 } from '@/entities/applicant';
 import type { ExportedFile } from '@/entities/applicant';
 import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 
-/** 다운로드에 항상 포함되는 자료 종류. Figma 예시(인적사항 · 답변 · 첨부파일)를 그대로 옮겼다. */
+/** "포함 자료"는 이번 범위에서 제외한다 — 대응 API(GETI-Server-V1 #218)가 아직 없다. */
 const MATERIAL_LABELS = ['인적사항', '답변', '첨부파일'];
+
+type OpenField = 'job' | 'applicant';
 
 /**
  * export 실패 사유별 안내 문구. 이슈 #120은 대상 공고에 대한 권한이 없으면(403) 사용자에게
@@ -46,16 +48,20 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  * ?variant=download URL로 직접 접근해도 동일하게 열린다. 목록 화면의 검색 · 필터 ·
  * 페이지 상태는 모두 부모 컴포넌트의 로컬 state라 모달을 열고 닫아도 그대로 유지된다.
  *
- * 실제 다운로드 API(`GET /admin/jobs/{jobId}/applications/export`)는 jobId 단위로 그 공고
- * 지원자 전원의 첨부파일을 ZIP 하나로 묶어줄 뿐, 개별 지원자 선택이나 자료 종류 선택에
- * 대응하는 파라미터가 없다(GETI-Server-V1 #203 OPEN). 그래서 "지원자" · "포함 자료"는
- * 선택할 수 없는 안내 전용 필드로 두고, "공고" 선택 하나만 실제 다운로드에 연결한다.
+ * "지원자"는 Figma(node 586:16199)가 그린 대로 실제 선택 드롭다운이다 — GETI-Server-V1
+ * #203/PR #215가 `GET /admin/jobs/{jobId}/applications/export`에 `applicationIds` 선택
+ * 파라미터를 추가해 이제 개별 선택을 실제로 붙일 수 있다(Issue #144). `selectedApplicantIds`가
+ * `null`이면 "전체 선택" 상태이고, 이 경우 `applicationIds`를 아예 보내지 않는다 — 생략이
+ * 곧 공고 전체 대상이라는 기존 하위 호환 동작과 정확히 같아서, 전체 선택인데도 긴
+ * 쿼리스트링을 만들 이유가 없다. 하나라도 선택 해제하면 그때부터 선택된 id만 담은 Set으로
+ * 바뀐다. 공고를 바꾸면 이전 공고의 선택은 의미가 없어 전체 선택으로 되돌린다.
+ *
+ * "포함 자료"는 대응 API(GETI-Server-V1 #218)가 아직 없어 계속 비활성 안내 전용으로 둔다.
  *
  * 공고 · 지원자 데이터는 목록 화면에 지금 로드돼 있는(페이지네이션 · 필터가 걸린) 배열을
- * 그대로 쓰지 않는다. "공고" 드롭다운은 `useJobPostingOptionsQuery`가 전체 지원자 목록을
- * 상한 없이 끝까지 페이지네이션해 만들고, "지원자" 명수는 `GET /admin/job-applications?jobId=`로
- * 선택한 공고 기준으로 별도 조회해 정확한 `totalElements`를 쓴다 — 그래야 다른 페이지 ·
- * 필터에만 있는 공고도 선택지에 나타난다.
+ * 그대로 쓰지 않는다. "공고" 드롭다운은 `useJobPostingOptionsQuery`가, "지원자" 체크박스
+ * 목록은 `useJobApplicantOptionsQuery`가 각각 상한 없이 전체를 모아서 만든다 — 다른 페이지 ·
+ * 필터에만 있는 공고 · 지원자도 선택지에 나타나야 한다.
  *
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
@@ -69,17 +75,25 @@ export function DownloadModal() {
   /** 아직 아무 공고도 직접 고르지 않았으면(undefined) 첫 번째 공고를 기본값으로 쓴다. */
   const [pickedJobId, setPickedJobId] = useState<number | undefined>(undefined);
   const selectedJobId = pickedJobId ?? jobPostings[0]?.jobId;
-  const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
+  const [openField, setOpenField] = useState<OpenField | null>(null);
   const openDropdownRef = useRef<HTMLDivElement>(null);
 
+  /** `null`이면 전체 선택. 하나라도 선택 해제하면 선택된 applicationId만 담는다. */
+  const [selectedApplicantIds, setSelectedApplicantIds] = useState<Set<number> | null>(null);
+
+  const applicantOptionsQuery = useJobApplicantOptionsQuery(selectedJobId);
+  const applicantOptions = applicantOptionsQuery.data ?? [];
+  const selectedApplicantCount = selectedApplicantIds?.size ?? applicantOptions.length;
+  const isAllApplicantsSelected = selectedApplicantIds === null;
+
   useEffect(() => {
-    if (!isJobDropdownOpen) return;
+    if (!openField) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!openDropdownRef.current?.contains(event.target as Node)) setIsJobDropdownOpen(false);
+      if (!openDropdownRef.current?.contains(event.target as Node)) setOpenField(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsJobDropdownOpen(false);
+      if (event.key === 'Escape') setOpenField(null);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -88,18 +102,33 @@ export function DownloadModal() {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isJobDropdownOpen]);
+  }, [openField]);
 
   const selectedJob = jobPostings.find((job) => job.jobId === selectedJobId);
-  /** 선택한 공고의 지원자 수. jobId로 직접 조회해 정확한 `totalElements`를 쓴다. */
-  const applicantCountQuery = useApplicantListQuery(
-    { jobId: selectedJobId, size: 1 },
-    { enabled: selectedJobId !== undefined },
-  );
 
   const handleSelectJob = (jobId: number) => {
     setPickedJobId(jobId);
-    setIsJobDropdownOpen(false);
+    // 이전 공고의 지원자 선택은 새 공고에 의미가 없어 전체 선택으로 되돌린다.
+    setSelectedApplicantIds(null);
+    setOpenField(null);
+  };
+
+  const toggleSelectAllApplicants = () => {
+    setSelectedApplicantIds((current) => (current === null ? new Set() : null));
+  };
+
+  const toggleApplicant = (applicationId: number) => {
+    setSelectedApplicantIds((current) => {
+      const next = new Set(current ?? applicantOptions.map((applicant) => applicant.applicationId));
+      if (next.has(applicationId)) {
+        next.delete(applicationId);
+      } else {
+        next.add(applicationId);
+      }
+      // 전부 다시 선택됐으면 "전체 선택" 상태(null)로 되돌린다 — 그래야 다운로드 시
+      // applicationIds를 생략하는 하위 호환 경로를 그대로 쓴다.
+      return next.size >= applicantOptions.length ? null : next;
+    });
   };
 
   /**
@@ -116,13 +145,23 @@ export function DownloadModal() {
   const handleDownload = () => {
     if (selectedJobId === undefined) return;
 
-    exportMutation.mutate(selectedJobId, {
-      onSuccess: (file) => {
-        saveExportedFile(file);
-        closeModal();
+    exportMutation.mutate(
+      {
+        jobId: selectedJobId,
+        applicationIds: selectedApplicantIds ? Array.from(selectedApplicantIds) : undefined,
       },
-    });
+      {
+        onSuccess: (file) => {
+          saveExportedFile(file);
+          closeModal();
+        },
+      },
+    );
   };
+
+  const isApplicantFieldDisabled =
+    applicantOptionsQuery.isLoading ||
+    (!applicantOptionsQuery.isError && applicantOptions.length === 0);
 
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
@@ -132,7 +171,7 @@ export function DownloadModal() {
             지원자 자료 일괄 다운로드
           </p>
           <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
-            다운로드할 공고를 선택해 주세요. 선택한 공고 지원자 전원의 자료가 모두 포함됩니다.
+            다운로드할 공고와 지원자를 선택해 주세요.
           </p>
         </div>
 
@@ -159,10 +198,10 @@ export function DownloadModal() {
               <p className="px-[4px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-800">
                 공고
               </p>
-              <div ref={isJobDropdownOpen ? openDropdownRef : undefined} className="relative">
+              <div ref={openField === 'job' ? openDropdownRef : undefined} className="relative">
                 <button
                   type="button"
-                  onClick={() => setIsJobDropdownOpen((prev) => !prev)}
+                  onClick={() => setOpenField((prev) => (prev === 'job' ? null : 'job'))}
                   disabled={jobPostings.length === 0}
                   className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 p-[16px] text-left focus:outline-none disabled:opacity-50"
                 >
@@ -175,7 +214,7 @@ export function DownloadModal() {
                   />
                 </button>
 
-                {isJobDropdownOpen && (
+                {openField === 'job' && (
                   <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                     {jobPostings.map((job) => (
                       <button
@@ -204,16 +243,77 @@ export function DownloadModal() {
                 지원자
               </p>
               <div
-                aria-disabled="true"
-                className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-neutral-50 p-[16px] text-left"
+                ref={openField === 'applicant' ? openDropdownRef : undefined}
+                className="relative"
               >
-                <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-500">
-                  {applicantCountQuery.isLoading
-                    ? '지원자 수를 불러오는 중...'
-                    : applicantCountQuery.isError
-                      ? '지원자 수를 불러오지 못했습니다'
-                      : `전체 지원자 ${applicantCountQuery.data?.totalElements ?? 0}명`}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (applicantOptionsQuery.isError) {
+                      applicantOptionsQuery.refetch();
+                      return;
+                    }
+                    setOpenField((prev) => (prev === 'applicant' ? null : 'applicant'));
+                  }}
+                  disabled={isApplicantFieldDisabled}
+                  className={`flex w-full items-center justify-between rounded-[8px] border p-[16px] text-left focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                    applicantOptionsQuery.isError
+                      ? 'border-status-error text-status-error'
+                      : 'border-neutral-200'
+                  }`}
+                >
+                  <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
+                    {applicantOptionsQuery.isLoading
+                      ? '지원자 목록을 불러오는 중...'
+                      : applicantOptionsQuery.isError
+                        ? '지원자 목록을 불러오지 못했습니다. 다시 시도'
+                        : applicantOptions.length === 0
+                          ? '지원자가 없습니다'
+                          : `선택한 지원자 ${selectedApplicantCount}명`}
+                  </span>
+                  <Icon
+                    name={applicantOptionsQuery.isError ? 'refresh' : 'chevronRight'}
+                    className={
+                      applicantOptionsQuery.isError
+                        ? 'text-status-error size-[14px]'
+                        : 'h-[10px] w-[20px] shrink-0 rotate-90 text-neutral-600'
+                    }
+                  />
+                </button>
+
+                {openField === 'applicant' && !applicantOptionsQuery.isError && (
+                  <div className="absolute top-full left-0 z-20 mt-[4px] flex max-h-[280px] w-full flex-col items-start gap-[2px] overflow-y-auto rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+                    <label className="hover:bg-primary-50 flex h-[44px] w-full cursor-pointer items-center gap-[8px] rounded-[8px] px-[16px] text-[14px] leading-[21px] tracking-[-0.14px] text-neutral-900">
+                      <input
+                        type="checkbox"
+                        checked={isAllApplicantsSelected}
+                        onChange={toggleSelectAllApplicants}
+                        className="size-[16px]"
+                      />
+                      전체 선택
+                    </label>
+                    {applicantOptions.map((applicant) => {
+                      const isChecked =
+                        isAllApplicantsSelected ||
+                        (selectedApplicantIds?.has(applicant.applicationId) ?? false);
+
+                      return (
+                        <label
+                          key={applicant.applicationId}
+                          className="hover:bg-primary-50 flex h-[44px] w-full cursor-pointer items-center gap-[8px] rounded-[8px] px-[16px] text-[14px] leading-[21px] tracking-[-0.14px] text-neutral-900"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleApplicant(applicant.applicationId)}
+                            className="size-[16px]"
+                          />
+                          <span className="truncate">{applicant.applicantName ?? 'ㅡ'}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -230,8 +330,7 @@ export function DownloadModal() {
                 </span>
               </div>
               <p className="px-[4px] text-[12px] leading-[1.5] tracking-[-0.12px] text-neutral-500">
-                지원자 개별 선택 · 자료 종류 선택은 아직 지원하지 않아 선택한 공고의 전체 자료가
-                내려받아집니다.
+                지원자 개별 선택은 지원하지만 자료 종류 선택은 아직 지원하지 않습니다.
               </p>
             </div>
           </>
@@ -255,7 +354,10 @@ export function DownloadModal() {
             type="button"
             onClick={handleDownload}
             disabled={
-              selectedJobId === undefined || exportMutation.isPending || jobPostingsQuery.isLoading
+              selectedJobId === undefined ||
+              exportMutation.isPending ||
+              jobPostingsQuery.isLoading ||
+              (!isAllApplicantsSelected && selectedApplicantCount === 0)
             }
             className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
           >
