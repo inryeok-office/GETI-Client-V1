@@ -291,7 +291,7 @@ describe('AdminDiscordPostPage', () => {
     expect(mockUseDiscordDeliveryListQuery).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1 }),
     );
-    expect(screen.getByRole('link', { name: '' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '상세 닫기' })).toHaveAttribute(
       'href',
       '/admin/discord-posts?page=2',
     );

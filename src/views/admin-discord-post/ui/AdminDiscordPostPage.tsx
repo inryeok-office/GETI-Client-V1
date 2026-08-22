@@ -367,7 +367,11 @@ export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPost
               <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
                 Discord 전송 상세
               </p>
-              <Link href={`/admin/discord-posts${pageQueryString}`} className="focus:outline-none">
+              <Link
+                href={`/admin/discord-posts${pageQueryString}`}
+                aria-label="상세 닫기"
+                className="focus:outline-none"
+              >
                 <Icon name="close" className="size-[20px] text-[#111]" />
               </Link>
             </div>
