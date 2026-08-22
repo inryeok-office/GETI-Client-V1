@@ -74,6 +74,42 @@ function parseDepartment(value?: string): ApplicantDepartment | null {
     : null;
 }
 
+interface FilterState {
+  searchQuery: string;
+  scope: ApplicantScope;
+  jobIdFilter: number | null;
+  statusFilter: ApplicantStatus | null;
+  cohortFilter: number | null;
+  departmentFilter: ApplicantDepartment | null;
+  page: number;
+}
+
+/**
+ * 현재 검색 · 필터 · 담당 범위 · 페이지를 쿼리스트링으로 만든다. URL 동기화 effect와 "상세
+ * 보기" 링크(`ApplicantTable`) · 다운로드 모달 진입 링크가 모두 이 함수를 공유해, 조회
+ * 조건이 화면 전환 후에도 유지된다(PR #136 코드리뷰 반영 — `ApplicantTable`의 상세 링크가
+ * 쿼리스트링을 안 붙여 상세 화면 진입 시 필터가 풀리던 문제).
+ */
+function buildFilterSearchParams({
+  searchQuery,
+  scope,
+  jobIdFilter,
+  statusFilter,
+  cohortFilter,
+  departmentFilter,
+  page,
+}: FilterState): URLSearchParams {
+  const params = new URLSearchParams();
+  if (searchQuery) params.set('q', searchQuery);
+  if (scope === 'all') params.set('scope', 'all');
+  if (jobIdFilter !== null) params.set('jobId', String(jobIdFilter));
+  if (statusFilter !== null) params.set('status', statusFilter);
+  if (cohortFilter !== null) params.set('cohort', String(cohortFilter));
+  if (departmentFilter !== null) params.set('department', departmentFilter);
+  if (page > 0) params.set('page', String(page + 1));
+  return params;
+}
+
 /**
  * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
  * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
@@ -133,16 +169,28 @@ export function AdminApplicantPage({
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  /** "상세 보기" 링크(`ApplicantTable`)에 이어 붙일 쿼리스트링. `variant`는 포함하지 않는다. */
+  const filterQueryString = buildFilterSearchParams({
+    searchQuery,
+    scope,
+    jobIdFilter,
+    statusFilter,
+    cohortFilter,
+    departmentFilter,
+    page,
+  }).toString();
+
   /** 검색 · 필터 · 담당 범위 · 페이지가 바뀔 때마다 URL 쿼리스트링을 갱신한다. */
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    if (scope === 'all') params.set('scope', 'all');
-    if (jobIdFilter !== null) params.set('jobId', String(jobIdFilter));
-    if (statusFilter !== null) params.set('status', statusFilter);
-    if (cohortFilter !== null) params.set('cohort', String(cohortFilter));
-    if (departmentFilter !== null) params.set('department', departmentFilter);
-    if (page > 0) params.set('page', String(page + 1));
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      page,
+    });
     if (variant === 'download') params.set('variant', 'download');
 
     const queryString = params.toString();
@@ -159,6 +207,26 @@ export function AdminApplicantPage({
     pathname,
     router,
   ]);
+
+  /**
+   * 다운로드 모달 열기. 필터가 걸려 있어도 그대로 유지한 채 이동한다(PR #136 코드리뷰 반영 —
+   * 이전엔 `/admin/applicants?variant=download`로 하드코딩해 필터가 순간적으로 사라졌었다).
+   * 모달은 상세 화면이 아니라 항상 목록 경로에서 여는 게 의도라 `pathname` 대신 목록 경로를
+   * 고정으로 쓴다.
+   */
+  function openDownloadModal() {
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      page,
+    });
+    params.set('variant', 'download');
+    router.push(`/admin/applicants?${params.toString()}`);
+  }
 
   const listQuery = useApplicantListQuery({
     page,
@@ -259,7 +327,7 @@ export function AdminApplicantPage({
             </div>
             <button
               type="button"
-              onClick={() => router.push('/admin/applicants?variant=download')}
+              onClick={openDownloadModal}
               className="bg-primary-700 flex h-[56px] items-center justify-center rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
             >
               자료 일괄 다운로드
@@ -339,7 +407,7 @@ export function AdminApplicantPage({
               총 {totalCount}명
             </p>
 
-            <ApplicantTable applicants={applicants} />
+            <ApplicantTable applicants={applicants} queryString={filterQueryString} />
 
             {listQuery.data && listQuery.data.totalPages > 1 && (
               <div className="flex items-center justify-center gap-[12px]">
