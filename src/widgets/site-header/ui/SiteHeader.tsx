@@ -16,6 +16,13 @@ const NAV_ITEMS = [
   { href: '/portfolios', label: '포트폴리오' },
 ] as const;
 
+const PROFILE_MENU_ITEMS = [
+  { href: '/profile', label: '내 프로필' },
+  { href: '/applications', label: '내 지원 내역' },
+  { href: '/students', label: '다른 학생 찾아보기' },
+  { href: '/inquiries', label: '문의' },
+] as const;
+
 type SiteNavLabel = (typeof NAV_ITEMS)[number]['label'];
 
 interface SiteHeaderProps {
@@ -23,6 +30,7 @@ interface SiteHeaderProps {
 }
 
 const STUDENT_NOTIFICATION_POPOVER_ID = 'student-notification-panel';
+const STUDENT_PROFILE_POPOVER_ID = 'student-profile-menu';
 
 interface PopoverToggleEvent extends Event {
   newState: 'closed' | 'open';
@@ -36,7 +44,9 @@ interface PopoverToggleEvent extends Event {
  */
 export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const notificationPopoverRef = useRef<HTMLDivElement>(null);
+  const profilePopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const popover = notificationPopoverRef.current;
@@ -49,6 +59,22 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
     popover.addEventListener('toggle', handleToggle);
     return () => popover.removeEventListener('toggle', handleToggle);
   }, []);
+
+  useEffect(() => {
+    const popover = profilePopoverRef.current;
+    if (!popover) return;
+
+    const handleToggle = (event: Event) => {
+      setIsProfileMenuOpen((event as PopoverToggleEvent).newState === 'open');
+    };
+
+    popover.addEventListener('toggle', handleToggle);
+    return () => popover.removeEventListener('toggle', handleToggle);
+  }, []);
+
+  function closeProfileMenu() {
+    profilePopoverRef.current?.hidePopover?.();
+  }
 
   return (
     <header className="border-b border-[#e5e5e5] bg-white">
@@ -108,17 +134,21 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
           >
             <Icon name="bell" className="size-[19px]" />
           </button>
-          <Link
-            href="/profile"
-            aria-label="내 프로필 보기"
-            className="flex items-center gap-[10px] rounded-[8px] p-[8px]"
+          <button
+            type="button"
+            popoverTarget={STUDENT_PROFILE_POPOVER_ID}
+            aria-controls={STUDENT_PROFILE_POPOVER_ID}
+            aria-expanded={isProfileMenuOpen}
+            aria-label="사용자 메뉴"
+            className={`flex items-center gap-[10px] rounded-[8px] p-[8px] ${isProfileMenuOpen ? 'bg-neutral-100' : 'bg-white'}`}
           >
-            <span className="size-[34px] rounded-full bg-[#f5f5f5]" aria-hidden="true" />
-            <span className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]">
-              이름
-            </span>
-            <Icon name="chevronDown" className="h-[8px] w-[16px] text-[#525252]" />
-          </Link>
+            <span className="size-[34px] rounded-full bg-neutral-100" aria-hidden="true" />
+            <span className="text-label text-neutral-600">이름</span>
+            <Icon
+              name="chevronDown"
+              className={`h-[8px] w-[16px] text-neutral-600 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
         </div>
       </div>
       <div
@@ -128,6 +158,47 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
         className="inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2-56px))] z-50 m-0 w-[420px] max-w-[calc(100vw-32px)] overflow-visible border-0 bg-transparent p-0"
       >
         <NotificationPanel notifications={MOCK_NOTIFICATIONS} />
+      </div>
+      <div
+        ref={profilePopoverRef}
+        id={STUDENT_PROFILE_POPOVER_ID}
+        popover="auto"
+        aria-label="사용자 메뉴"
+        className="bg-neutral-0 shadow-subtle inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2))] z-50 m-0 w-[284px] rounded-[12px] border border-neutral-200 p-[17px]"
+      >
+        <div className="flex items-center gap-[12px] pt-[4px] pb-[16px]">
+          <span className="size-[44px] shrink-0 rounded-full bg-neutral-100" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-[16px] leading-[1.4] font-medium tracking-[-0.16px] text-neutral-900">
+              이름
+            </p>
+            <p className="text-body truncate text-[#495057]">s0000@gsm.hs.kr</p>
+          </div>
+        </div>
+
+        <nav aria-label="사용자 계정 메뉴" className="border-y border-neutral-200 py-[8px]">
+          {PROFILE_MENU_ITEMS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={closeProfileMenu}
+              className="text-body flex min-h-[45px] items-center rounded-[8px] p-[12px] text-neutral-900 hover:bg-neutral-50 focus-visible:bg-neutral-50 focus-visible:outline-none"
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="pt-[8px]">
+          <span
+            role="link"
+            aria-disabled="true"
+            aria-label="로그아웃 (인증 연동 예정)"
+            className="text-body text-status-error flex min-h-[45px] items-center rounded-[8px] p-[12px]"
+          >
+            로그아웃
+          </span>
+        </div>
       </div>
     </header>
   );
