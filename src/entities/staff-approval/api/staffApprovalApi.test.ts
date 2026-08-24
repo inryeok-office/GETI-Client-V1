@@ -36,7 +36,9 @@ function searchItem(overrides: Partial<AdminMemberSearchItem> = {}): AdminMember
   };
 }
 
-function searchResponse(overrides: { content?: AdminMemberSearchItem[]; totalPages?: number } = {}) {
+function searchResponse(
+  overrides: { content?: AdminMemberSearchItem[]; totalPages?: number } = {},
+) {
   return { success: true, data: { content: [], totalPages: 1, ...overrides } };
 }
 
