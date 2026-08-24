@@ -171,7 +171,9 @@ export function DownloadModal() {
    * 다운로드를 막아야 하는 Issue #144 요구사항을 어긴다(PR #145 리뷰 반영).
    */
   const isApplicantDataUnusable =
-    applicantOptionsQuery.isLoading || applicantOptionsQuery.isError || applicantOptions.length === 0;
+    applicantOptionsQuery.isLoading ||
+    applicantOptionsQuery.isError ||
+    applicantOptions.length === 0;
 
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
