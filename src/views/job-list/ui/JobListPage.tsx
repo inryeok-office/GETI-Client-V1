@@ -141,6 +141,15 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     : undefined;
   const sourceName = selectedFilters.source ? sourceLabelToCode[selectedFilters.source] : undefined;
 
+  /**
+   * URL에 `source`가 이미 선택된 채로 새로고침·공유링크·뒤로가기로 들어오면, 출처 목록이
+   * 아직 로딩 중이라 `sourceLabelToCode`가 비어 있어 `sourceName`이 잠깐 `undefined`가 된다.
+   * 이 상태로 목록 조회를 그대로 보내면 필터 없이 전체 목록이 한 번 나갔다가 출처 목록이
+   * 도착한 뒤에야 정정되어, 사용자가 필터 안 걸린 결과를 잠깐 정상인 것처럼 보게 된다
+   * (PR #149 코드리뷰 반영). 출처 목록이 도착할 때까지 목록 조회 자체를 미룬다.
+   */
+  const sourceFilterPending = Boolean(selectedFilters.source) && jobSourcesQuery.isLoading;
+
   /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 직무 · 기업 유형, "마감 임박"은 제외. */
   const activeFilterCount = [applicationMethod, status, sourceName].filter(Boolean).length;
 
@@ -168,25 +177,29 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     setPage(0);
   };
 
-  const listQuery = useJobListQuery({
-    page,
-    size: PAGE_SIZE,
-    query: searchQuery.trim() || undefined,
-    openOnly: !includeClosed,
-    applicationMethod,
-    status,
-    sourceName,
-  });
+  const listQuery = useJobListQuery(
+    {
+      page,
+      size: PAGE_SIZE,
+      query: searchQuery.trim() || undefined,
+      openOnly: !includeClosed,
+      applicationMethod,
+      status,
+      sourceName,
+    },
+    { enabled: !sourceFilterPending },
+  );
 
-  const listStatus: JobListStatus = listQuery.isLoading
-    ? 'initialLoading'
-    : listQuery.isFetching
-      ? 'pageLoading'
-      : listQuery.isError
-        ? 'error'
-        : (listQuery.data?.content.length ?? 0) === 0
-          ? 'empty'
-          : 'success';
+  const listStatus: JobListStatus =
+    sourceFilterPending || listQuery.isLoading
+      ? 'initialLoading'
+      : listQuery.isFetching
+        ? 'pageLoading'
+        : listQuery.isError
+          ? 'error'
+          : (listQuery.data?.content.length ?? 0) === 0
+            ? 'empty'
+            : 'success';
 
   const jobs = (listQuery.data?.content ?? []).map(mapJobSummaryToListItem);
 
