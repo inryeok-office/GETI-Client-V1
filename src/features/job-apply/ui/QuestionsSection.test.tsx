@@ -133,6 +133,26 @@ describe('QuestionsSection', () => {
     expect(screen.getByRole('textbox')).toHaveClass('border-[#ef4444]');
   });
 
+  it('각 문항의 입력 컨트롤이 aria-labelledby로 문항 제목과 연결된다', () => {
+    render(
+      <QuestionsSection
+        questions={[
+          TEXT_QUESTION,
+          TEXTAREA_QUESTION,
+          SINGLE_SELECT_QUESTION,
+          MULTI_SELECT_QUESTION,
+        ]}
+        values={{}}
+        onValueChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: '지원 동기 필수' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '기술 경험' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: '희망 직무 필수' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '보유 기술' })).toBeInTheDocument();
+  });
+
   it('옵션 라벨이 중복돼도 각 체크박스를 독립적으로 선택·해제할 수 있다', () => {
     const question: ApplicationQuestion = {
       ...MULTI_SELECT_QUESTION,

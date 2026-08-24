@@ -44,6 +44,7 @@ export function QuestionsSection({
 
       {orderedQuestions.map((item, index) => {
         const hasError = errorFieldIds?.has(item.fieldId) ?? false;
+        const titleId = `${item.fieldId}-title`;
 
         return (
           <div
@@ -54,7 +55,11 @@ export function QuestionsSection({
           >
             <div className="flex flex-col gap-[4px] text-[#111]">
               <p className="text-[14px] leading-[1.5] tracking-[-0.14px]">{`문항 ${index + 1}`}</p>
-              <p className="flex items-center gap-[8px] text-[16px] leading-[1.6] tracking-[-0.16px]">
+              <p
+                id={titleId}
+                aria-label={item.required ? `${item.title} 필수` : item.title}
+                className="flex items-center gap-[8px] text-[16px] leading-[1.6] tracking-[-0.16px]"
+              >
                 {item.title}
                 {item.required && (
                   <span className="flex h-[24px] items-center rounded-[12px] bg-[#eaf6f9] px-[8px] text-[12px] leading-[1.5] tracking-[-0.12px] text-[#17627a]">
@@ -71,6 +76,7 @@ export function QuestionsSection({
 
             <QuestionInput
               question={item}
+              titleId={titleId}
               value={values[item.fieldId]}
               hasError={hasError}
               onChange={(value) => onValueChange(item.fieldId, value)}
@@ -84,11 +90,13 @@ export function QuestionsSection({
 
 function QuestionInput({
   question,
+  titleId,
   value,
   hasError,
   onChange,
 }: {
   question: ApplicationQuestion;
+  titleId: string;
   value: QuestionAnswerValue | undefined;
   hasError: boolean;
   onChange: (value: QuestionAnswerValue) => void;
@@ -98,6 +106,7 @@ function QuestionInput({
   if (question.type === 'TEXTAREA') {
     return (
       <textarea
+        aria-labelledby={titleId}
         value={typeof value === 'string' ? value : ''}
         onChange={(event) => onChange(event.target.value)}
         className={`h-[168px] resize-none ${INPUT_BASE_CLASS} ${errorClass}`}
@@ -107,7 +116,7 @@ function QuestionInput({
 
   if (question.type === 'SINGLE_SELECT') {
     return (
-      <div className="flex flex-col gap-[8px]">
+      <div role="radiogroup" aria-labelledby={titleId} className="flex flex-col gap-[8px]">
         {(question.options ?? []).map((option, index) => (
           <label
             key={`${index}-${option}`}
@@ -133,7 +142,7 @@ function QuestionInput({
     const selected = Array.isArray(value) ? value : [];
 
     return (
-      <div className="flex flex-col gap-[8px]">
+      <div role="group" aria-labelledby={titleId} className="flex flex-col gap-[8px]">
         {(question.options ?? []).map((option, index) => {
           const isChecked = selected.includes(option);
 
@@ -165,6 +174,7 @@ function QuestionInput({
   return (
     <input
       type="text"
+      aria-labelledby={titleId}
       value={typeof value === 'string' ? value : ''}
       onChange={(event) => onChange(event.target.value)}
       className={`${INPUT_BASE_CLASS} ${errorClass}`}
