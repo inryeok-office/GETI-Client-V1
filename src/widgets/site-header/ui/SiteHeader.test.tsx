@@ -30,6 +30,10 @@ describe('SiteHeader', () => {
       'href',
       '/programs',
     );
+    expect(within(navigation).getByRole('link', { name: 'AI 추천' })).toHaveAttribute(
+      'href',
+      '/recommendations',
+    );
     expect(screen.getByRole('link', { name: '저장한 공고 보기' })).toHaveAttribute(
       'href',
       '/bookmarks',
@@ -42,15 +46,6 @@ describe('SiteHeader', () => {
       'href',
       '/profile',
     );
-  });
-
-  it('대상 화면이 아직 없는 메뉴는 비활성 상태로 표시한다', () => {
-    render(<SiteHeader />);
-
-    const navigation = screen.getByRole('navigation', { name: '주요 메뉴' });
-
-    expect(within(navigation).getByText('AI 추천')).toHaveAttribute('aria-disabled', 'true');
-    expect(within(navigation).queryByRole('link', { name: 'AI 추천' })).not.toBeInTheDocument();
   });
 
   it('알림 버튼을 누르면 팝오버의 확장 상태를 반영한다', () => {
