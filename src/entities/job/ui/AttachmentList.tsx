@@ -1,6 +1,7 @@
 import { Icon } from '@/shared/ui/icon';
 import { AppToaster, showToast } from '@/shared/ui/toast';
 
+import { useDownloadJobAttachmentMutation } from '../api/useJobQueries';
 import { formatAttachmentSize, getFileExtensionLabel } from '../model/formatAttachmentMeta';
 import type { JobAttachment } from '../model/types';
 
@@ -8,30 +9,16 @@ interface AttachmentListProps {
   attachments: JobAttachment[];
 }
 
-/**
- * `downloadUrl`(presigned URL)을 fetch해 Blob으로 받은 뒤 `<a download>`로 저장한다. 평범한
- * `<a href={downloadUrl}>` 새 창 이동으로는 실패(만료된 서명, Storage 오류 등)를 감지할 JS
- * 지점이 없어 Issue #146의 "다운로드 실패 시 에러 처리" 완료 조건을 만족할 수 없다 — 그래서
- * fetch로 바꿨다. Storage 버킷에 이 Origin을 향한 CORS 허용이 안 돼 있으면 이 fetch 자체가
- * (`response.ok` 이전에) 막힐 수 있는데, 그 경우도 동일하게 catch돼 오류 토스트로 뜬다.
- */
-async function downloadAttachment(file: JobAttachment) {
-  try {
-    const response = await fetch(file.downloadUrl);
-    if (!response.ok) throw new Error(`다운로드 응답 실패: ${response.status}`);
-
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = file.originalName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(objectUrl);
-  } catch {
-    showToast({ tone: 'error', message: `${file.originalName} 다운로드에 실패했습니다.` });
-  }
+/** Blob 응답을 브라우저가 파일로 내려받도록 임시 링크를 만들어 클릭한다. */
+function saveAttachmentBlob(blob: Blob, filename: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }
 
 /**
@@ -41,8 +28,23 @@ async function downloadAttachment(file: JobAttachment) {
  * 아니다 — 행 전체를 클릭 대상으로 만들지 않는다. 다운로드 실패 토스트는 Figma에 해당 상태가
  * 없어 다른 화면과 같은 기본 위치(`showToast` 기본 `top`)를 그대로 쓴다. 로딩 상태는 상세
  * 조회 자체의 기존 로딩을 따르고 첨부파일만 별도로 추가하지 않는다(Issue #146 요구사항).
+ *
+ * 다운로드는 `useDownloadJobAttachmentMutation`으로 `shared/api` axios 인스턴스를 거쳐 인증된
+ * 요청을 보낸다 — `file.downloadUrl`은 presigned Storage URL이 아니라 인증이 필요한 GETI 자체
+ * API 경로라 평범한 `fetch`/`<a href>`로는 401이 난다(PR #147 코드리뷰 반영).
  */
 export function AttachmentList({ attachments }: AttachmentListProps) {
+  const downloadMutation = useDownloadJobAttachmentMutation();
+
+  const handleDownload = async (file: JobAttachment) => {
+    try {
+      const blob = await downloadMutation.mutateAsync(file.downloadUrl);
+      saveAttachmentBlob(blob, file.originalName);
+    } catch {
+      showToast({ tone: 'error', message: `${file.originalName} 다운로드에 실패했습니다.` });
+    }
+  };
+
   return (
     <section className="flex flex-col gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white px-[24px] pt-[24px] pb-[32px]">
       <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-black">
@@ -68,7 +70,7 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
             </div>
             <button
               type="button"
-              onClick={() => downloadAttachment(file)}
+              onClick={() => handleDownload(file)}
               aria-label={`${file.originalName} 다운로드`}
             >
               <Icon
