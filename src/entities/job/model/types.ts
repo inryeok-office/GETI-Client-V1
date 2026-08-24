@@ -106,12 +106,19 @@ export interface JobSearchResponse {
   last: boolean;
 }
 
-/** 공고 상세에 첨부된 파일. `JobDetailResponse`에 대응 필드가 아직 없어 항상 빈 배열이다(Issue #122). */
+/**
+ * 공고 상세에 첨부된 파일(`JobFileResponse`, GETI-Server-V1 Issue #126). `downloadUrl`은
+ * presigned Storage URL이 아니라 인증이 필요한 GETI 자체 다운로드 API 경로다
+ * (`/api/v1/files/{fileId}/download`, GETI-Server `JobServiceImpl`). `AttachmentList`가
+ * `shared/api` axios 인스턴스로 이 경로를 요청해 Blob으로 저장한다(실패를 감지해 토스트로
+ * 알리기 위해, `<a href>` 새 창 이동 대신 이 방식을 쓴다).
+ */
 export interface JobAttachment {
-  id: string;
-  fileName: string;
-  fileType: string;
-  fileSize: string;
+  fileId: number;
+  originalName: string;
+  contentType: string;
+  size: number;
+  downloadUrl: string;
 }
 
 export type JobAiAnalysisStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -168,4 +175,6 @@ export interface JobDetail {
   aiAnalysis: JobAiAnalysis | null;
   application: JobApplicationEligibility;
   bookmarked: boolean;
+  /** 공고가 PUBLISHED/CLOSED 상태일 때만 채워진다(GETI-Server-V1 Issue #126 응답 설명). */
+  files: JobAttachment[];
 }

@@ -1,9 +1,6 @@
-import {
-  formatFileSize,
-  type ApplicationAttachment,
-  type JobApplicationDraft,
-} from '@/entities/job-application';
+import { type ApplicationAttachment, type JobApplicationDraft } from '@/entities/job-application';
 import type { QuestionAnswerValue } from '@/features/job-apply';
+import { formatFileSize } from '@/shared/lib';
 
 export interface InitialAnswerState {
   values: Record<string, QuestionAnswerValue>;

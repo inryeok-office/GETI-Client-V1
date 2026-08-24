@@ -8,7 +8,6 @@ import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_SIZE_BYTES,
-  formatFileSize,
   isNonFileAnswerEmpty,
   useCreateJobApplicationDraftMutation,
   useJobApplicationActionMutation,
@@ -28,6 +27,7 @@ import {
   type QuestionAnswerValue,
 } from '@/features/job-apply';
 import { ApiError } from '@/shared/api';
+import { formatFileSize } from '@/shared/lib';
 import { Icon } from '@/shared/ui/icon';
 import { StatusDialog } from '@/shared/ui/status-dialog';
 import { AppToaster, showToast, type ToastTone } from '@/shared/ui/toast';

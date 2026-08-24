@@ -5,13 +5,16 @@ export {
   useApplicantHistoryQuery,
   useApplicantListQuery,
   useExportJobApplicationsMutation,
+  useJobApplicantOptionsQuery,
   useJobPostingOptionsQuery,
 } from './api/useApplicantQueries';
 export type {
   ApplicantDepartment,
   ExecuteApplicantActionParams,
   ExportedFile,
+  ExportJobApplicationsParams,
   FetchApplicantListParams,
+  JobApplicantOption,
   JobPostingOption,
 } from './api/applicantApi';
 
