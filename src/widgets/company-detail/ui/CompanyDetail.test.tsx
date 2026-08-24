@@ -52,6 +52,19 @@ describe('CompanyDetail', () => {
     );
   });
 
+  it('홈페이지 URL이 없으면 기업 홈페이지 버튼을 표시하지 않는다', () => {
+    render(
+      <CompanyDetail
+        status="success"
+        company={{ ...COMPANY, homepageUrl: '' }}
+        jobs={JOBS}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('link', { name: '기업 홈페이지' })).not.toBeInTheDocument();
+  });
+
   it('채용 공고가 없으면 안내 문구를 표시한다', () => {
     render(<CompanyDetail status="success" company={COMPANY} jobs={[]} onRetry={vi.fn()} />);
 
