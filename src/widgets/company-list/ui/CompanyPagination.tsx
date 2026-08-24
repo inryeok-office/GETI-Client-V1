@@ -11,7 +11,7 @@ interface CompanyPaginationProps {
 }
 
 /**
- * 기업 목록 하단 페이지네이션. 인증 없이도 호출 가능한 API지만 검색·필터 상태를 화면이
+ * 기업 목록 하단 페이지네이션. 로그인이면 누구나 호출 가능한 API지만 검색·필터 상태를 화면이
  * 직접 들고 있어(Issue #156), 페이지 이동도 URL 링크가 아니라 `onPageChange` 콜백으로 처리한다
  * (`widgets/job-list`의 `JobPagination`과 동일한 패턴).
  */
