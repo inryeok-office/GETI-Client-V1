@@ -4,18 +4,29 @@ export { InquiryStatusBadge } from './ui/InquiryStatusBadge';
 export { InquirySummaryCard } from './ui/InquirySummaryCard';
 export {
   inquiryKeys,
+  useAdminInquiryListQuery,
+  useCreateAdminInquiryAnswerMutation,
   useCreateInquiryMutation,
+  useDownloadInquiryFileMutation,
   useInquiryDetailQuery,
   useMyInquiryListQuery,
+  useUpdateAdminInquiryStatusMutation,
 } from './api/useInquiryQueries';
-export { mapInquiryDetail, mapInquiryListItem } from './model/mapInquiry';
+export {
+  mapAdminInquiryDetail,
+  mapAdminInquiryListItem,
+  mapInquiryDetail,
+  mapInquiryListItem,
+} from './model/mapInquiry';
 export type {
-  AdminInquiryTypeLabel,
+  AdminInquiryDetail,
   AdminInquiryListItem,
+  CreateAdminInquiryAnswerVariables,
   CreateInquiryRequest,
+  FetchAdminInquiryListParams,
   FetchMyInquiryListParams,
   InquiryAnswer,
-  InquiryAuthor,
+  InquiryAssignee,
   InquiryDetail,
   InquiryDetailApiResponse,
   InquiryFile,
@@ -23,4 +34,5 @@ export type {
   InquiryListApiResponse,
   InquiryStatus,
   InquiryType,
+  UpdateAdminInquiryStatusVariables,
 } from './model/types';
