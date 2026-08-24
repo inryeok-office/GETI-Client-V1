@@ -163,6 +163,16 @@ export function DownloadModal() {
     applicantOptionsQuery.isLoading ||
     (!applicantOptionsQuery.isError && applicantOptions.length === 0);
 
+  /**
+   * 지원자 목록을 신뢰할 수 없는 상태(조회 중 · 실패 · 빈 목록)에서는 `selectedApplicantIds`가
+   * `null`(전체 선택)이라 `isAllApplicantsSelected`가 true가 되고, 그 결과 아래 다운로드 버튼의
+   * "부분 선택인데 0명" 조건을 우회해 버튼이 활성 상태로 남는다. 이 상태에서 다운로드를 누르면
+   * `applicationIds`를 생략해 공고 전체 다운로드가 그대로 나가 버리므로, 지원자 0명 공고의
+   * 다운로드를 막아야 하는 Issue #144 요구사항을 어긴다(PR #145 리뷰 반영).
+   */
+  const isApplicantDataUnusable =
+    applicantOptionsQuery.isLoading || applicantOptionsQuery.isError || applicantOptions.length === 0;
+
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-50 bg-black/24">
       <div className="absolute top-1/2 left-1/2 flex w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[32px] rounded-[12px] bg-white px-[28px] py-[24px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.14)]">
@@ -357,6 +367,7 @@ export function DownloadModal() {
               selectedJobId === undefined ||
               exportMutation.isPending ||
               jobPostingsQuery.isLoading ||
+              isApplicantDataUnusable ||
               (!isAllApplicantsSelected && selectedApplicantCount === 0)
             }
             className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"

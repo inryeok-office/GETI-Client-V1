@@ -127,7 +127,7 @@ describe('DownloadModal', () => {
     expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
-  it('지원자 목록 조회 중이면 드롭다운 버튼이 비활성화된다', () => {
+  it('지원자 목록 조회 중이면 드롭다운 버튼과 다운로드 버튼이 비활성화된다', () => {
     mockUseJobApplicantOptionsQuery.mockReturnValue(
       applicantOptionsResult({ isLoading: true, data: undefined }),
     );
@@ -135,9 +135,10 @@ describe('DownloadModal', () => {
     render(<DownloadModal />);
 
     expect(screen.getByRole('button', { name: '지원자 목록을 불러오는 중...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
-  it('지원자 목록 조회에 실패하면 버튼 클릭으로 다시 시도한다', () => {
+  it('지원자 목록 조회에 실패하면 버튼 클릭으로 다시 시도하고, 다운로드 버튼은 비활성화된다', () => {
     const refetch = vi.fn();
     mockUseJobApplicantOptionsQuery.mockReturnValue(
       applicantOptionsResult({ isError: true, data: undefined, refetch }),
@@ -149,14 +150,16 @@ describe('DownloadModal', () => {
     );
 
     expect(refetch).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
-  it('지원자가 없으면 "지원자가 없습니다"를 보여주고 드롭다운을 비활성화한다', () => {
+  it('지원자가 없으면 "지원자가 없습니다"를 보여주고 드롭다운과 다운로드 버튼을 비활성화한다', () => {
     mockUseJobApplicantOptionsQuery.mockReturnValue(applicantOptionsResult({ data: [] }));
 
     render(<DownloadModal />);
 
     expect(screen.getByRole('button', { name: '지원자가 없습니다' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
   it('공고를 바꾸면 지원자 선택이 전체 선택으로 초기화된다', () => {
