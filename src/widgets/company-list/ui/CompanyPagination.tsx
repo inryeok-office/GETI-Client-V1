@@ -15,7 +15,11 @@ interface CompanyPaginationProps {
  * 직접 들고 있어(Issue #156), 페이지 이동도 URL 링크가 아니라 `onPageChange` 콜백으로 처리한다
  * (`widgets/job-list`의 `JobPagination`과 동일한 패턴).
  */
-export function CompanyPagination({ currentPage, totalPages, onPageChange }: CompanyPaginationProps) {
+export function CompanyPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: CompanyPaginationProps) {
   const pages = buildPageItems(currentPage, totalPages);
 
   return (

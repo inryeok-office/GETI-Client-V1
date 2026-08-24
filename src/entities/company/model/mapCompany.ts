@@ -1,4 +1,9 @@
-import type { AdminCompanyListItem, AdminCompanyRecord, CompanyDetail, CompanyListItem } from './types';
+import type {
+  AdminCompanyListItem,
+  AdminCompanyRecord,
+  CompanyDetail,
+  CompanyListItem,
+} from './types';
 
 /** `GET /api/v1/companies` 목록 항목을 기업 목록 카드가 쓰는 형태로 변환한다. */
 export function mapCompanyListItem(item: AdminCompanyListItem): CompanyListItem {

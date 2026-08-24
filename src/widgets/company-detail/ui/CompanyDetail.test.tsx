@@ -37,9 +37,7 @@ const JOBS: JobListItem[] = [
 
 describe('CompanyDetail', () => {
   it('기업 정보와 채용 공고를 표시한다', () => {
-    render(
-      <CompanyDetail status="success" company={COMPANY} jobs={JOBS} onRetry={vi.fn()} />,
-    );
+    render(<CompanyDetail status="success" company={COMPANY} jobs={JOBS} onRetry={vi.fn()} />);
 
     expect(screen.getAllByText('네이버클라우드').length).toBeGreaterThan(0);
     expect(screen.getByText('일반기업 · IT 서비스')).toBeInTheDocument();

@@ -46,7 +46,9 @@ export function CompanyFilterSection({
       <DropdownField
         ariaLabel="기업 유형"
         className="sm:w-[232px]"
-        onChange={(value) => onCompanyTypeChange(value === 'ALL' ? '' : (value as AdminCompanyType))}
+        onChange={(value) =>
+          onCompanyTypeChange(value === 'ALL' ? '' : (value as AdminCompanyType))
+        }
         options={TYPE_OPTIONS}
         placeholder="기업 유형 전체"
         value={companyType}
