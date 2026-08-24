@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { mapStaffApprovalRequest } from './mapStaffApprovalRequest';
-import type { AdminMemberSearchItem, AdminMemberStatus } from '../api/staffApprovalApi';
+import type { AdminMemberSearchItem, AdminMemberStatus } from './types';
 
 function searchItem(overrides: Partial<AdminMemberSearchItem> = {}): AdminMemberSearchItem {
   return {

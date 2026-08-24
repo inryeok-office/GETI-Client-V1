@@ -6,6 +6,7 @@ import {
   StaffApprovalBadge,
   useStaffApprovalActionMutation,
   useStaffApprovalListQuery,
+  type StaffApprovalAction,
   type StaffApprovalStatus,
 } from '@/entities/staff-approval';
 import { toApiError } from '@/shared/api';
@@ -87,7 +88,7 @@ export function AdminStaffApprovalPage() {
   const requests = listQuery.data ?? [];
   const isEmpty = requests.length === 0;
 
-  function runAction(memberId: number, action: 'APPROVE' | 'REJECT', reason?: string) {
+  function runAction(memberId: number, action: StaffApprovalAction, reason?: string) {
     setResultVariant('processing');
     actionMutation.mutate(
       { memberId, action, reason },
@@ -340,8 +341,14 @@ function RejectReasonModal({ isSubmitting, onCancel, onConfirm }: RejectReasonMo
         </p>
       </div>
       <div className="flex flex-col gap-[8px] px-[28px] pb-[24px]">
-        <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">거절 사유</p>
+        <label
+          htmlFor="reject-reason"
+          className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]"
+        >
+          거절 사유
+        </label>
         <textarea
+          id="reject-reason"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           placeholder="거절 사유를 입력해 주세요."

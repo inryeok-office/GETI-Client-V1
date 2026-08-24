@@ -1,5 +1,9 @@
-import type { AdminMemberStatus, AdminMemberSearchItem } from '../api/staffApprovalApi';
-import type { StaffApprovalRequest, StaffApprovalStatus } from './types';
+import type {
+  AdminMemberSearchItem,
+  AdminMemberStatus,
+  StaffApprovalRequest,
+  StaffApprovalStatus,
+} from './types';
 
 /**
  * 서버 회원 상태(5종) 중 교직원 가입 승인 흐름에서 의미 있는 3종만 화면 상태로 매핑한다.

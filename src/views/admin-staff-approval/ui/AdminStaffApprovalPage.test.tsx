@@ -84,6 +84,21 @@ describe('AdminStaffApprovalPage', () => {
     expect(screen.getByText('가입 요청이 없습니다.')).toBeInTheDocument();
   });
 
+  it('탭을 클릭하면 해당 status로 목록을 다시 조회한다', () => {
+    render(<AdminStaffApprovalPage />);
+
+    expect(mockUseStaffApprovalListQuery).toHaveBeenCalledWith(undefined);
+
+    fireEvent.click(screen.getByRole('button', { name: '승인 완료' }));
+    expect(mockUseStaffApprovalListQuery).toHaveBeenCalledWith('approved');
+
+    fireEvent.click(screen.getByRole('button', { name: '승인 거절' }));
+    expect(mockUseStaffApprovalListQuery).toHaveBeenCalledWith('rejected');
+
+    fireEvent.click(screen.getByRole('button', { name: '전체' }));
+    expect(mockUseStaffApprovalListQuery).toHaveBeenCalledWith(undefined);
+  });
+
   it('승인 클릭 시 APPROVE Action을 요청하고 처리중·성공 결과를 보여준다', () => {
     render(<AdminStaffApprovalPage />);
 
