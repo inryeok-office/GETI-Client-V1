@@ -31,34 +31,56 @@ export interface CompanyDetail {
   unavailableReason: '비공개' | '삭제' | null;
 }
 
-/** 어드민 기업 관리 목록의 기업 유형. 학생용 `CompanySize`보다 세분화되어 별도 타입으로 둔다. */
-export type AdminCompanyType = 'large' | 'midsize' | 'small' | 'startup';
+/** 어드민 기업 관리 목록의 기업 유형. GETI-Server `CompanyType`과 동일한 값을 쓴다. */
+export type AdminCompanyType =
+  'ETC' | 'FOREIGN' | 'GENERAL' | 'PUBLIC_ENTERPRISE' | 'PUBLIC_INSTITUTION';
 
 /** 기업 정보 출처. */
 export type CompanyInfoSource = 'direct' | 'external';
 
-/** MOU 체결 상태. */
-export type MouStatus = 'expired' | 'signed' | 'unsigned';
+/** MOU 협약 상태. GETI-Server `MouStatus`와 동일한 값을 쓴다. */
+export type MouStatus = 'ACTIVE' | 'EXPIRED' | 'NONE' | 'TERMINATED';
 
-/** 어드민 기업 관리 목록 행에 필요한 정보. */
+/** `GET /api/v1/companies` 목록 항목(`CompanySummaryResponse`)과 동일하다. */
 export interface AdminCompanyListItem {
-  id: string;
+  companyId: number;
   name: string;
-  type: AdminCompanyType;
-  infoSource: CompanyInfoSource;
+  companyType: AdminCompanyType;
   mouStatus: MouStatus;
-  /** MOU 체결 기간(예: "2025.03.01 – 2027.02.28"). 미체결 · 만료면 null. */
-  mouPeriod: string | null;
-  /** 기업 활성/비활성 상태 문구(예: "정상"). */
-  statusLabel: string;
-  /** "수정" 클릭 시 이동할 어드민 기업 상세 페이지 경로. */
-  detailHref: string;
-  /** 공개 중인 공고 수. 삭제 확인 모달의 통계와 삭제 가능 여부를 결정한다(1개 이상이면 삭제 불가). */
-  activeJobCount: number;
-  /** 진행 중인 MOU 공고 수. 삭제 확인 모달의 통계로만 쓴다. */
-  activeMouJobCount: number;
-  /** 누적 지원 내역 수. 삭제 확인 모달의 통계로만 쓴다. */
-  applicationCount: number;
+  logoUrl: string | null;
+}
+
+/** `GET /api/v1/companies` 응답(`CompanySearchResponse`)과 동일하다. */
+export interface AdminCompanyListResponse {
+  content: AdminCompanyListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+/**
+ * `POST /api/v1/admin/companies` · `PATCH /api/v1/admin/companies/{id}` ·
+ * `GET /api/v1/companies/{id}` 공통 응답(`CompanyResponse`)과 동일하다.
+ */
+export interface AdminCompanyRecord {
+  companyId: number;
+  name: string;
+  companyType: AdminCompanyType;
+  mouStatus: MouStatus;
+  sourceName: string | null;
+  homepageUrl: string | null;
+  logoUrl: string | null;
+  description: string | null;
+  industry: string | null;
+  address: string | null;
+  /** `yyyy-MM-dd` 형식(서버 컬럼이 `DATE`라 시각 정보가 없다). */
+  mouStartDate: string | null;
+  mouEndDate: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** 어드민 기업 상세 화면의 기본 정보 · MOU 정보 · 메모. */
