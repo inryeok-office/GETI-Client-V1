@@ -83,6 +83,11 @@ interface JobFilterSectionProps {
  * PUBLIC_INSTITUTION · FOREIGN · ETC)과 대응하지 않는다. "모집 상태"의 "마감 임박"도 대응하는
  * 서버 값이 없어 그 옵션만 선택할 수 없다 — 이 셋은 선택 자체가 상태 · URL에 반영되지 않으므로
  * 부모가 넘기는 `activeFilterCount`에도 포함되지 않는다(PR #132 코드리뷰 반영).
+ *
+ * "출처"는 다른 드롭다운과 달리 선택 상태(`selected.source`) · URL에 표시 이름이 아니라
+ * `sourceCode`를 저장한다 — 이름은 관리자가 자유 입력하는 값이라 나중에 바뀌면 이름 기반 URL은
+ * 공유된 링크를 조용히 무효화한다(PR #149 코드리뷰 반영). 그래서 "출처"만 버튼 라벨 ·
+ * 드롭다운에 보여줄 "표시 이름"을 `sourceCode`로 따로 조회해야 한다(`sourceCodeToLabel`).
  */
 export function JobFilterSection({
   showActiveFilters,
@@ -97,8 +102,9 @@ export function JobFilterSection({
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const openDropdownRef = useRef<HTMLDivElement>(null);
   const jobSourcesQuery = useJobSourcesQuery();
-  const sourceOptionNames = buildJobSourceFilterOptions(jobSourcesQuery.data ?? []).map(
-    (option) => option.label,
+  const sourceFilterOptions = buildJobSourceFilterOptions(jobSourcesQuery.data ?? []);
+  const sourceCodeToLabel = Object.fromEntries(
+    sourceFilterOptions.map((option) => [option.sourceCode, option.label]),
   );
 
   useEffect(() => {
@@ -155,18 +161,22 @@ export function JobFilterSection({
           const isSourceLoading = isSource && jobSourcesQuery.isLoading;
           const isSourceError = isSource && jobSourcesQuery.isError;
           const options: string[] = isSource
-            ? sourceOptionNames
+            ? sourceFilterOptions.map((option) => option.sourceCode)
             : DROPDOWN_OPTIONS[filter.key as Exclude<FilterKey, 'source'>];
           const isFilterDisabled =
             UNSUPPORTED_FILTERS.includes(filter.key) ||
-            (isSource && !isSourceError && (isSourceLoading || sourceOptionNames.length === 0));
+            (isSource && !isSourceError && (isSourceLoading || options.length === 0));
+          const selectedLabel =
+            isSource && selectedOption
+              ? (sourceCodeToLabel[selectedOption] ?? selectedOption)
+              : selectedOption;
           const buttonLabel = isSourceLoading
             ? '출처 불러오는 중...'
             : isSourceError
               ? '출처 목록을 불러오지 못했습니다. 다시 시도'
-              : isSource && sourceOptionNames.length === 0
+              : isSource && options.length === 0
                 ? '등록된 출처가 없습니다'
-                : (selectedOption ?? filter.label);
+                : (selectedLabel ?? filter.label);
 
           return (
             <div
@@ -206,6 +216,10 @@ export function JobFilterSection({
               {openFilter === filter.key && !isSourceError && (
                 <div className="absolute top-full left-0 z-20 mt-[4px] flex w-[168px] flex-col gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                   {(isSource ? ['전체', ...options] : options).map((option) => {
+                    const optionLabel =
+                      isSource && option !== '전체'
+                        ? (sourceCodeToLabel[option] ?? option)
+                        : option;
                     const isSelected = selectedOption
                       ? selectedOption === option
                       : option === '전체';
@@ -224,7 +238,7 @@ export function JobFilterSection({
                             : `hover:bg-[#f6fbfc] ${isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'}`
                         }`}
                       >
-                        <span className="truncate">{option}</span>
+                        <span className="truncate">{optionLabel}</span>
                         {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
                       </button>
                     );

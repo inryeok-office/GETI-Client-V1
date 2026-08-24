@@ -90,7 +90,6 @@ describe('JobListPage', () => {
 
     expect(mockUseJobListQuery).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, query: '백엔드', applicationMethod: 'EXTERNAL' }),
-      expect.anything(),
     );
   });
 
@@ -102,7 +101,6 @@ describe('JobListPage', () => {
 
     expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ applicationMethod: 'EXTERNAL' }),
-      expect.anything(),
     );
     expect(lastReplacedParams().get('applyType')).toBe('외부 지원');
   });
@@ -125,7 +123,7 @@ describe('JobListPage', () => {
     expect(screen.getByRole('button', { name: '기업 유형' })).toBeDisabled();
   });
 
-  it('"출처"에서 사람인을 고르면 sourceName(sourceCode)으로 조회하고 URL에는 표시명을 반영한다', () => {
+  it('"출처"에서 사람인을 고르면 sourceName(sourceCode)으로 조회하고 URL에도 sourceCode를 반영한다', () => {
     render(<JobListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: '출처' }));
@@ -133,28 +131,16 @@ describe('JobListPage', () => {
 
     expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ sourceName: 'SARAMIN' }),
-      expect.anything(),
     );
-    expect(lastReplacedParams().get('source')).toBe('사람인');
+    expect(lastReplacedParams().get('source')).toBe('SARAMIN');
   });
 
-  it('출처가 이미 선택된 URL로 들어오면 출처 목록을 불러오는 동안 목록 조회를 미룬다(전체 목록이 먼저 나가지 않도록)', () => {
+  it('URL에 이미 sourceCode(source=SARAMIN)가 있으면 출처 목록 로딩과 무관하게 곧바로 sourceName으로 조회한다', () => {
     mockUseJobSourcesQuery.mockReturnValue(sourcesResult({ isLoading: true, data: undefined }));
-    render(<JobListPage initialSearchParams={{ source: '사람인' }} />);
+    render(<JobListPage initialSearchParams={{ source: 'SARAMIN' }} />);
 
-    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({ enabled: false }),
-    );
-  });
-
-  it('출처가 이미 선택된 URL로 들어와도 출처 목록을 다 불러오면 sourceName으로 목록 조회가 활성화된다', () => {
-    mockUseJobSourcesQuery.mockReturnValue(sourcesResult());
-    render(<JobListPage initialSearchParams={{ source: '사람인' }} />);
-
-    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
+    expect(mockUseJobListQuery).toHaveBeenCalledWith(
       expect.objectContaining({ sourceName: 'SARAMIN' }),
-      expect.objectContaining({ enabled: true }),
     );
   });
 
@@ -190,7 +176,6 @@ describe('JobListPage', () => {
 
     expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: '카카오' }),
-      expect.anything(),
     );
     expect(lastReplacedParams().get('q')).toBe('카카오');
   });
@@ -203,10 +188,7 @@ describe('JobListPage', () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1 }),
-      expect.anything(),
-    );
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
     expect(lastReplacedParams().get('page')).toBe('2');
   });
 
@@ -222,10 +204,7 @@ describe('JobListPage', () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1 }),
-      expect.anything(),
-    );
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
     expect(lastReplacedParams().get('page')).toBe('2');
   });
 });
