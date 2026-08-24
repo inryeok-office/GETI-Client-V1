@@ -36,6 +36,25 @@ interface PopoverToggleEvent extends Event {
   newState: 'closed' | 'open';
 }
 
+function usePopoverOpenState() {
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const popover = popoverRef.current;
+    if (!popover) return;
+
+    const handleToggle = (event: Event) => {
+      setIsOpen((event as PopoverToggleEvent).newState === 'open');
+    };
+
+    popover.addEventListener('toggle', handleToggle);
+    return () => popover.removeEventListener('toggle', handleToggle);
+  }, []);
+
+  return { isOpen, popoverRef };
+}
+
 /**
  * 전 화면 공통 상단 내비게이션. 여러 도메인의 라우팅 링크를 모아둔 앱 전역 UI 블록이다.
  * 구현된 화면은 링크로 연결하고, 아직 대상 라우트가 없는 메뉴는 비활성 상태로 표시한다.
@@ -43,34 +62,8 @@ interface PopoverToggleEvent extends Event {
  * 간격 · 색상은 Figma(node 500:1509)의 헤더 값을 그대로 옮겼다.
  */
 export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const notificationPopoverRef = useRef<HTMLDivElement>(null);
-  const profilePopoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const popover = notificationPopoverRef.current;
-    if (!popover) return;
-
-    const handleToggle = (event: Event) => {
-      setIsNotificationOpen((event as PopoverToggleEvent).newState === 'open');
-    };
-
-    popover.addEventListener('toggle', handleToggle);
-    return () => popover.removeEventListener('toggle', handleToggle);
-  }, []);
-
-  useEffect(() => {
-    const popover = profilePopoverRef.current;
-    if (!popover) return;
-
-    const handleToggle = (event: Event) => {
-      setIsProfileMenuOpen((event as PopoverToggleEvent).newState === 'open');
-    };
-
-    popover.addEventListener('toggle', handleToggle);
-    return () => popover.removeEventListener('toggle', handleToggle);
-  }, []);
+  const { isOpen: isNotificationOpen, popoverRef: notificationPopoverRef } = usePopoverOpenState();
+  const { isOpen: isProfileMenuOpen, popoverRef: profilePopoverRef } = usePopoverOpenState();
 
   function closeProfileMenu() {
     profilePopoverRef.current?.hidePopover?.();
@@ -190,14 +183,14 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
         </nav>
 
         <div className="pt-[8px]">
-          <span
-            role="link"
-            aria-disabled="true"
+          <button
+            type="button"
+            disabled
             aria-label="로그아웃 (인증 연동 예정)"
-            className="text-body text-status-error flex min-h-[45px] items-center rounded-[8px] p-[12px]"
+            className="text-body text-status-error flex min-h-[45px] w-full items-center rounded-[8px] p-[12px] text-left"
           >
             로그아웃
-          </span>
+          </button>
         </div>
       </div>
     </header>

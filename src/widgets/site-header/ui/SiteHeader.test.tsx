@@ -96,11 +96,11 @@ describe('SiteHeader', () => {
       '/inquiries',
     );
     expect(
-      within(profileMenu).getByRole('link', {
+      within(profileMenu).getByRole('button', {
         name: '로그아웃 (인증 연동 예정)',
         hidden: true,
       }),
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toBeDisabled();
   });
 
   it('사용자 메뉴 팝오버의 확장 상태를 반영한다', () => {
