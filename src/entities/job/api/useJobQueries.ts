@@ -1,8 +1,14 @@
 'use client';
 
-import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/react-query';
 
-import { fetchJobDetail, fetchJobList, fetchJobSources, type FetchJobListParams } from './jobApi';
+import {
+  downloadJobAttachment,
+  fetchJobDetail,
+  fetchJobList,
+  fetchJobSources,
+  type FetchJobListParams,
+} from './jobApi';
 
 export const jobKeys = {
   all: ['jobs'] as const,
@@ -36,5 +42,12 @@ export function useJobSourcesQuery() {
   return useQuery({
     queryKey: jobKeys.sources(),
     queryFn: fetchJobSources,
+  });
+}
+
+/** 공고 첨부파일 다운로드. 서버 상태를 바꾸지 않으니 쿼리 무효화는 하지 않는다. */
+export function useDownloadJobAttachmentMutation() {
+  return useMutation({
+    mutationFn: (downloadUrl: string) => downloadJobAttachment(downloadUrl),
   });
 }

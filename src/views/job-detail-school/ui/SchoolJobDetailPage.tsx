@@ -88,7 +88,7 @@ export function SchoolJobDetailPage({ jobId }: SchoolJobDetailPageProps) {
                   name={job.company?.name ?? '기업 정보 없음'}
                   homepageLabel="기업 홈페이지"
                 />
-                <AttachmentList attachments={[]} />
+                <AttachmentList attachments={job.files} />
               </div>
             </div>
           </>

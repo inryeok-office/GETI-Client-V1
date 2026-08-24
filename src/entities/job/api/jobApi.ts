@@ -59,3 +59,15 @@ export async function fetchJobSources(): Promise<JobSourceOption[]> {
   });
   return data.data.sources;
 }
+
+/**
+ * `GET /api/v1/files/{fileId}/download`(GETI-Server `FileController`) — 첨부파일 다운로드.
+ * `JobAttachment.downloadUrl`은 presigned Storage URL이 아니라 이 GETI 자체 API 경로라 인증이
+ * 필요하다(GETI-Server `JobServiceImpl` — `downloadUrl = "/api/v1/files/$fileId/download"`).
+ * `shared/api`의 axios 인스턴스를 통해 요청해야 Authorization Header가 붙는다. 실제 응답은
+ * Storage URL로의 302 Redirect라 axios가 그 Redirect를 따라간 뒤의 Binary Body를 Blob으로 받는다.
+ */
+export async function downloadJobAttachment(downloadUrl: string): Promise<Blob> {
+  const response = await api.get<Blob>(downloadUrl, { responseType: 'blob' });
+  return response.data;
+}

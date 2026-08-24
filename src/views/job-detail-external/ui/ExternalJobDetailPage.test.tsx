@@ -1,9 +1,22 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { JobDetail } from '@/entities/job';
 
 import { ExternalJobDetailPage } from './ExternalJobDetailPage';
+
+/** `AttachmentList`가 실제 `useDownloadJobAttachmentMutation`(TanStack Query)을 쓰므로 필요하다. */
+function renderPage(jobId: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ExternalJobDetailPage jobId={jobId} />
+    </QueryClientProvider>,
+  );
+}
 
 const { mockUseJobDetailQuery } = vi.hoisted(() => ({
   mockUseJobDetailQuery: vi.fn(),
@@ -47,6 +60,7 @@ const BASE_JOB: JobDetail = {
     availableActions: [],
   },
   bookmarked: false,
+  files: [],
 };
 
 function mockJob(overrides: Partial<JobDetail> = {}) {
@@ -61,7 +75,7 @@ describe('ExternalJobDetailPage', () => {
   it('canApply가 false여도 마감 전이고 externalUrl이 있으면 지원 버튼을 활성화한다', () => {
     mockJob();
 
-    render(<ExternalJobDetailPage jobId="1" />);
+    renderPage('1');
 
     const applyLink = screen.getByRole('link', { name: '사이트에서 지원하기' });
     expect(applyLink).toHaveAttribute('href', BASE_JOB.externalUrl);
@@ -70,7 +84,7 @@ describe('ExternalJobDetailPage', () => {
   it('마감된 공고는 지원 버튼을 비활성화한다', () => {
     mockJob({ status: 'CLOSED' });
 
-    render(<ExternalJobDetailPage jobId="1" />);
+    renderPage('1');
 
     expect(screen.getByRole('button', { name: '사이트에서 지원하기' })).toBeDisabled();
   });
@@ -78,7 +92,7 @@ describe('ExternalJobDetailPage', () => {
   it('externalUrl이 없으면 지원 버튼을 비활성화한다', () => {
     mockJob({ externalUrl: null });
 
-    render(<ExternalJobDetailPage jobId="1" />);
+    renderPage('1');
 
     expect(screen.getByRole('button', { name: '사이트에서 지원하기' })).toBeDisabled();
   });

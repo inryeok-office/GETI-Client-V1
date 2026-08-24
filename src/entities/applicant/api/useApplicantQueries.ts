@@ -5,11 +5,13 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import {
   executeApplicantAction,
   exportJobApplications,
+  fetchAllJobApplicants,
   fetchAllJobPostings,
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
   type ExecuteApplicantActionParams,
+  type ExportJobApplicationsParams,
   type FetchApplicantListParams,
 } from './applicantApi';
 
@@ -17,6 +19,8 @@ export const applicantKeys = {
   all: ['applicants'] as const,
   list: (params: FetchApplicantListParams) => [...applicantKeys.all, 'list', params] as const,
   jobPostingOptions: () => [...applicantKeys.all, 'job-posting-options'] as const,
+  jobApplicantOptions: (jobId: number) =>
+    [...applicantKeys.all, 'job-applicant-options', jobId] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
@@ -38,6 +42,14 @@ export function useJobPostingOptionsQuery() {
   return useQuery({
     queryKey: applicantKeys.jobPostingOptions(),
     queryFn: fetchAllJobPostings,
+  });
+}
+
+/** 다운로드 모달의 "지원자" 체크박스 목록. jobId가 아직 없으면(공고 목록 로딩 중) 요청하지 않는다. */
+export function useJobApplicantOptionsQuery(jobId: number | undefined) {
+  return useQuery({
+    queryKey: applicantKeys.jobApplicantOptions(jobId ?? -1),
+    queryFn: jobId === undefined ? skipToken : () => fetchAllJobApplicants(jobId),
   });
 }
 
@@ -74,6 +86,6 @@ export function useApplicantActionMutation() {
 /** 공고별 지원자 자료 일괄 다운로드(ZIP). 서버 상태를 바꾸지 않으니 쿼리 무효화는 하지 않는다. */
 export function useExportJobApplicationsMutation() {
   return useMutation({
-    mutationFn: (jobId: number) => exportJobApplications(jobId),
+    mutationFn: (params: ExportJobApplicationsParams) => exportJobApplications(params),
   });
 }
