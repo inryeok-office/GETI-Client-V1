@@ -111,9 +111,47 @@ export async function fetchAllJobPostings(): Promise<JobPostingOption[]> {
   return Array.from(jobPostings.values());
 }
 
+export interface JobApplicantOption {
+  applicationId: number;
+  applicantName: string | null;
+}
+
+const JOB_APPLICANT_PAGE_SIZE = 100;
+
+/**
+ * 다운로드 모달의 "지원자" 체크박스 목록을 만들기 위해 선택한 공고의 지원자 전원을
+ * `totalPages` 끝까지 순회해 모은다. `fetchAllJobPostings`와 같은 이유로 페이지 크기가
+ * 아니라 상한 없이 모든 페이지를 모은다.
+ */
+export async function fetchAllJobApplicants(jobId: number): Promise<JobApplicantOption[]> {
+  const first = await fetchApplicantList({ jobId, page: 0, size: JOB_APPLICANT_PAGE_SIZE });
+  const restPages = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      fetchApplicantList({ jobId, page: index + 1, size: JOB_APPLICANT_PAGE_SIZE }),
+    ),
+  );
+
+  return [first, ...restPages].flatMap(({ content }) =>
+    content.map((applicant) => ({
+      applicationId: applicant.applicationId,
+      applicantName: applicant.applicantName,
+    })),
+  );
+}
+
 export interface ExportedFile {
   blob: Blob;
   filename: string;
+}
+
+export interface ExportJobApplicationsParams {
+  jobId: number;
+  /**
+   * 지정하면 그 지원서만 대상으로 한다. 생략하면 공고 전체 지원자가 대상이다(하위 호환,
+   * GETI-Server-V1 #203/PR #215). 다른 공고 소속이거나 존재하지 않는 id는 서버가 오류 없이
+   * 조용히 무시한다.
+   */
+  applicationIds?: number[];
 }
 
 const EXPORT_FILENAME_PATTERN = /filename="?([^";]+)"?/;
@@ -121,12 +159,18 @@ const EXPORT_FILENAME_PATTERN = /filename="?([^";]+)"?/;
 /**
  * `GET /admin/jobs/{jobId}/applications/export` — 공고 지원자 자료 일괄 다운로드(ZIP).
  * 응답이 JSON이 아니라 `application/zip` Binary라 `ApiResponse`로 감싸여 있지 않고, `responseType:
- * 'blob'`로 받는다. 이 API는 `jobId` 단위로 그 공고 지원자 전원의 첨부파일을 묶어 줄 뿐,
- * 개별 지원자 선택이나 자료 종류 선택에 대응하는 파라미터는 없다(GETI-Server PR #157).
+ * 'blob'`로 받는다. `applicationIds`는 axios 기본 직렬화(`ids[]=1&ids[]=2`)가 아니라 Spring이
+ * 기대하는 반복 키(`applicationIds=1&applicationIds=2`) 형태로 보내야 해서 `paramsSerializer`를
+ * 직접 지정한다.
  */
-export async function exportJobApplications(jobId: number): Promise<ExportedFile> {
+export async function exportJobApplications({
+  jobId,
+  applicationIds,
+}: ExportJobApplicationsParams): Promise<ExportedFile> {
   const response = await api.get<Blob>(`${JOBS_BASE_PATH}/${jobId}/applications/export`, {
     responseType: 'blob',
+    params: applicationIds ? { applicationIds } : undefined,
+    paramsSerializer: { indexes: null },
   });
   const contentDisposition = response.headers['content-disposition'] as string | undefined;
   const filename =
