@@ -27,12 +27,8 @@ export function PageState({ description, title, variant }: PageStateProps) {
         name={iconName}
         className={`mb-4 size-12 ${variant === 'loading' ? 'text-primary-700 animate-spin' : 'text-neutral-400'}`}
       />
-      <h2 className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-        {title}
-      </h2>
-      <p className="mt-2 max-w-md text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
-        {description}
-      </p>
+      <h2 className="text-web-heading-3 text-neutral-900">{title}</h2>
+      <p className="text-body mt-2 max-w-md text-neutral-600">{description}</p>
     </section>
   );
 }

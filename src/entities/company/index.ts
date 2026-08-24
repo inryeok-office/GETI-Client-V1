@@ -2,12 +2,14 @@ export { CompanyCard } from './ui/CompanyCard';
 
 export {
   createCompany,
+  fetchAllCompanyOptions,
   fetchCompanyDetail,
   fetchCompanyList,
   updateCompany,
 } from './api/companyApi';
 export type {
   CompanyMutationPayload,
+  CompanyOption,
   FetchCompanyListParams,
   UpdateCompanyParams,
 } from './api/companyApi';
@@ -15,6 +17,7 @@ export {
   companyKeys,
   useCompanyDetailQuery,
   useCompanyListQuery,
+  useCompanyOptionsQuery,
   useCreateCompanyMutation,
   useUpdateCompanyMutation,
 } from './api/useCompanyQueries';

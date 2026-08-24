@@ -1,33 +1,177 @@
-import { JobList, MOCK_JOB_LIST_ITEMS, type JobListStatus } from '@/widgets/job-list';
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import {
+  mapJobSummaryToListItem,
+  useJobListQuery,
+  type JobApplicationMethod,
+  type PublicJobStatus,
+} from '@/entities/job';
+import { JobList, type FilterKey, type JobListStatus } from '@/widgets/job-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-const VARIANT_TO_STATUS: Record<string, JobListStatus> = {
-  success: 'success',
-  'initial-loading': 'initialLoading',
-  'page-loading': 'pageLoading',
-  error: 'error',
-  empty: 'empty',
+const PAGE_SIZE = 20;
+/** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). */
+const SEARCH_DEBOUNCE_MS = 300;
+
+const FILTER_KEYS: FilterKey[] = ['applyType', 'job', 'companyType', 'source', 'status'];
+
+/** "지원 유형" 선택지 → `applicationMethod` 파라미터. 1:1로 대응해 확정적으로 연결할 수 있다. */
+const APPLY_TYPE_TO_METHOD: Partial<Record<string, JobApplicationMethod>> = {
+  '외부 지원': 'EXTERNAL',
+  '학교 지원': 'INTERNAL',
 };
 
-const TOTAL_PAGES = 8;
-/** Figma 목업의 "총 24개의 공고" 문구에 맞춘 값. 실제로는 서버가 내려주는 전체 개수로 바뀐다. */
-const MOCK_TOTAL_COUNT = 24;
+/**
+ * "모집 상태" 선택지 → `status` 파라미터. 서버는 PUBLISHED · CLOSED만 필터로 받는다 — "마감
+ * 임박"은 대응하는 상태 값이 없어 매핑하지 않는다(선택은 되지만 조회에는 반영되지 않는다,
+ * PR #132 코드리뷰 반영).
+ */
+const STATUS_TO_PUBLIC_STATUS: Partial<Record<string, PublicJobStatus>> = {
+  '모집 중': 'PUBLISHED',
+  마감: 'CLOSED',
+};
+
+export interface JobListSearchParams {
+  q?: string;
+  page?: string;
+  closed?: string;
+  applyType?: string;
+  job?: string;
+  companyType?: string;
+  source?: string;
+  status?: string;
+}
+
+function readSelectedFilters(
+  params: JobListSearchParams | undefined,
+): Partial<Record<FilterKey, string>> {
+  const selected: Partial<Record<FilterKey, string>> = {};
+  for (const key of FILTER_KEYS) {
+    const value = params?.[key];
+    if (value) selected[key] = value;
+  }
+  return selected;
+}
 
 interface JobListPageProps {
-  searchParams: Promise<{ variant?: string; page?: string }>;
+  /**
+   * `app/jobs/page.tsx`(Server Component)가 넘겨주는 초기 URL 쿼리스트링. 이 화면은 `'use
+   * client'`라 `useSearchParams()`로 직접 읽을 수도 있지만, 그러면 Next가 이 라우트 전체를
+   * Suspense 경계로 감싸야 한다 — `AdminApplicantPage`(admin/applicants)와 같은 패턴으로,
+   * 최초 값은 Server Component에서 Prop으로 받고 이후 변경만 `router.replace`로 반영한다.
+   */
+  initialSearchParams?: JobListSearchParams;
 }
 
 /**
- * 채용 공고 목록 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * `variant` 쿼리 파라미터(?variant=initial-loading 등)로 5개 상태를 수동으로 확인할 수 있다(화면에 노출되는 UI는 없음).
- * `page`는 페이지네이션 클릭으로 실제 이동하지만, 목업이 한 페이지 분량뿐이라 카드 내용은 바뀌지 않는다.
- * API 연동 이슈(A)에서 이 자리를 `useQuery` 결과로 교체한다.
+ * 채용 공고 목록 화면. `GET /api/v1/jobs`(entities/job의 `useJobListQuery`)로 실제 데이터를
+ * 불러온다(Issue #122). 인증이 필요한 API라 다른 어드민 화면과 동일하게 클라이언트에서 조회한다.
+ *
+ * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "모집 상태"(→ `status`,
+ * "마감 임박" 제외)가 실제 조회에 연결돼 있다. "직무" · "기업 유형" · "출처"는 선택 UI만
+ * 동작하고 조회에는 반영되지 않는다 — "직무"는 대응 API 파라미터가 아예 없고, "기업 유형"은
+ * Figma 라벨이 백엔드 `CompanyType` Enum과 대응하지 않으며, "출처"는 서버 `sourceName` 필터가
+ * `jobs.source_name`(수집원 코드, 예: "SARAMIN")과 정확히 일치해야 하는데 공개 출처 목록
+ * API(`GET /api/v1/job-sources`)는 표시용 한글 이름만 내려주고 그 코드를 노출하지 않아 실제
+ * 값을 확정할 수 없다(`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
+ *
+ * 검색 · 필터 · 페이지 상태는 새로고침 · 뒤로가기에도 유지되도록 URL 쿼리스트링과 동기화한다
+ * (새 라이브러리 없이 Next `router`/Server Component `searchParams` 범위에서 처리, PR #132
+ * 코드리뷰 반영).
  */
-export async function JobListPage({ searchParams }: JobListPageProps) {
-  const { variant, page } = await searchParams;
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
-  const jobs = status === 'empty' || status === 'error' ? [] : MOCK_JOB_LIST_ITEMS;
-  const currentPage = clampPage(Number(page ?? '1'));
+export function JobListPage({ initialSearchParams }: JobListPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [page, setPage] = useState(() => {
+    const raw = Number(initialSearchParams?.page);
+    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+  });
+  const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
+  const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
+  const [includeClosed, setIncludeClosed] = useState(() => initialSearchParams?.closed !== '0');
+  const [selectedFilters, setSelectedFilters] = useState<Partial<Record<FilterKey, string>>>(() =>
+    readSelectedFilters(initialSearchParams),
+  );
+
+  /**
+   * 페이지 초기화는 여기(디바운스 effect)가 아니라 `handleSearchInputChange`(실제 입력
+   * 이벤트)에서 동기로 처리한다. isFirstRender 같은 ref로 "최초 실행만 건너뛰기"를
+   * 흉내 내면 React Strict Mode(개발 환경, Next도 동일)가 effect를 setup→cleanup→setup으로
+   * 한 번 더 실행할 때 첫 setup에서 ref가 이미 false로 바뀌어 있어 두 번째 setup이 그대로
+   * 타이머를 등록해 버린다 — `initialSearchParams`로 복원한 page가 300ms 뒤 사라지는 문제가
+   * 그대로 재현된다. 이 effect는 디바운스된 `searchQuery` 커밋만 담당해 실행 횟수와 무관하게
+   * 안전하다(PR #132 코드리뷰 반영).
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+    setPage(0);
+  };
+
+  const applicationMethod = selectedFilters.applyType
+    ? APPLY_TYPE_TO_METHOD[selectedFilters.applyType]
+    : undefined;
+  const status = selectedFilters.status
+    ? STATUS_TO_PUBLIC_STATUS[selectedFilters.status]
+    : undefined;
+
+  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 직무 · 기업 유형 · 출처, "마감 임박"은 제외. */
+  const activeFilterCount = [applicationMethod, status].filter(Boolean).length;
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (!includeClosed) params.set('closed', '0');
+    if (page > 0) params.set('page', String(page + 1));
+    for (const key of FILTER_KEYS) {
+      const value = selectedFilters[key];
+      if (value) params.set(key, value);
+    }
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [searchQuery, includeClosed, page, selectedFilters, pathname, router]);
+
+  const handleIncludeClosedChange = (next: boolean) => {
+    setIncludeClosed(next);
+    setPage(0);
+  };
+
+  const handleSelectedFiltersChange = (next: Partial<Record<FilterKey, string>>) => {
+    setSelectedFilters(next);
+    setPage(0);
+  };
+
+  const listQuery = useJobListQuery({
+    page,
+    size: PAGE_SIZE,
+    query: searchQuery.trim() || undefined,
+    openOnly: !includeClosed,
+    applicationMethod,
+    status,
+  });
+
+  const listStatus: JobListStatus = listQuery.isLoading
+    ? 'initialLoading'
+    : listQuery.isFetching
+      ? 'pageLoading'
+      : listQuery.isError
+        ? 'error'
+        : (listQuery.data?.content.length ?? 0) === 0
+          ? 'empty'
+          : 'success';
+
+  const jobs = (listQuery.data?.content ?? []).map(mapJobSummaryToListItem);
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -43,21 +187,23 @@ export async function JobListPage({ searchParams }: JobListPageProps) {
 
         <div className="mt-[32px]">
           <JobList
-            status={status}
+            status={listStatus}
             jobs={jobs}
-            totalCount={MOCK_TOTAL_COUNT}
-            currentPage={currentPage}
-            totalPages={TOTAL_PAGES}
-            basePath="/jobs"
+            totalCount={listQuery.data?.totalElements ?? 0}
+            currentPage={page + 1}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            searchQuery={searchInput}
+            onSearchQueryChange={handleSearchInputChange}
+            includeClosed={includeClosed}
+            onIncludeClosedChange={handleIncludeClosedChange}
+            selectedFilters={selectedFilters}
+            onSelectedFiltersChange={handleSelectedFiltersChange}
+            activeFilterCount={activeFilterCount}
+            onRetry={() => listQuery.refetch()}
           />
         </div>
       </main>
     </div>
   );
-}
-
-function clampPage(page: number): number {
-  if (!Number.isFinite(page) || page < 1) return 1;
-  if (page > TOTAL_PAGES) return TOTAL_PAGES;
-  return Math.trunc(page);
 }

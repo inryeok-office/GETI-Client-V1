@@ -35,6 +35,8 @@ PR을 올리기 전에 `npm run verify`를 실행합니다. CI도 같은 단계�
 
 선정 이유와 도입 시점, 아직 정하지 않은 항목은 [`docs/tech-stack.md`](./docs/tech-stack.md)에 있습니다. 기술 선택의 원본은 그 문서이며, 스택을 바꿀 때는 그 문서를 먼저 수정합니다.
 
+색상 · 타이포그래피 · 그림자 토큰과 공통 UI 사용 기준은 [`docs/design-system.md`](./docs/design-system.md)를 따릅니다.
+
 새 라이브러리는 팀 합의 후 추가합니다. 정해진 기술을 임의로 다른 것으로 바꾸지 않습니다.
 
 ## 폴더 구조 (FSD)

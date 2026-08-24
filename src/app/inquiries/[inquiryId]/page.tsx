@@ -2,9 +2,11 @@ import { InquiryDetailPage } from '@/views/inquiry-detail';
 
 interface PageProps {
   params: Promise<{ inquiryId: string }>;
-  searchParams: Promise<{ variant?: string }>;
+  searchParams: Promise<{ returnPage?: string }>;
 }
 
-export default function Page({ params, searchParams }: PageProps) {
-  return <InquiryDetailPage params={params} searchParams={searchParams} />;
+export default async function Page({ params, searchParams }: PageProps) {
+  const { inquiryId } = await params;
+  const { returnPage } = await searchParams;
+  return <InquiryDetailPage inquiryId={inquiryId} returnPage={returnPage} />;
 }

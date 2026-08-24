@@ -1,38 +1,64 @@
-import { InquiryRegistrationFlow, type MockInquirySubmitResult } from '@/features/create-inquiry';
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
+import { mapInquiryListItem, useMyInquiryListQuery } from '@/entities/inquiry';
+import { InquiryRegistrationFlow } from '@/features/create-inquiry';
 import { InquiryList, type InquiryListStatus } from '@/widgets/inquiry-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-import { MOCK_INQUIRIES } from '../model/mock';
-
-const VARIANT_TO_STATUS: Record<string, InquiryListStatus> = {
-  loading: 'loading',
-  error: 'error',
-  empty: 'empty',
-  success: 'success',
-};
+const PAGE_SIZE = 20;
+const BASE_PATH = '/inquiries';
 
 interface InquiryListPageProps {
-  searchParams: Promise<{ registrationResult?: string; variant?: string }>;
+  /** 라우트의 `?page=` 쿼리 파라미터. 1부터 시작하는 화면 표기 페이지 번호다. */
+  page?: string;
 }
 
-/** Mock 데이터로 문의 목록의 디자인 상태를 검토하는 정적 화면. */
-export async function InquiryListPage({ searchParams }: InquiryListPageProps) {
-  const { registrationResult, variant } = await searchParams;
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
-  const inquiries = status === 'success' ? MOCK_INQUIRIES : [];
-  const mockSubmitResult: MockInquirySubmitResult =
-    registrationResult === 'error' ? 'error' : 'success';
-  const initialFeedback =
-    registrationResult === 'success' || registrationResult === 'error' ? registrationResult : null;
+/** 요청자 본인의 문의 목록을 실제 서버 데이터로 조회하고 등록 Flow를 조합한다. */
+export function InquiryListPage({ page }: InquiryListPageProps) {
+  const router = useRouter();
+  const currentPage = parsePage(page);
+  const listQuery = useMyInquiryListQuery({ page: currentPage - 1, size: PAGE_SIZE });
+  const inquiries = (listQuery.data?.content ?? []).map(mapInquiryListItem);
+  const totalPages = listQuery.data?.totalPages ?? 0;
+  const lastAvailablePage = Math.max(totalPages, 1);
+  const isPageOutOfRange = listQuery.isSuccess && currentPage > lastAvailablePage;
+
+  useEffect(() => {
+    if (!isPageOutOfRange) return;
+
+    router.replace(lastAvailablePage === 1 ? BASE_PATH : `${BASE_PATH}?page=${lastAvailablePage}`);
+  }, [isPageOutOfRange, lastAvailablePage, router]);
+
+  const status: InquiryListStatus =
+    listQuery.isLoading || listQuery.isPlaceholderData || isPageOutOfRange
+      ? 'loading'
+      : listQuery.isError
+        ? 'error'
+        : inquiries.length === 0
+          ? 'empty'
+          : 'success';
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
       <SiteHeader />
       <main className="mx-auto max-w-[1280px] px-4 pt-[40px] pb-[120px]">
         <InquiryRegistrationFlow
-          initialFeedback={initialFeedback}
-          mockSubmitResult={mockSubmitResult}
-          list={<InquiryList inquiries={inquiries} status={status} />}
+          onRegistrationSuccess={() => {
+            if (currentPage > 1) router.replace(BASE_PATH);
+          }}
+          list={
+            <InquiryList
+              inquiries={inquiries}
+              status={status}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              basePath={BASE_PATH}
+              onRetry={() => listQuery.refetch()}
+            />
+          }
         >
           <div>
             <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
@@ -46,4 +72,10 @@ export async function InquiryListPage({ searchParams }: InquiryListPageProps) {
       </main>
     </div>
   );
+}
+
+function parsePage(page: string | undefined): number {
+  const parsedPage = Number(page ?? '1');
+  if (!Number.isSafeInteger(parsedPage) || parsedPage < 1) return 1;
+  return parsedPage;
 }

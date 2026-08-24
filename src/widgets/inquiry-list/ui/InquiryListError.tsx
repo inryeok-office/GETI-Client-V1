@@ -1,6 +1,10 @@
 import { Icon } from '@/shared/ui/icon';
 
-export function InquiryListError() {
+interface InquiryListErrorProps {
+  onRetry: () => void;
+}
+
+export function InquiryListError({ onRetry }: InquiryListErrorProps) {
   return (
     <div
       className="flex min-h-[430px] flex-col items-center justify-center gap-[24px] text-center"
@@ -18,6 +22,7 @@ export function InquiryListError() {
         </div>
         <button
           type="button"
+          onClick={onRetry}
           className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
         >
           다시 시도

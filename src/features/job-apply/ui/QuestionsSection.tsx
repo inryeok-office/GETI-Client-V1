@@ -2,28 +2,22 @@ import type { ApplicationQuestion } from '@/entities/job-application';
 
 interface QuestionsSectionProps {
   questions: ApplicationQuestion[];
-  answers: Record<string, string>;
-  onAnswerChange: (id: string, value: string) => void;
-  /** 제출을 시도했는데 비어있는 문항의 id. 해당 문항 답변란만 빨간 테두리로 강조한다. */
-  errorQuestionIds?: Set<string>;
 }
 
 /**
  * 지원서 작성의 지원서 문항 카드. 공고마다 문항 개수 · 내용이 달라 목록으로 렌더링한다.
+ * 학생용 문항 조회 API가 없어 문항은 mock을 그대로 보여주되, 그 답변은 저장할 방법이 없다 —
+ * 정상 입력처럼 보이다 제출 후 사라지지 않도록 답변란을 편집 불가로 막고 안내 문구를 보여준다
+ * (PR #133 코드리뷰 반영). 같은 이유로 이 문항은 제출 필수 조건에서도 뺐다.
  * 간격 · 색상은 Figma(node 500:2568 · "지원서 작성 - 필수 항목 누락")의 값을 그대로 옮겼다.
  */
-export function QuestionsSection({
-  questions,
-  answers,
-  onAnswerChange,
-  errorQuestionIds,
-}: QuestionsSectionProps) {
+export function QuestionsSection({ questions }: QuestionsSectionProps) {
   return (
     <section className="flex w-full flex-col gap-[32px] rounded-[16px] bg-white px-[32px] py-[40px]">
       <div className="flex flex-col gap-[8px] border-b border-[#e5e5e5] px-[4px] pb-[32px] text-[#111]">
         <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px]">지원서 문항</h2>
         <p className="text-[14px] leading-[1.5] tracking-[-0.14px]">
-          공고에 설정된 문항을 확인하고 답변해 주세요.
+          문항 답변은 현재 저장되지 않아 입력할 수 없습니다.
         </p>
       </div>
 
@@ -39,11 +33,9 @@ export function QuestionsSection({
             <p className="text-[16px] leading-[1.6] tracking-[-0.16px]">{item.question}</p>
           </div>
           <textarea
-            value={answers[item.id] ?? ''}
-            onChange={(event) => onAnswerChange(item.id, event.target.value)}
-            className={`h-[168px] w-full resize-none rounded-[8px] border p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] focus:outline-none ${
-              errorQuestionIds?.has(item.id) ? 'border-[#ef4444]' : 'border-[#e5e5e5]'
-            }`}
+            value=""
+            readOnly
+            className="h-[168px] w-full cursor-default resize-none rounded-[8px] border border-[#e5e5e5] bg-[#f5f5f5] p-[16px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111] focus:outline-none"
           />
         </div>
       ))}

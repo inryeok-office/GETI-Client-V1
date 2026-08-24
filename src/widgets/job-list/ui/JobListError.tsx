@@ -1,10 +1,14 @@
 import { Icon } from '@/shared/ui/icon';
 
+interface JobListErrorProps {
+  onRetry: () => void;
+}
+
 /**
  * 공고 목록 조회에 실패했을 때의 에러 상태.
  * 간격 · 색상 · 문구는 Figma(node 544:10875 "채용 공고 목록 - 재시도")의 값을 그대로 옮겼다.
  */
-export function JobListError() {
+export function JobListError({ onRetry }: JobListErrorProps) {
   return (
     <div
       className="flex flex-col items-center justify-center gap-[24px] rounded-[16px] border border-[#e5e5e5] bg-white py-[128px] text-center"
@@ -24,6 +28,7 @@ export function JobListError() {
         </div>
         <button
           type="button"
+          onClick={onRetry}
           className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
         >
           다시 시도

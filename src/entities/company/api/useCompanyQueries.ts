@@ -4,6 +4,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 
 import {
   createCompany,
+  fetchAllCompanyOptions,
   fetchCompanyDetail,
   fetchCompanyList,
   updateCompany,
@@ -16,6 +17,7 @@ export const companyKeys = {
   all: ['companies'] as const,
   list: (params: FetchCompanyListParams) => [...companyKeys.all, 'list', params] as const,
   detail: (companyId: number) => [...companyKeys.all, 'detail', companyId] as const,
+  options: () => [...companyKeys.all, 'options'] as const,
 };
 
 export function useCompanyListQuery(params: FetchCompanyListParams = {}) {
@@ -54,5 +56,13 @@ export function useUpdateCompanyMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyKeys.all });
     },
+  });
+}
+
+/** 지원자 관리 화면의 "기업" 드롭다운. 상한 없이 전체 기업을 모은다. */
+export function useCompanyOptionsQuery() {
+  return useQuery({
+    queryKey: companyKeys.options(),
+    queryFn: fetchAllCompanyOptions,
   });
 }

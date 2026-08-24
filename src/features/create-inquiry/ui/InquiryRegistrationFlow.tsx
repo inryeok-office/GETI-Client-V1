@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
 
+import { useCreateInquiryMutation, type InquiryType } from '@/entities/inquiry';
 import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
 import { TextareaField } from '@/shared/ui/textarea-field';
@@ -11,15 +12,12 @@ import {
   InquiryRegistrationBanner,
   type InquiryRegistrationFeedback,
 } from './InquiryRegistrationBanner';
-import { InquiryTypeSelect } from './InquiryTypeSelect';
-
-export type MockInquirySubmitResult = 'success' | 'error';
+import { InquiryTypeSelect, type InquiryTypeOption } from './InquiryTypeSelect';
 
 interface InquiryRegistrationFlowProps {
   children: ReactNode;
-  initialFeedback?: InquiryRegistrationFeedback | null;
   list: ReactNode;
-  mockSubmitResult?: MockInquirySubmitResult;
+  onRegistrationSuccess?: () => void;
 }
 
 interface InquiryFormErrors {
@@ -28,18 +26,24 @@ interface InquiryFormErrors {
   title?: string;
 }
 
-const MOCK_INQUIRY_TYPES = ['서비스 이용', '지원 문의', '계정·프로필', '공고 문의'];
+const INQUIRY_TYPE_OPTIONS: readonly InquiryTypeOption[] = [
+  { label: '오류', value: 'ERROR' },
+  { label: '불편사항', value: 'INCONVENIENCE' },
+  { label: '기능 요청', value: 'FEATURE_REQUEST' },
+  { label: '기타', value: 'ETC' },
+];
+
+const MAX_INQUIRY_TITLE_LENGTH = 500;
 
 export function InquiryRegistrationFlow({
   children,
-  initialFeedback = null,
   list,
-  mockSubmitResult = 'success',
+  onRegistrationSuccess,
 }: InquiryRegistrationFlowProps) {
+  const createInquiryMutation = useCreateInquiryMutation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<InquiryRegistrationFeedback | null>(initialFeedback);
-  const [inquiryType, setInquiryType] = useState('');
+  const [feedback, setFeedback] = useState<InquiryRegistrationFeedback | null>(null);
+  const [inquiryType, setInquiryType] = useState<InquiryType | ''>('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [errors, setErrors] = useState<InquiryFormErrors>({});
@@ -61,19 +65,31 @@ export function InquiryRegistrationFlow({
 
     const nextErrors: InquiryFormErrors = {
       inquiryType: inquiryType ? undefined : '문의 유형을 선택해 주세요.',
-      title: title.trim() ? undefined : '제목을 입력해 주세요.',
+      title: !title.trim()
+        ? '제목을 입력해 주세요.'
+        : title.trim().length > MAX_INQUIRY_TITLE_LENGTH
+          ? '제목은 500자 이하로 입력해 주세요.'
+          : undefined,
       content: content.trim() ? undefined : '문의 내용을 입력해 주세요.',
     };
 
     setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) return;
+    if (!inquiryType || Object.values(nextErrors).some(Boolean)) return;
 
-    setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setIsSubmitting(false);
-    setIsOpen(false);
-    setFeedback(mockSubmitResult);
-    resetForm();
+    try {
+      await createInquiryMutation.mutateAsync({
+        inquiryType,
+        title: title.trim(),
+        content: content.trim(),
+      });
+      setFeedback('success');
+      resetForm();
+      onRegistrationSuccess?.();
+    } catch {
+      setFeedback('error');
+    } finally {
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -110,10 +126,10 @@ export function InquiryRegistrationFlow({
               <InquiryTypeSelect
                 id="inquiry-type"
                 value={inquiryType}
-                disabled={isSubmitting}
+                disabled={createInquiryMutation.isPending}
                 errorMessage={errors.inquiryType}
                 onChange={setInquiryType}
-                options={MOCK_INQUIRY_TYPES}
+                options={INQUIRY_TYPE_OPTIONS}
               />
             </div>
 
@@ -127,7 +143,8 @@ export function InquiryRegistrationFlow({
               <TextField
                 id="inquiry-title"
                 value={title}
-                disabled={isSubmitting}
+                maxLength={MAX_INQUIRY_TITLE_LENGTH}
+                disabled={createInquiryMutation.isPending}
                 errorMessage={errors.title}
                 onChange={(event) => setTitle(event.target.value)}
                 className="h-[56px] px-[16px]"
@@ -144,7 +161,7 @@ export function InquiryRegistrationFlow({
               <TextareaField
                 id="inquiry-content"
                 value={content}
-                disabled={isSubmitting}
+                disabled={createInquiryMutation.isPending}
                 errorMessage={errors.content}
                 onChange={(event) => setContent(event.target.value)}
                 className="h-[168px] px-[16px] py-[16px]"
@@ -153,10 +170,15 @@ export function InquiryRegistrationFlow({
           </div>
 
           <div className="mt-[40px] flex justify-end gap-[8px]">
-            <Button variant="neutral" disabled={isSubmitting} onClick={closeDialog}>
+            <Button
+              type="button"
+              variant="neutral"
+              disabled={createInquiryMutation.isPending}
+              onClick={closeDialog}
+            >
               취소
             </Button>
-            <Button type="submit" isLoading={isSubmitting}>
+            <Button type="submit" isLoading={createInquiryMutation.isPending}>
               등록
             </Button>
           </div>
