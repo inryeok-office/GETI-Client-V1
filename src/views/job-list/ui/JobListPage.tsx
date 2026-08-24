@@ -71,12 +71,13 @@ interface JobListPageProps {
  * 불러온다(Issue #122). 인증이 필요한 API라 다른 어드민 화면과 동일하게 클라이언트에서 조회한다.
  *
  * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "모집 상태"(→ `status`,
- * "마감 임박" 제외)가 실제 조회에 연결돼 있다. "직무" · "기업 유형" · "출처"는 선택 UI만
- * 동작하고 조회에는 반영되지 않는다 — "직무"는 대응 API 파라미터가 아예 없고, "기업 유형"은
- * Figma 라벨이 백엔드 `CompanyType` Enum과 대응하지 않으며, "출처"는 서버 `sourceName` 필터가
- * `jobs.source_name`(수집원 코드, 예: "SARAMIN")과 정확히 일치해야 하는데 공개 출처 목록
- * API(`GET /api/v1/job-sources`)는 표시용 한글 이름만 내려주고 그 코드를 노출하지 않아 실제
- * 값을 확정할 수 없다(`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
+ * "마감 임박" 제외) · "출처"(→ `sourceName`)가 실제 조회에 연결돼 있다. "출처"는 표시 이름이
+ * 아니라 `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 — 이름은 관리자가
+ * 자유 입력하는 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만, 안정적인
+ * `sourceCode`는 그렇지 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149 코드리뷰 반영).
+ * "직무" · "기업 유형"은 선택 UI만 동작하고 조회에는 반영되지 않는다 — "직무"는 대응 API
+ * 파라미터가 아예 없고, "기업 유형"은 Figma 라벨이 백엔드 `CompanyType` Enum과 대응하지 않는다
+ * (`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
  *
  * 검색 · 필터 · 페이지 상태는 새로고침 · 뒤로가기에도 유지되도록 URL 쿼리스트링과 동기화한다
  * (새 라이브러리 없이 Next `router`/Server Component `searchParams` 범위에서 처리, PR #132
@@ -124,9 +125,11 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
   const status = selectedFilters.status
     ? STATUS_TO_PUBLIC_STATUS[selectedFilters.status]
     : undefined;
+  /** 선택 상태 · URL에 이미 `sourceCode`가 저장돼 있어 별도 조회 없이 그대로 쓸 수 있다(`JobFilterBar` 참고). */
+  const sourceName = selectedFilters.source;
 
-  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 직무 · 기업 유형 · 출처, "마감 임박"은 제외. */
-  const activeFilterCount = [applicationMethod, status].filter(Boolean).length;
+  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 직무 · 기업 유형, "마감 임박"은 제외. */
+  const activeFilterCount = [applicationMethod, status, sourceName].filter(Boolean).length;
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -159,6 +162,7 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     openOnly: !includeClosed,
     applicationMethod,
     status,
+    sourceName,
   });
 
   const listStatus: JobListStatus = listQuery.isLoading

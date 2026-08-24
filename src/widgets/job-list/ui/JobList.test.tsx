@@ -1,10 +1,26 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { JobListItem } from '@/entities/job';
 
 import { JobList } from './JobList';
+
+const { mockUseJobSourcesQuery } = vi.hoisted(() => ({ mockUseJobSourcesQuery: vi.fn() }));
+
+vi.mock('@/entities/job', async () => {
+  const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
+  return { ...actual, useJobSourcesQuery: mockUseJobSourcesQuery };
+});
+
+beforeEach(() => {
+  mockUseJobSourcesQuery.mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+});
 
 const JOBS: JobListItem[] = [
   {

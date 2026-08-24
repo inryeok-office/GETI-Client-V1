@@ -7,6 +7,7 @@ import type {
   JobSearchResponse,
   JobSort,
   JobSortDirection,
+  JobSourceOption,
   PublicJobStatus,
 } from '../model/types';
 
@@ -42,6 +43,21 @@ export async function fetchJobList(params: FetchJobListParams = {}): Promise<Job
 export async function fetchJobDetail(jobId: number): Promise<JobDetail> {
   const { data } = await api.get<ApiResponse<JobDetail>>(`${BASE_PATH}/${jobId}`);
   return data.data;
+}
+
+interface PublicJobSourceListResponse {
+  sources: JobSourceOption[];
+}
+
+/**
+ * `GET /api/v1/job-sources`(GETI-Server `JobSourceController`) — 공고 목록 "출처" 필터
+ * 드롭다운의 선택지 조회. `activeOnly=true`로 비활성 수집원은 제외한다(GETI-Server-V1 #222).
+ */
+export async function fetchJobSources(): Promise<JobSourceOption[]> {
+  const { data } = await api.get<ApiResponse<PublicJobSourceListResponse>>('/api/v1/job-sources', {
+    params: { activeOnly: true },
+  });
+  return data.data.sources;
 }
 
 /**
