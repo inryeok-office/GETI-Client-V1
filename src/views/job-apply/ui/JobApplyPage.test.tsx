@@ -35,6 +35,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+vi.mock('@/widgets/site-header', () => ({
+  SiteHeader: () => <div data-testid="site-header" />,
+}));
+
 const TEXT_QUESTION: ApplicationQuestion = {
   fieldId: 'q-text',
   type: 'TEXT',

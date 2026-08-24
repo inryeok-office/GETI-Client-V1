@@ -26,6 +26,10 @@ vi.mock('next/navigation', () => ({
   usePathname: mockUsePathname,
 }));
 
+vi.mock('@/widgets/site-header', () => ({
+  SiteHeader: () => <div data-testid="site-header" />,
+}));
+
 function emptyListResult() {
   return {
     data: {
