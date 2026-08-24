@@ -1,7 +1,10 @@
-import { AdminInquiryManagementPage } from '@/views/admin-inquiry-management';
+import {
+  AdminInquiryManagementPage,
+  type AdminInquiryManagementSearchParams,
+} from '@/views/admin-inquiry-management';
 
 interface AdminInquiryRouteProps {
-  searchParams: Promise<{ variant?: string }>;
+  searchParams: Promise<AdminInquiryManagementSearchParams>;
 }
 
 export default function AdminInquiryRoute({ searchParams }: AdminInquiryRouteProps) {

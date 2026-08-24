@@ -1,4 +1,7 @@
 import type {
+  AdminInquiryDetail,
+  AdminInquiryListApiItem,
+  AdminInquiryListItem,
   InquiryDetail,
   InquiryDetailApiResponse,
   InquiryFile,
@@ -42,5 +45,40 @@ export function mapInquiryDetail(detail: InquiryDetailApiResponse): InquiryDetai
       createdAt: answer.createdAt,
       files: answer.files.map(mapInquiryFile),
     })),
+  };
+}
+
+export function mapAdminInquiryListItem(item: AdminInquiryListApiItem): AdminInquiryListItem {
+  return {
+    inquiryId: String(item.inquiryId),
+    inquiryType: item.inquiryType,
+    title: item.title,
+    status: item.status,
+    author: {
+      memberId: String(item.author.memberId),
+      name: item.author.name ?? '이름 없음',
+    },
+    assignee: item.assignee
+      ? { memberId: String(item.assignee.memberId), name: item.assignee.name }
+      : null,
+    createdAt: item.createdAt,
+    answeredAt: item.answeredAt,
+  };
+}
+
+export function mapAdminInquiryDetail(detail: InquiryDetailApiResponse): AdminInquiryDetail {
+  return {
+    ...mapInquiryDetail(detail),
+    author: {
+      memberId: String(detail.author.memberId),
+      name: detail.author.name ?? '이름 없음',
+      profileImageUrl: detail.author.profileImageUrl,
+      cohort: detail.author.cohort,
+      department: detail.author.department,
+      isPublic: detail.author.isPublic,
+    },
+    assignee: detail.assignee
+      ? { memberId: String(detail.assignee.memberId), name: detail.assignee.name }
+      : null,
   };
 }

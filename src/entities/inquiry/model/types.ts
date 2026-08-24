@@ -2,25 +2,35 @@ export type InquiryStatus = 'RECEIVED' | 'IN_PROGRESS' | 'ANSWERED' | 'CLOSED';
 
 export type InquiryType = 'ERROR' | 'INCONVENIENCE' | 'FEATURE_REQUEST' | 'ETC';
 
-export type AdminInquiryTypeLabel = '서비스 이용' | '지원 문의' | '계정, 프로필' | '공고 문의';
-
-export interface InquiryAuthor {
-  cohort: number;
-  department: string;
+export interface InquiryAssignee {
+  memberId: string;
   name: string;
-  studentNumber: string;
 }
 
 export interface AdminInquiryListItem {
-  answer: string | null;
   answeredAt: string | null;
-  author: InquiryAuthor;
-  content: string;
+  assignee: InquiryAssignee | null;
+  author: {
+    memberId: string;
+    name: string;
+  };
   createdAt: string;
   inquiryId: string;
-  inquiryTypeLabel: AdminInquiryTypeLabel;
+  inquiryType: InquiryType;
   status: InquiryStatus;
   title: string;
+}
+
+export interface AdminInquiryDetail extends InquiryDetail {
+  assignee: InquiryAssignee | null;
+  author: {
+    memberId: string;
+    name: string;
+    profileImageUrl: string | null;
+    cohort: number | null;
+    department: string | null;
+    isPublic: boolean;
+  };
 }
 
 export interface InquiryListItem {
@@ -97,6 +107,33 @@ export interface InquiryListApiResponse {
   last: boolean;
 }
 
+export interface AdminInquiryListApiItem {
+  inquiryId: number;
+  inquiryType: InquiryType;
+  title: string;
+  status: InquiryStatus;
+  author: {
+    memberId: number;
+    name: string | null;
+  };
+  assignee: {
+    memberId: number;
+    name: string;
+  } | null;
+  createdAt: string;
+  answeredAt: string | null;
+}
+
+export interface AdminInquiryListApiResponse {
+  content: AdminInquiryListApiItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
 export interface InquiryDetailApiResponse {
   inquiryId: number;
   inquiryType: InquiryType;
@@ -124,4 +161,42 @@ export interface FetchMyInquiryListParams {
   status?: InquiryStatus;
   page?: number;
   size?: number;
+}
+
+export interface FetchAdminInquiryListParams {
+  inquiryType?: InquiryType;
+  status?: InquiryStatus;
+  query?: string;
+  assigneeId?: number;
+  mineOnly?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface UpdateAdminInquiryStatusVariables {
+  inquiryId: number;
+  status: InquiryStatus;
+}
+
+export interface UpdateAdminInquiryStatusApiResponse {
+  inquiryId: number;
+  status: InquiryStatus;
+  updatedAt: string;
+}
+
+export interface CreateAdminInquiryAnswerVariables {
+  inquiryId: number;
+  content: string;
+  fileIds?: number[];
+}
+
+export interface CreateAdminInquiryAnswerApiResponse {
+  answerId: number;
+  inquiryId: number;
+  authorMemberId: number;
+  content: string;
+  files: InquiryFileApiResponse[];
+  createdAt: string;
+  inquiryStatus: InquiryStatus;
+  notificationCreated: boolean;
 }
