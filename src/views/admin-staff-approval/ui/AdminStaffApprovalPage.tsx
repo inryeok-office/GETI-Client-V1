@@ -1,9 +1,16 @@
+'use client';
+
+import { useState } from 'react';
+
 import {
   StaffApprovalBadge,
-  type StaffApprovalRequest,
+  useStaffApprovalActionMutation,
+  useStaffApprovalListQuery,
   type StaffApprovalStatus,
 } from '@/entities/staff-approval';
+import { toApiError } from '@/shared/api';
 import { Icon, type IconName } from '@/shared/ui/icon';
+import { PageState } from '@/shared/ui/page-state';
 
 type TabValue = 'all' | StaffApprovalStatus;
 
@@ -16,24 +23,7 @@ const TABS: { value: TabValue; label: string }[] = [
 
 const TABLE_COLUMNS = ['이름', '이메일', '요청일', '상태', '관리'];
 
-export type ResultVariant = 'no-permission' | 'conflict' | 'error' | 'processing' | 'success';
-
-/** 탭별로 Figma에 각각 캡처된 화면. 탭은 눌러도 필터링되지 않고, ?variant=로만 각 화면을 확인한다. */
-export type ListVariant = StaffApprovalStatus;
-
-export type AdminStaffApprovalVariant = ResultVariant | 'reject-reason' | ListVariant;
-
-const RESULT_VARIANTS: readonly ResultVariant[] = [
-  'no-permission',
-  'conflict',
-  'error',
-  'processing',
-  'success',
-];
-
-function isResultVariant(value: AdminStaffApprovalVariant): value is ResultVariant {
-  return (RESULT_VARIANTS as readonly string[]).includes(value);
-}
+type ResultVariant = 'no-permission' | 'conflict' | 'error' | 'processing' | 'success';
 
 const RESULT_CONTENT: Record<
   ResultVariant,
@@ -77,20 +67,56 @@ const RESULT_CONTENT: Record<
   },
 };
 
-interface AdminStaffApprovalPageProps {
-  requests: StaffApprovalRequest[];
-  /** ?variant= 값. 거절 사유 입력창과 처리 결과 화면을 확인용으로 바로 띄운다. */
-  variant?: AdminStaffApprovalVariant;
-}
+/**
+ * 교직원 가입 관리 화면(DEVELOPER 전용). `GET /admin/members/search`(role=TEACHER)로 가입
+ * 요청 목록을, `POST /admin/members/{memberId}/approval-actions`로 승인·거절을 처리한다
+ * (Issue #157). UI는 Issue #37에서 구현된 Figma 그대로이고, 이번 스코프는 mock 제거와
+ * 실제 조회·승인·거절 연동이다.
+ * 처리 결과 모달(processing/success/error/conflict)은 승인·거절 Action의 결과이고,
+ * no-permission은 Action이 403을 반환했을 때(예: 진행 중 권한이 바뀐 경우)를 위한 것이다 —
+ * 페이지 접근 자체의 권한 검사는 상위 라우팅에서 처리한다.
+ */
+export function AdminStaffApprovalPage() {
+  const [tab, setTab] = useState<TabValue>('all');
+  const [rejectTarget, setRejectTarget] = useState<number | null>(null);
+  const [resultVariant, setResultVariant] = useState<ResultVariant | null>(null);
 
-export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApprovalPageProps) {
-  const tab: TabValue =
-    variant === 'pending' || variant === 'approved' || variant === 'rejected' ? variant : 'all';
-  const showRejectReason = variant === 'reject-reason';
-  const result = variant && isResultVariant(variant) ? variant : null;
+  const listQuery = useStaffApprovalListQuery(tab === 'all' ? undefined : tab);
+  const actionMutation = useStaffApprovalActionMutation();
 
+  const requests = listQuery.data ?? [];
   const isEmpty = requests.length === 0;
-  const filtered = tab === 'all' ? requests : requests.filter((request) => request.status === tab);
+
+  function runAction(memberId: number, action: 'APPROVE' | 'REJECT', reason?: string) {
+    setResultVariant('processing');
+    actionMutation.mutate(
+      { memberId, action, reason },
+      {
+        onSuccess: () => setResultVariant('success'),
+        onError: (error) => {
+          const status = toApiError(error).status;
+          setResultVariant(
+            status === 403 ? 'no-permission' : status === 409 ? 'conflict' : 'error',
+          );
+        },
+      },
+    );
+  }
+
+  function handleApprove(memberId: number) {
+    runAction(memberId, 'APPROVE');
+  }
+
+  function handleRejectConfirm(reason: string) {
+    if (rejectTarget === null) return;
+    const memberId = rejectTarget;
+    setRejectTarget(null);
+    runAction(memberId, 'REJECT', reason);
+  }
+
+  function closeResultModal() {
+    setResultVariant(null);
+  }
 
   return (
     <div className="bg-[#fafafa]">
@@ -122,6 +148,7 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
             <button
               key={item.value}
               type="button"
+              onClick={() => setTab(item.value)}
               className={`border-b-2 px-[16px] py-[12px] text-[16px] leading-[1.6] tracking-[-0.16px] focus:outline-none ${
                 tab === item.value
                   ? 'border-[#17627a] font-semibold text-[#17627a]'
@@ -133,7 +160,30 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
           ))}
         </div>
 
-        {isEmpty ? (
+        {listQuery.isLoading ? (
+          <div className="min-h-[420px] rounded-[12px] border border-[#e5e5e5] bg-white">
+            <PageState
+              variant="loading"
+              title="가입 요청 목록을 불러오는 중입니다."
+              description="잠시만 기다려 주세요."
+            />
+          </div>
+        ) : listQuery.isError ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[16px] rounded-[12px] border border-[#e5e5e5] bg-white">
+            <PageState
+              variant="error"
+              title="가입 요청 목록을 불러오지 못했습니다."
+              description="잠시 후 다시 시도해 주세요."
+            />
+            <button
+              type="button"
+              onClick={() => listQuery.refetch()}
+              className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : isEmpty ? (
           /* Figma는 이 상태를 흰 테두리 카드 없이 페이지 배경 위에 바로 그린다. */
           <div className="flex min-h-[563px] flex-col items-center justify-center gap-[24px]">
             <Icon name="fileSearch" className="size-[72px] text-[#525252]" />
@@ -159,8 +209,8 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
                 </div>
               ))}
             </div>
-            {filtered.map((request) => (
-              <div key={request.id} className="flex h-[62px] items-center">
+            {requests.map((request) => (
+              <div key={request.memberId} className="flex h-[62px] items-center">
                 <div className="flex-1 pr-[8px] pl-[16px]">
                   <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
                     {request.name}
@@ -184,13 +234,17 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
                     <div className="flex gap-[8px]">
                       <button
                         type="button"
-                        className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
+                        disabled={actionMutation.isPending}
+                        onClick={() => handleApprove(request.memberId)}
+                        className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
                       >
                         승인
                       </button>
                       <button
                         type="button"
-                        className="rounded-[8px] border border-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#ef4444] focus:outline-none"
+                        disabled={actionMutation.isPending}
+                        onClick={() => setRejectTarget(request.memberId)}
+                        className="rounded-[8px] border border-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#ef4444] focus:outline-none disabled:opacity-50"
                       >
                         거절
                       </button>
@@ -214,46 +268,21 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
         </div>
       </main>
 
-      {showRejectReason && (
+      {rejectTarget !== null && (
         <div className="fixed inset-0 z-50">
           {/* Figma는 dim이 사이드바(220px)를 덮지 않고 콘텐츠 영역에만 적용된다. */}
           <div className="absolute inset-y-0 right-0 left-[220px] bg-black/24" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-[480px] rounded-[16px] bg-white drop-shadow-[0px_16px_20px_rgba(23,37,45,0.16)]">
-              <div className="flex h-[72px] items-center px-[28px]">
-                <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
-                  가입 거절
-                </p>
-              </div>
-              <div className="flex flex-col gap-[8px] px-[28px] pb-[24px]">
-                <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                  거절 사유
-                </p>
-                <textarea
-                  placeholder="거절 사유를 입력해 주세요."
-                  className="h-[180px] w-full resize-none rounded-[8px] border border-[#e5e5e5] p-[13px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111] placeholder:text-[#737373] focus:outline-none"
-                />
-              </div>
-              <div className="flex h-[76px] items-center justify-end gap-[16px] border-t border-[#e5e5e5] px-[28px]">
-                <button
-                  type="button"
-                  className="rounded-[8px] border border-[#e5e5e5] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
-                >
-                  거절
-                </button>
-              </div>
-            </div>
+            <RejectReasonModal
+              isSubmitting={actionMutation.isPending}
+              onCancel={() => setRejectTarget(null)}
+              onConfirm={handleRejectConfirm}
+            />
           </div>
         </div>
       )}
 
-      {result && (
+      {resultVariant && (
         <div className="fixed inset-0 z-50">
           {/* Figma는 dim이 사이드바(220px)를 덮지 않고 콘텐츠 영역에만 적용된다. */}
           <div className="absolute inset-y-0 right-0 left-[220px] bg-black/24" />
@@ -261,24 +290,25 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
             {/* 버튼이 없는 처리중 상태만 Figma에서 세로 패딩이 40px로 더 크다. */}
             <div
               className={`flex w-[520px] flex-col items-center gap-[32px] rounded-[16px] bg-white shadow-[0px_16px_40px_-8px_rgba(23,37,45,0.16)] ${
-                RESULT_CONTENT[result].hasButton ? 'p-[32px]' : 'px-[32px] py-[40px]'
+                RESULT_CONTENT[resultVariant].hasButton ? 'p-[32px]' : 'px-[32px] py-[40px]'
               }`}
             >
               <Icon
-                name={RESULT_CONTENT[result].icon}
-                className={`size-[64px] shrink-0 ${RESULT_CONTENT[result].iconClassName}`}
+                name={RESULT_CONTENT[resultVariant].icon}
+                className={`size-[64px] shrink-0 ${RESULT_CONTENT[resultVariant].iconClassName}`}
               />
               <div className="flex flex-col items-center gap-[16px] text-center">
                 <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
-                  {RESULT_CONTENT[result].title}
+                  {RESULT_CONTENT[resultVariant].title}
                 </p>
                 <p className="text-[16px] leading-[1.6] tracking-[-0.16px] whitespace-pre-line text-[#525252]">
-                  {RESULT_CONTENT[result].description}
+                  {RESULT_CONTENT[resultVariant].description}
                 </p>
               </div>
-              {RESULT_CONTENT[result].hasButton && (
+              {RESULT_CONTENT[resultVariant].hasButton && (
                 <button
                   type="button"
+                  onClick={closeResultModal}
                   className="w-full rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
                 >
                   확인
@@ -288,6 +318,53 @@ export function AdminStaffApprovalPage({ requests, variant }: AdminStaffApproval
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface RejectReasonModalProps {
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}
+
+function RejectReasonModal({ isSubmitting, onCancel, onConfirm }: RejectReasonModalProps) {
+  const [reason, setReason] = useState('');
+  const isValid = reason.trim() !== '';
+
+  return (
+    <div className="w-[480px] rounded-[16px] bg-white drop-shadow-[0px_16px_20px_rgba(23,37,45,0.16)]">
+      <div className="flex h-[72px] items-center px-[28px]">
+        <p className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-[#111]">
+          가입 거절
+        </p>
+      </div>
+      <div className="flex flex-col gap-[8px] px-[28px] pb-[24px]">
+        <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">거절 사유</p>
+        <textarea
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="거절 사유를 입력해 주세요."
+          className="h-[180px] w-full resize-none rounded-[8px] border border-[#e5e5e5] p-[13px] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#111] placeholder:text-[#737373] focus:outline-none"
+        />
+      </div>
+      <div className="flex h-[76px] items-center justify-end gap-[16px] border-t border-[#e5e5e5] px-[28px]">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-[8px] border border-[#e5e5e5] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252] focus:outline-none"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          disabled={!isValid || isSubmitting}
+          onClick={() => onConfirm(reason.trim())}
+          className="rounded-[8px] bg-[#ef4444] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
+        >
+          거절
+        </button>
+      </div>
     </div>
   );
 }
