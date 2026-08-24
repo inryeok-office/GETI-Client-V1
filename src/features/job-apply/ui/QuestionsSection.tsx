@@ -108,9 +108,9 @@ function QuestionInput({
   if (question.type === 'SINGLE_SELECT') {
     return (
       <div className="flex flex-col gap-[8px]">
-        {(question.options ?? []).map((option) => (
+        {(question.options ?? []).map((option, index) => (
           <label
-            key={option}
+            key={`${index}-${option}`}
             className={`flex items-center gap-[8px] rounded-[9px] border bg-[#fafafa] p-[16px] ${errorClass}`}
           >
             <input
@@ -134,12 +134,12 @@ function QuestionInput({
 
     return (
       <div className="flex flex-col gap-[8px]">
-        {(question.options ?? []).map((option) => {
+        {(question.options ?? []).map((option, index) => {
           const isChecked = selected.includes(option);
 
           return (
             <label
-              key={option}
+              key={`${index}-${option}`}
               className={`flex items-center gap-[8px] rounded-[9px] border bg-[#fafafa] p-[16px] ${errorClass}`}
             >
               <input

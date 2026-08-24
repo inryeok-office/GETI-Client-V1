@@ -55,6 +55,16 @@ const FILE_QUESTION: ApplicationQuestion = {
   options: null,
 };
 
+const OPTIONAL_FILE_QUESTION: ApplicationQuestion = {
+  fieldId: 'q-file-optional',
+  type: 'FILE',
+  title: '추가 자료',
+  description: null,
+  required: false,
+  order: 2,
+  options: null,
+};
+
 function baseDraft(overrides: Partial<JobApplicationDraft> = {}): JobApplicationDraft {
   return {
     applicationId: 1,
@@ -199,6 +209,43 @@ describe('JobApplyPage', () => {
     );
   });
 
+  it('파일 업로드가 끝나기 전에 임시저장을 누르면 저장 요청을 보내지 않고 안내 토스트를 보여준다', () => {
+    // 업로드 응답이 아직 오지 않은 상황(느린 네트워크)을 흉내낸다 — onSuccess/onError를 호출하지 않는다.
+    mockUploadFileMutate.mockImplementation(() => {});
+    currentDraft = baseDraft({ questions: [FILE_QUESTION] });
+    renderPage();
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const uploadedFile = new File(['content'], 'portfolio.pdf', { type: 'application/pdf' });
+    fireEvent.change(fileInput, { target: { files: [uploadedFile] } });
+
+    expect(screen.getByText('업로드 중')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '임시저장' }));
+
+    expect(mockSaveDraftMutate).not.toHaveBeenCalled();
+    expect(screen.getByText('파일 업로드가 끝난 후 다시 시도해 주세요.')).toBeInTheDocument();
+  });
+
+  it('파일 업로드가 끝나기 전에 제출하면 막히고 안내 문구가 표시된다', () => {
+    // 필수 문항은 아니지만, 업로드 중인 파일이 있으면 제출 자체를 막아야 한다 — 필수 문항
+    // 미입력 검사와 분리해서 확인하기 위해 선택 문항을 쓴다.
+    mockUploadFileMutate.mockImplementation(() => {});
+    currentDraft = baseDraft({ questions: [OPTIONAL_FILE_QUESTION] });
+    renderPage();
+    fireEvent.click(screen.getByLabelText(/개인정보 수집 및 이용에 동의합니다/));
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const uploadedFile = new File(['content'], 'portfolio.pdf', { type: 'application/pdf' });
+    fireEvent.change(fileInput, { target: { files: [uploadedFile] } });
+
+    fireEvent.click(screen.getByRole('button', { name: '제출하기' }));
+
+    expect(mockSaveDraftMutate).not.toHaveBeenCalled();
+    expect(mockActionMutate).not.toHaveBeenCalled();
+    expect(screen.getByText('파일 업로드가 끝난 후 다시 시도해 주세요.')).toBeInTheDocument();
+  });
+
   it('형식에 맞지 않는 파일은 업로드 요청 없이 오류 사유만 보여준다', () => {
     currentDraft = baseDraft({ questions: [FILE_QUESTION] });
     renderPage();
@@ -209,5 +256,27 @@ describe('JobApplyPage', () => {
 
     expect(screen.getByText('파일 형식 오류')).toBeInTheDocument();
     expect(mockUploadFileMutate).not.toHaveBeenCalled();
+  });
+
+  it('개수 제한에 걸려 거부된 파일은 다음 업로드의 개수 제한에 포함되지 않는다', () => {
+    currentDraft = baseDraft({ questions: [FILE_QUESTION] });
+    renderPage();
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    // MAX_ATTACHMENT_COUNT(5)만큼 형식 오류 파일을 올려 목록에 오류 항목 5개를 쌓는다.
+    const invalidFiles = Array.from(
+      { length: 5 },
+      (_, index) =>
+        new File(['content'], `malware-${index}.exe`, { type: 'application/x-msdownload' }),
+    );
+    fireEvent.change(fileInput, { target: { files: invalidFiles } });
+    expect(screen.getAllByText('파일 형식 오류')).toHaveLength(5);
+
+    // 실제 정상 첨부는 0개이므로, 유효한 파일을 추가로 올리면 개수 제한 없이 업로드가 실행돼야 한다.
+    const validFile = new File(['content'], 'portfolio.pdf', { type: 'application/pdf' });
+    fireEvent.change(fileInput, { target: { files: [validFile] } });
+
+    expect(mockUploadFileMutate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('개수 초과')).not.toBeInTheDocument();
   });
 });

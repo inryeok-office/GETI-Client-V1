@@ -77,8 +77,10 @@ export interface JobApplyPageProps {
  * FILE 타입 문항은 `QuestionsSection`이 아니라 문항별 `AttachmentUploadSection`이 담당한다 —
  * 업로드(`POST /files`)로 받은 `fileId`를 그 문항의 `answers[].fileIds`에 실어 보낸다. 클라이언트
  * 검증(형식 · 용량 · 개수)에 걸린 파일은 `fileId` 없이 오류 사유만 목록에 보여주고 답변에는
- * 포함하지 않는다. "자기소개"(`ApplicantInfoSection`)는 API 어디에도 대응 필드가 없어 여전히
- * 입력을 막아 둔다 — 별도 사안이다.
+ * 포함하지 않는다. 업로드 응답을 아직 못 받은 파일도 `fileId`가 없어 답변에서 빠지므로,
+ * `pendingUploadCount`가 0보다 크면 임시저장 · 제출을 막는다 — 안 그러면 방금 올린 파일이
+ * 조용히 빠진 채로 저장되거나 제출된다. "자기소개"(`ApplicantInfoSection`)는 API 어디에도
+ * 대응 필드가 없어 여전히 입력을 막아 둔다 — 별도 사안이다.
  *
  * 이미 활성 지원서가 있으면(409 `ACTIVE_APPLICATION_EXISTS`) 이어서 작성하는 기능은 구현하지
  * 못했다 — 학생이 자신의 기존 초안을 조회하는 API가 아직 없다(GETI-Server Issue #184/PR #186 미병합).
@@ -162,6 +164,14 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   );
   const questionErrorFieldIds = hasAttemptedSubmit ? emptyRequiredFieldIds : new Set<string>();
 
+  /** 업로드 응답을 아직 받지 못한(=`fileId`가 아직 없는) 첨부 개수. 저장 · 제출 시점에 이 파일들은
+   * 답변(`fileIds`)에 실리지 않으므로, 0보다 크면 저장 · 제출을 막아야 한다. */
+  const pendingUploadCount = Object.values(attachmentsByFieldId).reduce(
+    (count, files) =>
+      count + files.filter((file) => file.uploadError === null && file.fileId === null).length,
+    0,
+  );
+
   const hasConsentError = hasAttemptedSubmit && !consentChecked;
   const hasPhoneError = hasAttemptedSubmit && profile.phone.trim() === '';
   const validationMessage = !hasAttemptedSubmit
@@ -170,7 +180,9 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
       ? '개인정보 이용 및 수집에 동의해 주세요.'
       : hasPhoneError || emptyRequiredFieldIds.size > 0
         ? '필수 항목을 모두 입력해 주세요.'
-        : null;
+        : pendingUploadCount > 0
+          ? '파일 업로드가 끝난 후 다시 시도해 주세요.'
+          : null;
 
   function markDirty() {
     if (!isDirty) setIsDirty(true);
@@ -199,8 +211,11 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   }
 
   function handleAddFiles(fieldId: string, files: FileList) {
-    const existingCount = (attachmentsByFieldId[fieldId] ?? []).length;
-    let runningCount = existingCount;
+    // 검증에 걸려 거부된 항목은 개수 제한에서 뺀다 — 안 그러면 잘못 선택했던 파일이 목록에 남아
+    // 있는 것만으로 실제 정상 첨부 개수와 무관하게 다음 업로드가 막힌다.
+    let runningCount = (attachmentsByFieldId[fieldId] ?? []).filter(
+      (file) => file.uploadError === null,
+    ).length;
     const added: ApplicationAttachment[] = [];
 
     for (const file of Array.from(files)) {
@@ -259,6 +274,16 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
 
   function handleSaveDraft() {
     if (applicationId === null) return;
+    // 업로드 중인 파일은 아직 fileId가 없어 답변에 실리지 않는다 — 그대로 저장하면 방금 올린
+    // 파일이 조용히 빠진 채로 "성공적으로 저장되었습니다" 토스트가 떠 사용자가 착각하게 된다.
+    if (pendingUploadCount > 0) {
+      showToast({
+        tone: 'error',
+        message: '파일 업로드가 끝난 후 다시 시도해 주세요.',
+        ...DRAFT_TOAST_OPTIONS,
+      });
+      return;
+    }
 
     showToast({ tone: 'loading', message: TOAST_MESSAGE.loading, ...DRAFT_TOAST_OPTIONS });
     saveDraftMutation.mutate(
@@ -286,7 +311,8 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
       !consentChecked ||
       profile.phone.trim() === '' ||
       applicationId === null ||
-      emptyRequiredFieldIds.size > 0
+      emptyRequiredFieldIds.size > 0 ||
+      pendingUploadCount > 0
     )
       return;
 

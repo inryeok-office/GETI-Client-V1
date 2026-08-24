@@ -132,4 +132,19 @@ describe('QuestionsSection', () => {
 
     expect(screen.getByRole('textbox')).toHaveClass('border-[#ef4444]');
   });
+
+  it('옵션 라벨이 중복돼도 각 체크박스를 독립적으로 선택·해제할 수 있다', () => {
+    const question: ApplicationQuestion = {
+      ...MULTI_SELECT_QUESTION,
+      options: ['기타', '기타'],
+    };
+    const onValueChange = vi.fn();
+    render(<QuestionsSection questions={[question]} values={{}} onValueChange={onValueChange} />);
+
+    const checkboxes = screen.getAllByRole('checkbox', { name: '기타' });
+    expect(checkboxes).toHaveLength(2);
+
+    fireEvent.click(checkboxes[0]);
+    expect(onValueChange).toHaveBeenLastCalledWith('q-multi', ['기타']);
+  });
 });

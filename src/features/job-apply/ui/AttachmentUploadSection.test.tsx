@@ -89,4 +89,21 @@ describe('AttachmentUploadSection', () => {
 
     expect(screen.getByText('용량 초과')).toBeInTheDocument();
   });
+
+  it('uploadError도 fileId도 없는 파일은 업로드 중 표시를 보여준다', () => {
+    const attachments: ApplicationAttachment[] = [
+      { id: 'a1', fileName: 'resume.pdf', fileSize: '1.6 MB', uploadError: null, fileId: null },
+    ];
+    render(
+      <AttachmentUploadSection
+        title="포트폴리오"
+        description={null}
+        attachments={attachments}
+        onAddFiles={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('업로드 중')).toBeInTheDocument();
+  });
 });
