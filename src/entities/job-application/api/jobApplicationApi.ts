@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  ApplicationAnswer,
   JobApplicationActionType,
   JobApplicationDraft,
   UploadedApplicationFile,
@@ -21,6 +22,7 @@ export interface SaveJobApplicationDraftParams {
   applicationId: number;
   contactPhone?: string;
   privacyConsent?: boolean;
+  answers?: ApplicationAnswer[];
 }
 
 /** `PATCH /job-applications/{id}` — 임시저장(반복 가능). 넘긴 필드만 바뀐다. */
@@ -53,9 +55,8 @@ export async function executeJobApplicationAction({
 }
 
 /**
- * `POST /files`(purpose=JOB_APPLICATION) — 첨부파일 업로드.
- * 업로드 자체는 실제로 되지만, 지원서에 묶는 방식(`answers[].fileIds`)은 학생용 문항 조회
- * API가 없어 이번 범위에서 연결하지 못한다(Issue #123) — fileId는 받아도 제출에는 안 실린다.
+ * `POST /files`(purpose=JOB_APPLICATION) — 첨부파일 업로드. 받은 `fileId`를 FILE 타입 문항의
+ * `answers[].fileIds`에 담아 임시저장(PATCH)해야 실제 지원서에 묶인다(GETI-Server-V1 #217/#234).
  */
 export async function uploadApplicationFile(file: File): Promise<UploadedApplicationFile> {
   const formData = new FormData();
