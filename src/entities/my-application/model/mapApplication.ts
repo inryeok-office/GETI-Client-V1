@@ -1,4 +1,4 @@
-import { formatFileSize } from '@/entities/job-application';
+import { formatFileSize } from '@/shared/lib';
 
 import { formatMyApplicationDateTime } from './formatMyApplicationDateTime';
 import type {
