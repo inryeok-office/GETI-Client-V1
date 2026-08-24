@@ -32,6 +32,7 @@ export interface AdminApplicantSearchParams {
   cohort?: string;
   department?: string;
   companyId?: string;
+  managerMemberId?: string;
 }
 
 interface AdminApplicantPageProps {
@@ -80,6 +81,11 @@ function parseCompanyId(value?: string): number | null {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+function parseManagerMemberId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 interface FilterState {
   searchQuery: string;
   scope: ApplicantScope;
@@ -88,6 +94,7 @@ interface FilterState {
   cohortFilter: number | null;
   departmentFilter: ApplicantDepartment | null;
   companyIdFilter: number | null;
+  managerMemberIdFilter: number | null;
   page: number;
 }
 
@@ -105,6 +112,7 @@ function buildFilterSearchParams({
   cohortFilter,
   departmentFilter,
   companyIdFilter,
+  managerMemberIdFilter,
   page,
 }: FilterState): URLSearchParams {
   const params = new URLSearchParams();
@@ -115,6 +123,7 @@ function buildFilterSearchParams({
   if (cohortFilter !== null) params.set('cohort', String(cohortFilter));
   if (departmentFilter !== null) params.set('department', departmentFilter);
   if (companyIdFilter !== null) params.set('companyId', String(companyIdFilter));
+  if (managerMemberIdFilter !== null) params.set('managerMemberId', String(managerMemberIdFilter));
   if (page > 0) params.set('page', String(page + 1));
   return params;
 }
@@ -127,9 +136,11 @@ function buildFilterSearchParams({
  * "담당 공고 / 전체보기" 탭은 GETI-Server-V1 #181로 추가된 `mineOnly` 쿼리 파라미터에 연결된다
  * (서버가 Authentication Principal 기준으로 스코프를 계산한다 — 이전에는 `GET /me/profile`
  * 비교 + 100건 상한 우회로 클라이언트에서 직접 걸렀다, Issue #135).
- * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 기업 · 공고 · 상태는 각각 `applicantName`(디바운스) ·
- * `cohort` · `department` · `companyId` · `jobId` · `status` 파라미터에 실제로 연결돼 있다
- * (기업 목록은 `entities/company`의 `useCompanyOptionsQuery`, Issue #137).
+ * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 기업 · 공고 · 담당자 · 상태는 각각
+ * `applicantName`(디바운스) · `cohort` · `department` · `companyId` · `jobId` ·
+ * `managerMemberId` · `status` 파라미터에 실제로 연결돼 있다(기업 목록은 `entities/company`의
+ * `useCompanyOptionsQuery`, Issue #137; 담당자 목록은 `entities/applicant`의
+ * `useTeacherOptionsQuery`, Issue #161).
  * 검색 · 필터 · 담당 범위 · 페이지는 `JobListPage`와 동일하게 URL 쿼리스트링과 동기화한다 —
  * 최초 값은 Server Component가 넘겨준 `initialSearchParams`에서 복원하고, 변경 시
  * `router.replace`로 반영한다(새로고침 · 뒤로가기에도 조회 조건이 유지된다, PR #136 코드리뷰 반영).
@@ -165,6 +176,9 @@ export function AdminApplicantPage({
   const [companyIdFilter, setCompanyIdFilter] = useState<number | null>(() =>
     parseCompanyId(initialSearchParams?.companyId),
   );
+  const [managerMemberIdFilter, setManagerMemberIdFilter] = useState<number | null>(() =>
+    parseManagerMemberId(initialSearchParams?.managerMemberId),
+  );
   const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
   const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
 
@@ -189,6 +203,7 @@ export function AdminApplicantPage({
     cohortFilter,
     departmentFilter,
     companyIdFilter,
+    managerMemberIdFilter,
     page,
   }).toString();
 
@@ -202,6 +217,7 @@ export function AdminApplicantPage({
       cohortFilter,
       departmentFilter,
       companyIdFilter,
+      managerMemberIdFilter,
       page,
     });
     if (variant === 'download') params.set('variant', 'download');
@@ -216,6 +232,7 @@ export function AdminApplicantPage({
     cohortFilter,
     departmentFilter,
     companyIdFilter,
+    managerMemberIdFilter,
     page,
     variant,
     pathname,
@@ -237,6 +254,7 @@ export function AdminApplicantPage({
       cohortFilter,
       departmentFilter,
       companyIdFilter,
+      managerMemberIdFilter,
       page,
     });
     params.set('variant', 'download');
@@ -251,6 +269,7 @@ export function AdminApplicantPage({
     cohort: cohortFilter ?? undefined,
     department: departmentFilter ?? undefined,
     companyId: companyIdFilter ?? undefined,
+    managerMemberId: managerMemberIdFilter ?? undefined,
     applicantName: searchQuery.trim() || undefined,
     mineOnly: scope === 'mine',
   });
@@ -285,7 +304,8 @@ export function AdminApplicantPage({
     statusFilter !== null ||
     cohortFilter !== null ||
     departmentFilter !== null ||
-    companyIdFilter !== null,
+    companyIdFilter !== null ||
+    managerMemberIdFilter !== null,
   );
 
   function selectScope(nextScope: ApplicantScope) {
@@ -315,6 +335,11 @@ export function AdminApplicantPage({
 
   function selectCompanyFilter(companyId: number | null) {
     setCompanyIdFilter(companyId);
+    setPage(0);
+  }
+
+  function selectManagerFilter(managerMemberId: number | null) {
+    setManagerMemberIdFilter(managerMemberId);
     setPage(0);
   }
 
@@ -368,6 +393,8 @@ export function AdminApplicantPage({
             jobOptions={jobOptions}
             selectedJobId={jobIdFilter}
             onJobChange={selectJobFilter}
+            selectedManagerMemberId={managerMemberIdFilter}
+            onManagerChange={selectManagerFilter}
             selectedStatus={statusFilter}
             onStatusChange={selectStatusFilter}
           />

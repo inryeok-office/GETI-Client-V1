@@ -7,6 +7,7 @@ export {
   useExportJobApplicationsMutation,
   useJobApplicantOptionsQuery,
   useJobPostingOptionsQuery,
+  useTeacherOptionsQuery,
 } from './api/useApplicantQueries';
 export type {
   ApplicantDepartment,
@@ -16,6 +17,7 @@ export type {
   FetchApplicantListParams,
   JobApplicantOption,
   JobPostingOption,
+  TeacherOption,
 } from './api/applicantApi';
 
 export { APPLICANT_STATUS_LABEL, formatApplicantDepartment } from './model/statusLabel';

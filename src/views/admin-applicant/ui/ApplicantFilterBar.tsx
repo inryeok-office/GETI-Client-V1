@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   APPLICANT_STATUS_LABEL,
+  useTeacherOptionsQuery,
   type ApplicantDepartment,
   type ApplicantStatus,
 } from '@/entities/applicant';
@@ -36,7 +37,7 @@ interface JobOption {
   title: string;
 }
 
-type OpenFilter = 'cohort' | 'department' | 'company' | 'job' | 'status';
+type OpenFilter = 'cohort' | 'department' | 'company' | 'job' | 'manager' | 'status';
 
 interface ApplicantFilterBarProps {
   searchValue: string;
@@ -50,20 +51,24 @@ interface ApplicantFilterBarProps {
   jobOptions: JobOption[];
   selectedJobId: number | null;
   onJobChange: (jobId: number | null) => void;
+  selectedManagerMemberId: number | null;
+  onManagerChange: (managerMemberId: number | null) => void;
   selectedStatus: ApplicantStatus | null;
   onStatusChange: (status: ApplicantStatus | null) => void;
 }
 
 /**
- * 검색창 + 필터 드롭다운 5개(기수 · 학과 · 공고 · 기업 · 상태).
+ * 검색창 + 필터 드롭다운 6개(기수 · 학과 · 기업 · 공고 · 담당자 · 상태).
  * `GET /admin/job-applications`가 GETI-Server-V1 #181로 `applicantName` · `cohort` ·
- * `department` · `companyId` 파라미터를 새로 지원해, 검색창 · 기수 · 학과 · 기업이 실제 목록
- * 조회에 연결됐다(부모가 값을 들고 있는 controlled 필드). "기업"의 선택지는
- * `useCompanyOptionsQuery`(`GET /api/v1/companies`, Issue #137)로 채운다. 조회 실패 시엔
- * 버튼을 비활성화하는 대신 오류 문구를 직접 보여주고 버튼 클릭으로 `refetch()`할 수 있게
- * 하며(비활성 버튼은 키보드 포커스를 받지 못하고 `title` 툴팁도 보장되지 않는다, PR #138
- * 코드리뷰 반영), 진짜 빈 목록(오류 없이 0건)은 "등록된 기업이 없습니다"로 구분한다. "공고" ·
- * "상태"는 기존대로 `jobId` · `status`에 연결돼 있다.
+ * `department` · `companyId` · `managerMemberId` 파라미터를 새로 지원해, 검색창 · 기수 ·
+ * 학과 · 기업 · 담당자가 실제 목록 조회에 연결됐다(부모가 값을 들고 있는 controlled 필드).
+ * "기업"의 선택지는 `useCompanyOptionsQuery`(`GET /api/v1/companies`, Issue #137)로, "담당자"의
+ * 선택지는 `useTeacherOptionsQuery`(`GET /api/v1/admin/members?role=TEACHER`, GETI-Server-V1
+ * #182, Issue #161)로 채운다. 두 드롭다운 모두 조회 실패 시 버튼을 비활성화하는 대신 오류
+ * 문구를 직접 보여주고 버튼 클릭으로 `refetch()`할 수 있게 하며(비활성 버튼은 키보드 포커스를
+ * 받지 못하고 `title` 툴팁도 보장되지 않는다, PR #138 코드리뷰 반영), 진짜 빈 목록(오류 없이
+ * 0건)은 "등록된 OO이 없습니다"로 구분한다. "공고" · "상태"는 기존대로 `jobId` · `status`에
+ * 연결돼 있다.
  */
 export function ApplicantFilterBar({
   searchValue,
@@ -77,6 +82,8 @@ export function ApplicantFilterBar({
   jobOptions,
   selectedJobId,
   onJobChange,
+  selectedManagerMemberId,
+  onManagerChange,
   selectedStatus,
   onStatusChange,
 }: ApplicantFilterBarProps) {
@@ -84,6 +91,8 @@ export function ApplicantFilterBar({
   const openDropdownRef = useRef<HTMLDivElement>(null);
   const companyOptionsQuery = useCompanyOptionsQuery();
   const companyOptions = companyOptionsQuery.data ?? [];
+  const teacherOptionsQuery = useTeacherOptionsQuery();
+  const teacherOptions = teacherOptionsQuery.data ?? [];
 
   useEffect(() => {
     if (!openFilter) return;
@@ -114,6 +123,9 @@ export function ApplicantFilterBar({
   )?.label;
   const selectedCompanyName = companyOptions.find(
     (company) => company.companyId === selectedCompanyId,
+  )?.name;
+  const selectedManagerName = teacherOptions.find(
+    (teacher) => teacher.memberId === selectedManagerMemberId,
   )?.name;
 
   return (
@@ -367,6 +379,92 @@ export function ApplicantFilterBar({
                   }`}
                 >
                   <span className="truncate">{job.title}</span>
+                  {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div
+        ref={openFilter === 'manager' ? openDropdownRef : undefined}
+        className="relative h-full flex-1"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            if (teacherOptionsQuery.isError) {
+              teacherOptionsQuery.refetch();
+              return;
+            }
+            setOpenFilter((prev) => (prev === 'manager' ? null : 'manager'));
+          }}
+          disabled={
+            !teacherOptionsQuery.isError &&
+            !teacherOptionsQuery.isLoading &&
+            teacherOptions.length === 0
+          }
+          className={`flex h-full w-full items-center justify-between rounded-[8px] border py-[16px] pr-[8px] pl-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+            teacherOptionsQuery.isError
+              ? 'border-status-error text-status-error'
+              : 'border-neutral-200 bg-white text-neutral-600'
+          }`}
+        >
+          <span className="truncate">
+            {teacherOptionsQuery.isLoading
+              ? '담당자 불러오는 중...'
+              : teacherOptionsQuery.isError
+                ? '담당자 목록을 불러오지 못했습니다. 다시 시도'
+                : teacherOptions.length === 0
+                  ? '등록된 담당자가 없습니다'
+                  : (selectedManagerName ?? '담당자')}
+          </span>
+          <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+            <Icon
+              name={teacherOptionsQuery.isError ? 'refresh' : 'chevronRight'}
+              className={
+                teacherOptionsQuery.isError
+                  ? 'text-status-error size-[14px]'
+                  : 'h-[20px] w-[10px] rotate-90 text-neutral-600'
+              }
+            />
+          </span>
+        </button>
+
+        {openFilter === 'manager' && !teacherOptionsQuery.isError && (
+          <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+            <button
+              type="button"
+              onClick={() => {
+                onManagerChange(null);
+                setOpenFilter(null);
+              }}
+              className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                selectedManagerMemberId === null
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-neutral-900'
+              }`}
+            >
+              전체
+              {selectedManagerMemberId === null && <Icon name="check" className="size-[20px]" />}
+            </button>
+            {teacherOptions.map((teacher) => {
+              const isSelected = selectedManagerMemberId === teacher.memberId;
+
+              return (
+                <button
+                  key={teacher.memberId}
+                  type="button"
+                  onClick={() => {
+                    onManagerChange(isSelected ? null : teacher.memberId);
+                    setOpenFilter(null);
+                  }}
+                  className={`hover:bg-primary-50 flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] ${
+                    isSelected ? 'bg-primary-50 text-primary-700' : 'text-neutral-900'
+                  }`}
+                >
+                  <span className="truncate">{teacher.name ?? '이름 없음'}</span>
                   {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
                 </button>
               );

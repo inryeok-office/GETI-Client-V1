@@ -10,6 +10,7 @@ import {
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
+  fetchTeacherOptions,
   type ExecuteApplicantActionParams,
   type ExportJobApplicationsParams,
   type FetchApplicantListParams,
@@ -21,6 +22,7 @@ export const applicantKeys = {
   jobPostingOptions: () => [...applicantKeys.all, 'job-posting-options'] as const,
   jobApplicantOptions: (jobId: number) =>
     [...applicantKeys.all, 'job-applicant-options', jobId] as const,
+  teacherOptions: () => [...applicantKeys.all, 'teacher-options'] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
@@ -50,6 +52,14 @@ export function useJobApplicantOptionsQuery(jobId: number | undefined) {
   return useQuery({
     queryKey: applicantKeys.jobApplicantOptions(jobId ?? -1),
     queryFn: jobId === undefined ? skipToken : () => fetchAllJobApplicants(jobId),
+  });
+}
+
+/** 지원자 관리 화면의 "담당자" 드롭다운. 교사 수가 학교 규모라 Pagination 없이 한 번에 받는다. */
+export function useTeacherOptionsQuery() {
+  return useQuery({
+    queryKey: applicantKeys.teacherOptions(),
+    queryFn: fetchTeacherOptions,
   });
 }
 
