@@ -437,6 +437,8 @@ export function AdminInquiryManagement({ initialSearchParams }: AdminInquiryMana
   const isPageOutOfRange = listQuery.data !== undefined && page > lastAvailablePage;
   const resolvedPage = isPageOutOfRange ? lastAvailablePage : page;
 
+  if (isPageOutOfRange) setPage(lastAvailablePage);
+
   useEffect(() => {
     const params = buildSearchParams({
       inquiryId: selectedInquiryId,

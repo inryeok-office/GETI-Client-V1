@@ -12,14 +12,6 @@ export async function AdminInquiryManagementPage({
   searchParams,
 }: AdminInquiryManagementPageProps) {
   const resolvedSearchParams = await searchParams;
-  const stateKey = [
-    resolvedSearchParams.inquiryId,
-    resolvedSearchParams.page,
-    resolvedSearchParams.q,
-    resolvedSearchParams.status,
-    resolvedSearchParams.type,
-  ].join('|');
 
-  // URL이 정규화되거나 뒤로 이동했을 때 Client의 초기 필터·페이지 상태도 새 Query와 맞춘다.
-  return <AdminInquiryManagement key={stateKey} initialSearchParams={resolvedSearchParams} />;
+  return <AdminInquiryManagement initialSearchParams={resolvedSearchParams} />;
 }

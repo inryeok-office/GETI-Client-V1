@@ -280,16 +280,16 @@ describe('AdminInquiryManagement', () => {
   });
 
   it('요청한 페이지가 범위를 벗어나면 마지막 유효 페이지 URL로 복구한다', async () => {
-    mockListQuery.mockReturnValue(
+    mockListQuery.mockImplementation(({ page }: { page: number }) =>
       successListQuery({
         data: {
-          content: [],
-          page: 4,
+          content: page === 4 ? [] : [LIST_ITEM],
+          page,
           size: 20,
           totalElements: 21,
           totalPages: 2,
-          first: false,
-          last: true,
+          first: page === 0,
+          last: page === 1,
         },
       }),
     );
@@ -297,11 +297,21 @@ describe('AdminInquiryManagement', () => {
     render(<AdminInquiryManagement initialSearchParams={{ page: '5' }} />);
 
     await waitFor(() => {
+      expect(mockListQuery).toHaveBeenLastCalledWith({
+        inquiryType: undefined,
+        page: 1,
+        query: undefined,
+        size: 20,
+        status: undefined,
+      });
       expect(mockRouterReplace).toHaveBeenLastCalledWith('/admin/inquiries?page=2', {
         scroll: false,
       });
     });
-    expect(screen.getByRole('status', { name: '문의 목록을 불러오는 중' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: '문의 목록을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('총 21개 문의')).toBeInTheDocument();
   });
 
   it('상세 조회 실패 시 상세 패널 안에서 재시도할 수 있다', async () => {
