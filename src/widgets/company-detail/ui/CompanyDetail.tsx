@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import type { CompanyDetail as CompanyDetailData } from '@/entities/company';
 import type { JobListItem } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
@@ -9,28 +7,29 @@ import { CompanyInfoSection } from './CompanyInfoSection';
 import { CompanyIntroSection } from './CompanyIntroSection';
 import { CompanyJobSection } from './CompanyJobSection';
 
-export type CompanyDetailStatus = 'loading' | 'error' | 'success';
+export type CompanyDetailStatus = 'loading' | 'error' | 'unavailable' | 'success';
 
 interface CompanyDetailProps {
   status: CompanyDetailStatus;
   /** status가 'success'일 때만 사용한다. */
   company: CompanyDetailData | null;
   jobs: JobListItem[];
-  /** 에러 상태의 "다시 시도" 링크 대상(현재 페이지 자기 자신). */
-  retryHref: string;
+  onRetry: () => void;
 }
 
 /**
- * 기업 상세 위젯. 로딩 · 에러 · 비공개/삭제 · 정상 상태를 조합한다.
- * 디자인 단계라 `status`와 `company`는 호출부에서 목업 값을 넘겨준다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
+ * 기업 상세 위젯. 로딩 · 에러 · 비공개/삭제(`unavailable`) · 정상 상태를 조합한다.
+ * `company`는 `GET /api/v1/companies/{id}`(`entities/company`의 `useCompanyDetailQuery`)의
+ * 실제 조회 결과다(Issue #156). 비공개/삭제 여부는 데이터가 아니라 `status`로 판단한다 —
+ * 서버가 삭제된 기업을 404(`COMPANY_NOT_FOUND`)로만 응답하고 비공개를 구분해 주지 않아
+ * 호출부가 404를 `unavailable`로 매핑한다(`views/company-detail`의 `CompanyDetailPage` 참고).
+ * "채용 공고"는 회사-공고 연결 조회 API가 없어 항상 빈 배열을 받는다 — 별도 이슈에서 연동한다.
  */
-export function CompanyDetail({ status, company, jobs, retryHref }: CompanyDetailProps) {
+export function CompanyDetail({ status, company, jobs, onRetry }: CompanyDetailProps) {
   if (status === 'loading') return <CompanyDetailSkeleton />;
-  if (status === 'error') return <CompanyDetailError retryHref={retryHref} />;
+  if (status === 'error') return <CompanyDetailError onRetry={onRetry} />;
+  if (status === 'unavailable') return <CompanyDetailUnavailable />;
   if (!company) return null;
-
-  if (company.unavailableReason) return <CompanyDetailUnavailable />;
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -71,7 +70,7 @@ function CompanyDetailSkeleton() {
   );
 }
 
-function CompanyDetailError({ retryHref }: { retryHref: string }) {
+function CompanyDetailError({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       className="flex min-h-[420px] w-full flex-col items-center justify-center gap-6 px-6 text-center"
@@ -87,12 +86,13 @@ function CompanyDetailError({ retryHref }: { retryHref: string }) {
             잠시 후 다시 시도해 주세요.
           </p>
         </div>
-        <Link
-          href={retryHref}
+        <button
+          type="button"
+          onClick={onRetry}
           className="bg-primary-700 inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
         >
           다시 시도
-        </Link>
+        </button>
       </div>
     </div>
   );

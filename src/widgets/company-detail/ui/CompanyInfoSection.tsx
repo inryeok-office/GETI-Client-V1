@@ -1,4 +1,4 @@
-import { COMPANY_SIZE_LABEL, type CompanyDetail } from '@/entities/company';
+import { ADMIN_COMPANY_TYPE_LABEL, type CompanyDetail } from '@/entities/company';
 
 interface CompanyInfoSectionProps {
   company: CompanyDetail;
@@ -11,7 +11,7 @@ interface CompanyInfoSectionProps {
 export function CompanyInfoSection({ company }: CompanyInfoSectionProps) {
   const rows: Array<[string, string]> = [
     ['업종', company.industry],
-    ['기업 유형', COMPANY_SIZE_LABEL[company.size]],
+    ['기업 유형', ADMIN_COMPANY_TYPE_LABEL[company.companyType]],
     ['주소', company.address],
     ['MOU 여부', company.isMou ? 'MOU 기업' : '해당 없음'],
   ];

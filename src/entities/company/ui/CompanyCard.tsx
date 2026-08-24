@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { Icon } from '@/shared/ui/icon';
 
-import { COMPANY_SIZE_LABEL } from '../model/sizeLabel';
+import { ADMIN_COMPANY_TYPE_LABEL } from '../model/adminLabels';
 import type { CompanyListItem } from '../model/types';
 
 interface CompanyCardProps {
@@ -12,6 +12,8 @@ interface CompanyCardProps {
 /**
  * 기업 목록에 쓰이는 기업 카드.
  * 카드 전체를 클릭하면 기업 상세 페이지로 이동한다(이름 링크의 stretched-link 처리).
+ * "규모" 배지 · "채용 중인 공고" 수는 서버에 대응 데이터가 없어 뺐다 — `companyType` 라벨로
+ * 대체했다(Issue #156, 사용자 확인 완료).
  */
 export function CompanyCard({ company }: CompanyCardProps) {
   return (
@@ -37,19 +39,13 @@ export function CompanyCard({ company }: CompanyCardProps) {
               </span>
             ) : null}
             <span className="bg-primary-100 text-primary-700 rounded-2xl px-2 py-1 text-xs leading-[1.5] font-bold tracking-[-0.12px]">
-              {COMPANY_SIZE_LABEL[company.size]}
+              {ADMIN_COMPANY_TYPE_LABEL[company.companyType]}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-6">
-        <div className="flex items-center gap-4 text-xs leading-[1.5] tracking-[-0.12px] whitespace-nowrap">
-          <span className="text-neutral-600">채용 중인 공고</span>
-          <span className="font-medium text-neutral-900">{company.openJobCount}개</span>
-        </div>
-        <Icon name="chevronRight" className="h-6 w-3 text-neutral-600" />
-      </div>
+      <Icon name="chevronRight" className="h-6 w-3 shrink-0 text-neutral-600" />
     </article>
   );
 }

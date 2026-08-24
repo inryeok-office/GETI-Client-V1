@@ -1,4 +1,4 @@
-import { COMPANY_SIZE_LABEL, type CompanyDetail } from '@/entities/company';
+import { ADMIN_COMPANY_TYPE_LABEL, type CompanyDetail } from '@/entities/company';
 import { Icon } from '@/shared/ui/icon';
 
 interface CompanyDetailHeaderCardProps {
@@ -22,7 +22,7 @@ export function CompanyDetailHeaderCard({ company }: CompanyDetailHeaderCardProp
             {company.name}
           </p>
           <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
-            {`${COMPANY_SIZE_LABEL[company.size]}   ·   ${company.industry}`}
+            {`${ADMIN_COMPANY_TYPE_LABEL[company.companyType]}   ·   ${company.industry}`}
           </p>
           {company.isMou ? (
             <span className="bg-primary-100 text-primary-700 w-fit rounded-2xl px-2 py-1 text-xs leading-[1.5] tracking-[-0.12px]">
@@ -32,15 +32,17 @@ export function CompanyDetailHeaderCard({ company }: CompanyDetailHeaderCardProp
         </div>
       </div>
 
-      <a
-        href={company.homepageUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-primary-700 hover:bg-primary-600 flex shrink-0 items-center gap-2 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors"
-      >
-        기업 홈페이지
-        <Icon name="externalLink" className="size-5" />
-      </a>
+      {company.homepageUrl ? (
+        <a
+          href={company.homepageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-primary-700 hover:bg-primary-600 flex shrink-0 items-center gap-2 rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors"
+        >
+          기업 홈페이지
+          <Icon name="externalLink" className="size-5" />
+        </a>
+      ) : null}
     </div>
   );
 }

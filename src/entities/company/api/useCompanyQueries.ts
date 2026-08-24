@@ -1,6 +1,12 @@
 'use client';
 
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
   createCompany,
@@ -20,10 +26,16 @@ export const companyKeys = {
   options: () => [...companyKeys.all, 'options'] as const,
 };
 
+/**
+ * `keepPreviousData`로 페이지를 넘길 때 이전 페이지 데이터를 유지한 채 다음 페이지를 가져온다 —
+ * 호출부가 `isLoading`(최초 로딩)과 `isFetching`(페이지 전환 로딩)을 구분해 두 스켈레톤 상태를 나눌 수 있다
+ * (`useJobListQuery`와 동일한 이유, PR #159 코드리뷰 반영).
+ */
 export function useCompanyListQuery(params: FetchCompanyListParams = {}) {
   return useQuery({
     queryKey: companyKeys.list(params),
     queryFn: () => fetchCompanyList(params),
+    placeholderData: keepPreviousData,
   });
 }
 
