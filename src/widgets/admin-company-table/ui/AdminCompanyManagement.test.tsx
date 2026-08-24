@@ -153,6 +153,43 @@ describe('AdminCompanyManagement', () => {
     );
   });
 
+  it('MOU 상태가 미체결이면 기간을 입력하지 않아도 등록할 수 있다', async () => {
+    fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
+    createCompany.mockResolvedValue({ companyId: 4, name: '미체결기업' });
+
+    renderWithQueryClient(<AdminCompanyManagement />);
+    await waitFor(() => expect(screen.getByText('플로우테크')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: '기업 등록' }));
+    const panel = screen.getByRole('dialog', { name: '기업 등록' });
+
+    await userEvent.type(screen.getByPlaceholderText('기업명을 입력해 주세요.'), '미체결기업');
+    await userEvent.selectOptions(
+      within(panel).getByDisplayValue('기업 유형을 선택해 주세요.'),
+      '일반기업',
+    );
+    await userEvent.selectOptions(within(panel).getByDisplayValue('체결'), '미체결');
+
+    const submitButton = within(panel).getByRole('button', { name: '등록하기' });
+    expect(submitButton).toBeEnabled();
+    await userEvent.click(submitButton);
+
+    const confirmDialog = screen.getByRole('dialog', { name: '기업을 등록할까요?' });
+    expect(within(confirmDialog).getByText('표시하지 않음')).toBeInTheDocument();
+    await userEvent.click(within(confirmDialog).getByRole('button', { name: '등록하기' }));
+
+    await waitFor(() =>
+      expect(createCompany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '미체결기업',
+          mouStatus: 'NONE',
+          mouStartDate: null,
+          mouEndDate: null,
+        }),
+      ),
+    );
+  });
+
   it('수정 버튼을 누르면 상세 조회 후 값이 채워진 패널이 열리고, 확정하면 수정 API를 호출한다', async () => {
     fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
     fetchCompanyDetail.mockResolvedValue({

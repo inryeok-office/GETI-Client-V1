@@ -78,7 +78,12 @@ export function AdminCompanyRegisterPanel({
 
   const copy = PANEL_COPY[mode];
 
-  const isValid = name.trim() !== '' && type !== '' && mouStartDate !== '' && mouEndDate !== '';
+  /** MOU 상태가 `NONE`(미체결)이면 아직 체결된 기간이 없다는 뜻이라 날짜를 요구하지 않는다. */
+  const isMouPeriodRequired = mouStatus !== 'NONE';
+  const isValid =
+    name.trim() !== '' &&
+    type !== '' &&
+    (!isMouPeriodRequired || (mouStartDate !== '' && mouEndDate !== ''));
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -181,7 +186,7 @@ export function AdminCompanyRegisterPanel({
             <div className="flex gap-4">
               <div className="flex-1">
                 <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-                  MOU 기간 <span className="text-status-error">*</span>
+                  MOU 기간 {isMouPeriodRequired && <span className="text-status-error">*</span>}
                 </p>
                 <input
                   type="date"

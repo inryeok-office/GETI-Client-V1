@@ -46,11 +46,16 @@ export function RegisterConfirmDialog({
   onConfirm: () => void;
 }) {
   const copy = CONFIRM_COPY[mode];
+  /** `NONE`(미체결)은 등록 패널에서 기간 입력을 요구하지 않아 값이 비어 있을 수 있다. */
+  const mouPeriodValue =
+    values.mouStatus === 'NONE'
+      ? '표시하지 않음'
+      : `${formatMouDate(values.mouStartDate)} – ${formatMouDate(values.mouEndDate)}`;
   const rows: Array<[string, string]> = [
     ['기업명', values.name],
     ['기업 유형', ADMIN_COMPANY_TYPE_LABEL[values.type]],
     ['MOU 상태', MOU_STATUS_LABEL[values.mouStatus]],
-    ['MOU 기간', `${formatMouDate(values.mouStartDate)} – ${formatMouDate(values.mouEndDate)}`],
+    ['MOU 기간', mouPeriodValue],
   ];
 
   return (
