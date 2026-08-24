@@ -1,56 +1,44 @@
+'use client';
+
 import Link from 'next/link';
 
-import {
-  CompanyDetail,
-  MOCK_COMPANY_DETAIL,
-  MOCK_COMPANY_DETAIL_UNAVAILABLE,
-  MOCK_COMPANY_JOBS,
-  type CompanyDetailStatus,
-} from '@/widgets/company-detail';
+import { mapCompanyDetail, useCompanyDetailQuery } from '@/entities/company';
+import { CompanyDetail, type CompanyDetailStatus } from '@/widgets/company-detail';
 import { SiteHeader } from '@/widgets/site-header';
+import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 
 interface CompanyDetailPageProps {
   companyId: string;
-  searchParams: Promise<{ variant?: string }>;
 }
 
-const VARIANT_TO_STATUS: Record<string, CompanyDetailStatus> = {
-  success: 'success',
-  'no-jobs': 'success',
-  unavailable: 'success',
-  loading: 'loading',
-  error: 'error',
-};
-
 /**
- * `variant` 쿼리 파라미터 하나로부터 상태 · 기업 정보 · 채용 공고 목록을 한 번에 결정한다.
- * 세 값이 서로 다른 곳에서 따로 분기하면 variant가 늘어날 때 어긋나기 쉬워 한 곳으로 모았다.
+ * 기업 상세 화면. `GET /api/v1/companies/{id}`(`entities/company`의 `useCompanyDetailQuery`)로
+ * 실제 데이터를 불러온다(Issue #156). 학생 · 교사 · 개발자 로그인이면 누구나 호출 가능한 API다.
+ *
+ * 서버는 삭제된 기업만 404(`COMPANY_NOT_FOUND`)로 응답하고 비공개를 구분해 주지 않는다 —
+ * 404를 받으면 "삭제되거나 비공개 처리" 문구로 통합해 보여준다(사용자 확인 완료). 라우트
+ * 파라미터가 정수가 아니면(잘못된 링크) 조회 자체를 보내지 않고 바로 같은 안내를 보여준다.
+ * "채용 공고"는 회사-공고 연결 조회 API가 없어 항상 빈 배열을 넘긴다 — 별도 이슈에서 연동한다.
  */
-function resolveVariant(variant: string | undefined) {
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
+export function CompanyDetailPage({ companyId }: CompanyDetailPageProps) {
+  const numericId = Number(companyId);
+  const isValidId = Number.isInteger(numericId);
+
+  const detailQuery = useCompanyDetailQuery(isValidId ? numericId : null);
+
+  const status: CompanyDetailStatus = !isValidId
+    ? 'unavailable'
+    : detailQuery.isLoading
+      ? 'loading'
+      : detailQuery.isError
+        ? detailQuery.error instanceof ApiError && detailQuery.error.status === 404
+          ? 'unavailable'
+          : 'error'
+        : 'success';
+
   const company =
-    status !== 'success'
-      ? null
-      : variant === 'unavailable'
-        ? MOCK_COMPANY_DETAIL_UNAVAILABLE
-        : MOCK_COMPANY_DETAIL;
-  const jobs =
-    status === 'success' && variant !== 'no-jobs' && variant !== 'unavailable'
-      ? MOCK_COMPANY_JOBS
-      : [];
-
-  return { status, company, jobs };
-}
-
-/**
- * 기업 상세 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * `variant` 쿼리 파라미터(?variant=no-jobs 등)로 5개 상태를 수동으로 확인할 수 있다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
- */
-export async function CompanyDetailPage({ companyId, searchParams }: CompanyDetailPageProps) {
-  const { variant } = await searchParams;
-  const { status, company, jobs } = resolveVariant(variant);
+    status === 'success' && detailQuery.data ? mapCompanyDetail(detailQuery.data) : null;
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -68,8 +56,8 @@ export async function CompanyDetailPage({ companyId, searchParams }: CompanyDeta
         <CompanyDetail
           status={status}
           company={company}
-          jobs={jobs}
-          retryHref={`/companies/${companyId}`}
+          jobs={[]}
+          onRetry={() => detailQuery.refetch()}
         />
       </main>
     </div>

@@ -1,4 +1,5 @@
-import Link from 'next/link';
+'use client';
+
 import type { ReactNode } from 'react';
 
 import { Icon } from '@/shared/ui/icon';
@@ -6,28 +7,26 @@ import { Icon } from '@/shared/ui/icon';
 interface CompanyPaginationProps {
   currentPage: number;
   totalPages: number;
-  /** 페이지 링크를 만들 기준 경로. 예: "/companies" */
-  basePath: string;
+  onPageChange: (page: number) => void;
 }
 
 /**
- * 기업 목록 하단 페이지네이션.
- * 페이지 번호 클릭은 `basePath?page=N`으로 실제 이동한다.
- * 목업 데이터가 한 페이지 분량뿐이라 페이지를 옮겨도 카드 내용은 그대로다 — API 연동 이슈에서 실제 페이지별 데이터로 교체한다.
+ * 기업 목록 하단 페이지네이션. 인증 없이도 호출 가능한 API지만 검색·필터 상태를 화면이
+ * 직접 들고 있어(Issue #156), 페이지 이동도 URL 링크가 아니라 `onPageChange` 콜백으로 처리한다
+ * (`widgets/job-list`의 `JobPagination`과 동일한 패턴).
  */
-export function CompanyPagination({ currentPage, totalPages, basePath }: CompanyPaginationProps) {
+export function CompanyPagination({ currentPage, totalPages, onPageChange }: CompanyPaginationProps) {
   const pages = buildPageItems(currentPage, totalPages);
-  const hrefFor = (page: number) => `${basePath}?page=${page}`;
 
   return (
     <nav className="flex items-center justify-center gap-2" aria-label="기업 목록 페이지">
-      <PageLink
-        href={hrefFor(currentPage - 1)}
+      <PageButton
+        onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
         ariaLabel="이전 페이지"
       >
         <Icon name="chevronRight" className="h-6 w-3 rotate-180" />
-      </PageLink>
+      </PageButton>
 
       {pages.map((page, index) =>
         page === 'ellipsis' ? (
@@ -38,52 +37,49 @@ export function CompanyPagination({ currentPage, totalPages, basePath }: Company
             …
           </span>
         ) : (
-          <Link
+          <button
             key={page}
-            href={hrefFor(page)}
+            type="button"
+            onClick={() => onPageChange(page)}
             aria-current={page === currentPage ? 'page' : undefined}
             className={`flex size-9 items-center justify-center rounded-lg text-sm leading-[1.5] font-bold tracking-[-0.14px] ${
               page === currentPage ? 'bg-primary-700 text-white' : 'text-neutral-900'
             }`}
           >
             {page}
-          </Link>
+          </button>
         ),
       )}
 
-      <PageLink
-        href={hrefFor(currentPage + 1)}
+      <PageButton
+        onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
         ariaLabel="다음 페이지"
       >
         <Icon name="chevronRight" className="h-6 w-3" />
-      </PageLink>
+      </PageButton>
     </nav>
   );
 }
 
-interface PageLinkProps {
-  href: string;
+interface PageButtonProps {
+  onClick: () => void;
   disabled: boolean;
   ariaLabel: string;
   children: ReactNode;
 }
 
-function PageLink({ href, disabled, ariaLabel, children }: PageLinkProps) {
-  const className = 'flex size-9 items-center justify-center rounded-lg text-neutral-600';
-
-  if (disabled) {
-    return (
-      <span aria-hidden="true" className={`${className} opacity-40`}>
-        {children}
-      </span>
-    );
-  }
-
+function PageButton({ onClick, disabled, ariaLabel, children }: PageButtonProps) {
   return (
-    <Link href={href} aria-label={ariaLabel} className={className}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className="flex size-9 items-center justify-center rounded-lg text-neutral-600 disabled:opacity-40"
+    >
       {children}
-    </Link>
+    </button>
   );
 }
 

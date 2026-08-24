@@ -1,6 +1,4 @@
-import Link from 'next/link';
-
-import { CompanyCard, type CompanyListItem } from '@/entities/company';
+import { CompanyCard, type AdminCompanyType, type CompanyListItem } from '@/entities/company';
 import { Icon } from '@/shared/ui/icon';
 
 import { CompanyFilterSection } from './CompanyFilterSection';
@@ -14,14 +12,18 @@ interface CompanyListProps {
   totalCount: number;
   currentPage: number;
   totalPages: number;
-  /** 페이지네이션 링크를 만들 기준 경로. 예: "/companies" */
-  basePath: string;
+  onPageChange: (page: number) => void;
+  query: string;
+  onQueryChange: (query: string) => void;
+  companyType: AdminCompanyType | '';
+  onCompanyTypeChange: (companyType: AdminCompanyType | '') => void;
+  onRetry: () => void;
 }
 
 /**
  * 기업 목록 위젯. 검색·필터 바 + 목록(로딩·에러·빈·목록) + 페이지네이션을 조합한다.
- * 디자인 단계라 `status`와 `companies`는 호출부에서 목업 값을 넘겨준다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
+ * `companies`·`status`는 `GET /api/v1/companies`(`useCompanyListQuery`)의 실제 조회 결과다
+ * (Issue #156).
  */
 export function CompanyList({
   status,
@@ -29,14 +31,24 @@ export function CompanyList({
   totalCount,
   currentPage,
   totalPages,
-  basePath,
+  onPageChange,
+  query,
+  onQueryChange,
+  companyType,
+  onCompanyTypeChange,
+  onRetry,
 }: CompanyListProps) {
   const showCount = status === 'success' || status === 'pageLoading';
   const showPagination = status === 'success' || status === 'pageLoading';
 
   return (
     <div>
-      <CompanyFilterSection />
+      <CompanyFilterSection
+        query={query}
+        onQueryChange={onQueryChange}
+        companyType={companyType}
+        onCompanyTypeChange={onCompanyTypeChange}
+      />
 
       {showCount && (
         <p className="mt-8 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900">
@@ -51,7 +63,7 @@ export function CompanyList({
 
       <div className="mt-6">
         {(status === 'initialLoading' || status === 'pageLoading') && <CompanyListSkeleton />}
-        {status === 'error' && <CompanyListError basePath={basePath} />}
+        {status === 'error' && <CompanyListError onRetry={onRetry} />}
         {status === 'empty' && <CompanyListEmpty />}
         {status === 'success' && (
           <div className="flex flex-col gap-4">
@@ -62,12 +74,12 @@ export function CompanyList({
         )}
       </div>
 
-      {showPagination && (
+      {showPagination && totalPages > 1 && (
         <div className="mt-10">
           <CompanyPagination
             currentPage={currentPage}
             totalPages={totalPages}
-            basePath={basePath}
+            onPageChange={onPageChange}
           />
         </div>
       )}
@@ -113,7 +125,7 @@ function CompanyListEmpty() {
   );
 }
 
-function CompanyListError({ basePath }: { basePath: string }) {
+function CompanyListError({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center"
@@ -129,12 +141,13 @@ function CompanyListError({ basePath }: { basePath: string }) {
             잠시 후 다시 시도해 주세요.
           </p>
         </div>
-        <Link
-          href={basePath}
+        <button
+          type="button"
+          onClick={onRetry}
           className="bg-primary-700 inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
         >
           다시 시도
-        </Link>
+        </button>
       </div>
     </div>
   );

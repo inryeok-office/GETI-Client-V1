@@ -1,37 +1,101 @@
-import {
-  CompanyList,
-  MOCK_COMPANY_LIST_ITEMS,
-  type CompanyListStatus,
-} from '@/widgets/company-list';
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import { mapCompanyListItem, useCompanyListQuery, type AdminCompanyType } from '@/entities/company';
+import { CompanyList, type CompanyListStatus } from '@/widgets/company-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-const VARIANT_TO_STATUS: Record<string, CompanyListStatus> = {
-  success: 'success',
-  'initial-loading': 'initialLoading',
-  'page-loading': 'pageLoading',
-  error: 'error',
-  empty: 'empty',
-};
+const PAGE_SIZE = 20;
+/** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). `job-list`와 동일한 값. */
+const SEARCH_DEBOUNCE_MS = 300;
 
-const TOTAL_PAGES = 3;
-/** Figma 목업의 "총 15개의 기업" 문구에 맞춘 값. 실제로는 서버가 내려주는 전체 개수로 바뀐다. */
-const MOCK_TOTAL_COUNT = 15;
+export interface CompanyListSearchParams {
+  q?: string;
+  page?: string;
+  companyType?: string;
+}
 
 interface CompanyListPageProps {
-  searchParams: Promise<{ variant?: string; page?: string }>;
+  /**
+   * `app/companies/page.tsx`(Server Component)가 넘겨주는 초기 URL 쿼리스트링.
+   * `views/job-list`의 `JobListPage`와 같은 이유로 최초 값은 Prop으로 받고, 이후 변경만
+   * `router.replace`로 반영한다.
+   */
+  initialSearchParams?: CompanyListSearchParams;
 }
 
 /**
- * 기업 목록(기업 정보) 화면. 아직 API 연동 전이라 목업 데이터를 그대로 사용한다.
- * `variant` 쿼리 파라미터(?variant=initial-loading 등)로 5개 상태를 수동으로 확인할 수 있다(화면에 노출되는 UI는 없음).
- * `page`는 페이지네이션 클릭으로 실제 이동하지만, 목업이 한 페이지 분량뿐이라 카드 내용은 바뀌지 않는다.
- * API 연동 이슈에서 이 자리를 `useQuery` 결과로 교체한다.
+ * 기업 목록(기업 정보) 화면. `GET /api/v1/companies`(`entities/company`의 `useCompanyListQuery`)로
+ * 실제 데이터를 불러온다(Issue #156). 학생 · 교사 · 개발자 로그인이면 누구나 호출 가능한 API다.
+ *
+ * 검색어와 기업 유형 필터가 실제 조회에 연결된다. "규모" 배지 · "채용 중인 공고" 수는
+ * 대응하는 서버 데이터가 없어 이번 범위에서 뺐다(`entities/company/ui/CompanyCard` 참고).
+ *
+ * 검색 · 필터 · 페이지 상태는 새로고침 · 뒤로가기에도 유지되도록 URL 쿼리스트링과 동기화한다
+ * (`JobListPage`와 동일한 패턴).
  */
-export async function CompanyListPage({ searchParams }: CompanyListPageProps) {
-  const { variant, page } = await searchParams;
-  const status = VARIANT_TO_STATUS[variant ?? 'success'] ?? 'success';
-  const companies = status === 'empty' || status === 'error' ? [] : MOCK_COMPANY_LIST_ITEMS;
-  const currentPage = clampPage(Number(page ?? '1'));
+export function CompanyListPage({ initialSearchParams }: CompanyListPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [page, setPage] = useState(() => {
+    const raw = Number(initialSearchParams?.page);
+    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+  });
+  const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
+  const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
+  const [companyType, setCompanyType] = useState<AdminCompanyType | ''>(
+    () => (initialSearchParams?.companyType as AdminCompanyType | undefined) ?? '',
+  );
+
+  /** 디바운스된 검색어 커밋만 담당한다 — 페이지 초기화는 입력 이벤트(`handleSearchInputChange`)에서 동기로 처리한다(`JobListPage` 참고). */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+    setPage(0);
+  };
+
+  const handleCompanyTypeChange = (value: AdminCompanyType | '') => {
+    setCompanyType(value);
+    setPage(0);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (page > 0) params.set('page', String(page + 1));
+    if (companyType) params.set('companyType', companyType);
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [searchQuery, page, companyType, pathname, router]);
+
+  const listQuery = useCompanyListQuery({
+    page,
+    size: PAGE_SIZE,
+    query: searchQuery.trim() || undefined,
+    companyType: companyType || undefined,
+  });
+
+  const listStatus: CompanyListStatus = listQuery.isLoading
+    ? 'initialLoading'
+    : listQuery.isFetching
+      ? 'pageLoading'
+      : listQuery.isError
+        ? 'error'
+        : (listQuery.data?.content.length ?? 0) === 0
+          ? 'empty'
+          : 'success';
+
+  const companies = (listQuery.data?.content ?? []).map(mapCompanyListItem);
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -47,21 +111,20 @@ export async function CompanyListPage({ searchParams }: CompanyListPageProps) {
 
         <div className="mt-8">
           <CompanyList
-            status={status}
+            status={listStatus}
             companies={companies}
-            totalCount={MOCK_TOTAL_COUNT}
-            currentPage={currentPage}
-            totalPages={TOTAL_PAGES}
-            basePath="/companies"
+            totalCount={listQuery.data?.totalElements ?? 0}
+            currentPage={page + 1}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            query={searchInput}
+            onQueryChange={handleSearchInputChange}
+            companyType={companyType}
+            onCompanyTypeChange={handleCompanyTypeChange}
+            onRetry={() => listQuery.refetch()}
           />
         </div>
       </main>
     </div>
   );
-}
-
-function clampPage(page: number): number {
-  if (!Number.isFinite(page) || page < 1) return 1;
-  if (page > TOTAL_PAGES) return TOTAL_PAGES;
-  return Math.trunc(page);
 }

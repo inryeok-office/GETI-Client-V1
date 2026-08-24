@@ -1,39 +1,42 @@
-/** 기업 규모 구분. 카드의 규모 배지 문구를 결정한다. */
-export type CompanySize = 'large' | 'midsize' | 'small';
+/** 어드민 기업 관리 목록의 기업 유형. GETI-Server `CompanyType`과 동일한 값을 쓴다. */
+export type AdminCompanyType =
+  'ETC' | 'FOREIGN' | 'GENERAL' | 'PUBLIC_ENTERPRISE' | 'PUBLIC_INSTITUTION';
 
-/** 기업 목록 카드에 필요한 최소 정보. */
+/**
+ * 기업 목록 카드에 필요한 최소 정보.
+ * "규모"(대기업 · 중견 · 중소) 배지는 서버에 대응 필드가 없어 뺐다 — `companyType` 라벨로
+ * 대체한다. "채용 중인 공고 수"도 회사-공고 연결 조회 API가 없어 이번 범위에서 뺐다
+ * (Issue #156 코드 리뷰 · 사용자 확인 완료).
+ */
 export interface CompanyListItem {
   id: string;
   name: string;
-  /** 학교 MOU 체결 기업 여부. true면 "MOU 기업" 배지가 붙는다. */
+  /** 학교 MOU 체결 기업 여부. true면 "MOU 기업" 배지가 붙는다(`mouStatus === 'ACTIVE'`). */
   isMou: boolean;
-  size: CompanySize;
-  /** 채용 중인 공고 수. */
-  openJobCount: number;
+  companyType: AdminCompanyType;
   /** 카드 클릭 시 이동할 기업 상세 페이지 경로. */
   detailHref: string;
 }
 
-/** 기업 상세 화면에 필요한 정보. */
+/**
+ * 기업 상세 화면에 필요한 정보. 비공개 · 삭제 여부는 데이터가 아니라 조회 상태
+ * (`CompanyDetailStatus`의 `unavailable`)로 표현한다 — 서버가 삭제된 기업을 404
+ * (`COMPANY_NOT_FOUND`)로만 응답하고 비공개를 구분해 주지 않아, 정상 조회된 값에
+ * "비공개일 수도 있다"는 필드를 남겨둘 이유가 없다(Issue #156 사용자 확인 완료).
+ */
 export interface CompanyDetail {
   id: string;
   name: string;
-  /** 학교 MOU 체결 기업 여부. true면 "MOU 기업" 배지가 붙는다. */
+  /** 학교 MOU 체결 기업 여부. true면 "MOU 기업" 배지가 붙는다(`mouStatus === 'ACTIVE'`). */
   isMou: boolean;
-  size: CompanySize;
+  companyType: AdminCompanyType;
   /** 업종(예: "IT 서비스"). */
   industry: string;
   address: string;
   introduction: string;
   /** 기업 홈페이지 URL. */
   homepageUrl: string;
-  /** 비공개 · 삭제 등으로 접근할 수 없는 경우의 사유. 정상 조회는 null. */
-  unavailableReason: '비공개' | '삭제' | null;
 }
-
-/** 어드민 기업 관리 목록의 기업 유형. GETI-Server `CompanyType`과 동일한 값을 쓴다. */
-export type AdminCompanyType =
-  'ETC' | 'FOREIGN' | 'GENERAL' | 'PUBLIC_ENTERPRISE' | 'PUBLIC_INSTITUTION';
 
 /** 기업 정보 출처. */
 export type CompanyInfoSource = 'direct' | 'external';

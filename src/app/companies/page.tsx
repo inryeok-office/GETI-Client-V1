@@ -1,9 +1,11 @@
-import { CompanyListPage } from '@/views/company-list';
+import { CompanyListPage, type CompanyListSearchParams } from '@/views/company-list';
 
 interface PageProps {
-  searchParams: Promise<{ variant?: string; page?: string }>;
+  searchParams: Promise<CompanyListSearchParams>;
 }
 
-export default function Page({ searchParams }: PageProps) {
-  return <CompanyListPage searchParams={searchParams} />;
+export default async function Page({ searchParams }: PageProps) {
+  const params = await searchParams;
+
+  return <CompanyListPage initialSearchParams={params} />;
 }
