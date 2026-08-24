@@ -6,29 +6,27 @@ import {
   ADMIN_COMPANY_TYPE_LABEL,
   MOU_STATUS_LABEL,
   type AdminCompanyType,
-  type CompanyInfoSource,
   type MouStatus,
 } from '@/entities/company';
 
 export interface AdminCompanyRegisterFormValues {
   name: string;
   type: AdminCompanyType;
-  infoSource: CompanyInfoSource;
   mouStatus: MouStatus;
-  mouPeriod: string;
+  /** `yyyy-MM-dd`. */
+  mouStartDate: string;
+  /** `yyyy-MM-dd`. */
+  mouEndDate: string;
   description: string;
-  memo: string;
 }
 
 export interface AdminCompanyEditInitialValues {
   name: string;
   type: AdminCompanyType;
-  infoSource: CompanyInfoSource;
   mouStatus: MouStatus;
   mouStartDate: string;
   mouEndDate: string;
   description: string;
-  memo: string;
 }
 
 interface AdminCompanyRegisterPanelProps {
@@ -44,30 +42,22 @@ const PANEL_COPY = {
   edit: { heading: '기업 수정', submit: '수정하기' },
 };
 
-const INFO_SOURCE_HELP: Record<CompanyInfoSource, { description: string; title: string }> = {
-  direct: { title: '직접 등록', description: '관리자가 직접 등록하고 수정합니다.' },
-  external: {
-    title: '외부 API',
-    description: '외부 시스템에서 수집되며 일부 필드는 수정이 제한될 수 있습니다.',
-  },
-};
-
 const MOU_STATUS_HELP: Record<MouStatus, string> = {
-  unsigned: 'MOU가 아직 체결되지 않은 상태입니다.',
-  signed: '시작일·종료일을 입력하며 유효 기간 안 상태입니다.',
-  expired: '종료일이 지난 경우 자동 계산되는 상태입니다.',
+  NONE: 'MOU가 아직 체결되지 않은 상태입니다.',
+  ACTIVE: '시작일·종료일을 입력하며 유효 기간 안 상태입니다.',
+  EXPIRED: '종료일이 지난 경우 자동 계산되는 상태입니다.',
+  TERMINATED: '기간 중 협약이 해지된 상태입니다.',
 };
 
 const INPUT_CLASS_NAME =
   'focus:border-primary-300 w-full rounded-lg border border-neutral-200 p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-400';
 
-function formatDate(value: string) {
-  return value.replaceAll('-', '.');
-}
-
 /**
  * 어드민 기업 등록/수정 슬라이드 패널.
  * "수정" 모드는 같은 패널 컴포넌트를 재사용하되 제목·버튼 문구만 바꾼다(Figma 933:16623).
+ * "정보 출처" 선택은 뺐다 — 서버 `sourceName`은 자유 텍스트라 direct/external 개념이 없고,
+ * 이 화면은 관리자가 직접 등록하는 경로라 항상 `sourceName: "manual"`로 보낸다(Issue #121).
+ * "관리 메모" 입력란도 뺐다 — Company 엔티티에 memo 필드가 없어 저장할 곳이 없다.
  * 간격 · 색상은 Figma(기업 등록 패널 869:33869)의 값을 그대로 옮겼다.
  */
 export function AdminCompanyRegisterPanel({
@@ -79,20 +69,21 @@ export function AdminCompanyRegisterPanel({
 }: AdminCompanyRegisterPanelProps) {
   const [name, setName] = useState(initialValues?.name ?? '');
   const [type, setType] = useState<AdminCompanyType | ''>(initialValues?.type ?? '');
-  const [infoSource, setInfoSource] = useState<CompanyInfoSource>(
-    initialValues?.infoSource ?? 'direct',
-  );
-  const [mouStatus, setMouStatus] = useState<MouStatus>(initialValues?.mouStatus ?? 'signed');
+  const [mouStatus, setMouStatus] = useState<MouStatus>(initialValues?.mouStatus ?? 'ACTIVE');
   const [mouStartDate, setMouStartDate] = useState(initialValues?.mouStartDate ?? '');
   const [mouEndDate, setMouEndDate] = useState(initialValues?.mouEndDate ?? '');
   const [description, setDescription] = useState(initialValues?.description ?? '');
-  const [memo, setMemo] = useState(initialValues?.memo ?? '');
 
   if (!isOpen) return null;
 
   const copy = PANEL_COPY[mode];
 
-  const isValid = name.trim() !== '' && type !== '' && mouStartDate !== '' && mouEndDate !== '';
+  /** MOU 상태가 `NONE`(미체결)이면 아직 체결된 기간이 없다는 뜻이라 날짜를 요구하지 않는다. */
+  const isMouPeriodRequired = mouStatus !== 'NONE';
+  const isValid =
+    name.trim() !== '' &&
+    type !== '' &&
+    (!isMouPeriodRequired || (mouStartDate !== '' && mouEndDate !== ''));
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -100,11 +91,10 @@ export function AdminCompanyRegisterPanel({
     onSubmit({
       name: name.trim(),
       type,
-      infoSource,
       mouStatus,
-      mouPeriod: `${formatDate(mouStartDate)} – ${formatDate(mouEndDate)}`,
+      mouStartDate,
+      mouEndDate,
       description,
-      memo,
     });
   };
 
@@ -162,36 +152,6 @@ export function AdminCompanyRegisterPanel({
 
             <div>
               <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-                정보 출처 <span className="text-status-error">*</span>
-              </p>
-              <select
-                value={infoSource}
-                onChange={(event) => setInfoSource(event.target.value as CompanyInfoSource)}
-                className={`mt-2 ${INPUT_CLASS_NAME}`}
-              >
-                <option value="direct">직접 등록</option>
-                <option value="external">외부 API</option>
-              </select>
-              <div className="mt-2 flex gap-2">
-                {(
-                  Object.entries(INFO_SOURCE_HELP) as Array<
-                    [CompanyInfoSource, { description: string; title: string }]
-                  >
-                ).map(([value, help]) => (
-                  <div key={value} className="flex-1 rounded-xl bg-neutral-50 p-3">
-                    <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-900">
-                      {help.title}
-                    </p>
-                    <p className="mt-1 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-                      {help.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
                 MOU 상태 <span className="text-status-error">*</span>
               </p>
               <select
@@ -226,7 +186,7 @@ export function AdminCompanyRegisterPanel({
             <div className="flex gap-4">
               <div className="flex-1">
                 <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-                  MOU 기간 <span className="text-status-error">*</span>
+                  MOU 기간 {isMouPeriodRequired && <span className="text-status-error">*</span>}
                 </p>
                 <input
                   type="date"
@@ -259,19 +219,6 @@ export function AdminCompanyRegisterPanel({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="기업 설명을 입력해 주세요."
-                className={`mt-2 ${INPUT_CLASS_NAME}`}
-              />
-            </div>
-
-            <div>
-              <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-                관리 메모
-              </p>
-              <input
-                type="text"
-                value={memo}
-                onChange={(event) => setMemo(event.target.value)}
-                placeholder="관리자 메모를 입력해 주세요."
                 className={`mt-2 ${INPUT_CLASS_NAME}`}
               />
             </div>

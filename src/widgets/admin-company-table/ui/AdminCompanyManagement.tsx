@@ -1,22 +1,26 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
-import type { AdminCompanyListItem, AdminCompanyType, MouStatus } from '@/entities/company';
+import {
+  useCompanyDetailQuery,
+  useCompanyListQuery,
+  useCreateCompanyMutation,
+  useUpdateCompanyMutation,
+  type AdminCompanyListItem,
+  type AdminCompanyType,
+  type MouStatus,
+} from '@/entities/company';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import { AdminCompanyFilters } from './AdminCompanyFilters';
 import {
-  DeleteConfirmDialog,
-  DeleteForbiddenDialog,
-  DeleteResultDialog,
-  DeletingDialog,
   EditCompleteDialog,
   RegisterCompleteDialog,
   RegisterConfirmDialog,
   RegisteringDialog,
-  type DeleteResult,
 } from './AdminCompanyDialogs';
 import { AdminCompanyHeader } from './AdminCompanyHeader';
 import {
@@ -24,214 +28,69 @@ import {
   type AdminCompanyEditInitialValues,
   type AdminCompanyRegisterFormValues,
 } from './AdminCompanyRegisterPanel';
+import { AdminCompanyStatusDialog } from './AdminCompanyStatusDialog';
 import { AdminCompanyTable } from './AdminCompanyTable';
-
-export type AdminCompanyManagementVariant =
-  | 'delete-confirm'
-  | 'delete-confirm-allowed'
-  | 'delete-error'
-  | 'delete-forbidden'
-  | 'delete-success'
-  | 'deleting'
-  | 'empty'
-  | 'error'
-  | 'loading'
-  | 'register-complete'
-  | 'register-confirm'
-  | 'register-panel'
-  | 'registering'
-  | 'success';
-
-type ListStatus = 'empty' | 'error' | 'loading' | 'success';
-type PanelMode = 'create' | 'edit' | null;
 
 interface PendingSubmit {
   mode: 'register' | 'edit';
   values: AdminCompanyRegisterFormValues;
-  targetId?: string;
-}
-
-function getListStatus(variant: AdminCompanyManagementVariant): ListStatus {
-  return variant === 'empty' || variant === 'error' || variant === 'loading' ? variant : 'success';
-}
-
-function getInitialDeleteResult(variant: AdminCompanyManagementVariant): DeleteResult {
-  if (variant === 'delete-success') return 'success';
-  if (variant === 'delete-error') return 'error';
-  return null;
-}
-
-function getInitialDeleteTarget(
-  variant: AdminCompanyManagementVariant,
-  companies: AdminCompanyListItem[],
-): AdminCompanyListItem | null {
-  if (variant === 'delete-confirm') return companies.find((c) => c.activeJobCount > 0) ?? null;
-  if (variant === 'delete-confirm-allowed') {
-    return companies.find((c) => c.activeJobCount === 0) ?? null;
-  }
-  return null;
-}
-
-function getInitialPendingSubmit(
-  variant: AdminCompanyManagementVariant,
-  companies: AdminCompanyListItem[],
-): PendingSubmit | null {
-  if (variant !== 'register-confirm') return null;
-  const target = companies[0];
-  if (!target) return null;
-
-  return {
-    mode: 'register',
-    values: {
-      name: target.name,
-      type: target.type,
-      infoSource: target.infoSource,
-      mouStatus: target.mouStatus,
-      mouPeriod: target.mouPeriod ?? '',
-      description: '',
-      memo: '',
-    },
-  };
-}
-
-function parseMouPeriod(mouPeriod: string | null): { mouStartDate: string; mouEndDate: string } {
-  if (!mouPeriod) return { mouStartDate: '', mouEndDate: '' };
-  const [start, end] = mouPeriod.split(' – ');
-  return {
-    mouStartDate: (start ?? '').replaceAll('.', '-'),
-    mouEndDate: (end ?? '').replaceAll('.', '-'),
-  };
-}
-
-function buildRegisteredCompany(values: AdminCompanyRegisterFormValues): AdminCompanyListItem {
-  const id = `admin-company-${Date.now()}`;
-
-  return {
-    id,
-    name: values.name,
-    type: values.type,
-    infoSource: values.infoSource,
-    mouStatus: values.mouStatus,
-    mouPeriod: values.mouStatus === 'unsigned' ? null : values.mouPeriod,
-    statusLabel: '정상',
-    detailHref: `/admin/companies/${id}`,
-    activeJobCount: 0,
-    activeMouJobCount: 0,
-    applicationCount: 0,
-  };
-}
-
-function applyEditValues(
-  company: AdminCompanyListItem,
-  values: AdminCompanyRegisterFormValues,
-): AdminCompanyListItem {
-  return {
-    ...company,
-    name: values.name,
-    type: values.type,
-    infoSource: values.infoSource,
-    mouStatus: values.mouStatus,
-    mouPeriod: values.mouStatus === 'unsigned' ? null : values.mouPeriod,
-  };
-}
-
-interface AdminCompanyManagementProps {
-  companies: AdminCompanyListItem[];
-  initialVariant: AdminCompanyManagementVariant;
+  targetId?: number;
 }
 
 /**
- * 어드민 기업 관리 화면. 검색·필터, 목록 표, 등록/수정 패널, 삭제·등록·수정 확인/결과 모달을 조합한다.
- * "수정"은 별도 페이지가 아니라 등록 패널을 재사용하는 수정 모드로 열린다(Figma 933:16523).
- * 등록·수정 모두 패널 제출 후 요약 확인 모달을 거친 뒤에만 실제로 반영된다(Figma 933:10927).
- * 디자인 단계라 `initialVariant`는 호출부에서 목업 값을 넘겨준다.
- * API 연동 이슈에서 로컬 상태를 `useQuery`/`useMutation` 결과로 교체한다.
+ * 목록 조회는 페이지네이션 UI가 아직 없어 한 번에 최대 허용치(100건)를 가져온다
+ * (지원자 관리 "담당 공고" 탭과 같은 임시 처리). 100건을 넘으면 뒤 항목이 보이지 않는다 —
+ * 페이지네이션 UI를 만들 때 이 상한을 없애야 한다.
  */
-export function AdminCompanyManagement({
-  companies: initialCompanies,
-  initialVariant,
-}: AdminCompanyManagementProps) {
-  const [listStatus, setListStatus] = useState<ListStatus>(getListStatus(initialVariant));
-  const [companies, setCompanies] = useState(initialCompanies);
+const LIST_SIZE = 100;
+
+/**
+ * 어드민 기업 관리 화면. 검색·필터, 목록 표, 등록/수정 패널, 등록·수정 확인/결과 모달을 조합한다.
+ * `GET /companies`로 목록을, `POST /admin/companies` · `PATCH /admin/companies/{id}`로
+ * 등록·수정을 연동한다(Issue #121).
+ * "수정" 클릭 시 목록 응답(`CompanySummaryResponse`)에 없는 필드(설명 · MOU 기간 등)를 채우려고
+ * `GET /companies/{id}` 상세를 다시 불러온 뒤에만 패널을 연다 — 목록 값만으로 패널을 열면
+ * 기존 MOU 기간 · 설명이 빈 값으로 보여 실수로 지워질 수 있다.
+ * 삭제는 서버가 아직 활성 공고 여부를 검증하지 않아(`COMPANY_HAS_ACTIVE_JOBS` 미구현) 이번
+ * 범위에서 뺐다 — 백엔드 확인 후 별도로 진행한다.
+ */
+export function AdminCompanyManagement() {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<AdminCompanyType | ''>('');
   const [mouFilter, setMouFilter] = useState<MouStatus | ''>('');
-  const [deleteTarget, setDeleteTarget] = useState<AdminCompanyListItem | null>(
-    getInitialDeleteTarget(initialVariant, initialCompanies),
-  );
-  const [isDeleting, setIsDeleting] = useState(initialVariant === 'deleting');
-  const [isDeleteForbidden, setIsDeleteForbidden] = useState(initialVariant === 'delete-forbidden');
-  const [deleteResult, setDeleteResult] = useState<DeleteResult>(
-    getInitialDeleteResult(initialVariant),
-  );
-  const [panelMode, setPanelMode] = useState<PanelMode>(
-    initialVariant === 'register-panel' ? 'create' : null,
-  );
-  const [editTarget, setEditTarget] = useState<AdminCompanyListItem | null>(null);
-  const [submittingMode, setSubmittingMode] = useState<'edit' | 'register' | null>(
-    initialVariant === 'registering' ? 'register' : null,
-  );
-  const [pendingSubmit, setPendingSubmit] = useState<PendingSubmit | null>(
-    getInitialPendingSubmit(initialVariant, initialCompanies),
-  );
-  const [showRegisterComplete, setShowRegisterComplete] = useState(
-    initialVariant === 'register-complete',
-  );
+
+  const listQuery = useCompanyListQuery({
+    query: query.trim() || undefined,
+    companyType: typeFilter || undefined,
+    mouStatus: mouFilter || undefined,
+    size: LIST_SIZE,
+  });
+
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
+  const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState<PendingSubmit | null>(null);
+  const [showRegisterComplete, setShowRegisterComplete] = useState(false);
   const [showEditComplete, setShowEditComplete] = useState(false);
 
-  const filteredCompanies = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
+  const editDetailQuery = useCompanyDetailQuery(editingCompanyId);
+  const createMutation = useCreateCompanyMutation();
+  const updateMutation = useUpdateCompanyMutation();
 
-    return companies.filter((company) => {
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        company.name.toLocaleLowerCase('ko-KR').includes(normalizedQuery);
-      const matchesType = typeFilter === '' || company.type === typeFilter;
-      const matchesMou = mouFilter === '' || company.mouStatus === mouFilter;
+  const companies = listQuery.data?.content ?? [];
+  const hasActiveFilter = query.trim() !== '' || typeFilter !== '' || mouFilter !== '';
+  const isNoCompaniesAtAll = listQuery.isSuccess && companies.length === 0 && !hasActiveFilter;
+  const isSearchEmpty = listQuery.isSuccess && companies.length === 0 && hasActiveFilter;
 
-      return matchesQuery && matchesType && matchesMou;
-    });
-  }, [companies, mouFilter, query, typeFilter]);
+  const openRegisterPanel = () => setIsCreatePanelOpen(true);
 
-  const isNoCompaniesAtAll =
-    listStatus === 'empty' || (listStatus === 'success' && companies.length === 0);
-  const isSearchEmpty =
-    listStatus === 'success' && companies.length > 0 && filteredCompanies.length === 0;
+  const openEditPanel = (company: AdminCompanyListItem) => setEditingCompanyId(company.companyId);
 
-  const confirmDelete = () => {
-    if (!deleteTarget || deleteTarget.activeJobCount > 0) return;
+  const closeEditPanel = () => setEditingCompanyId(null);
 
-    const targetId = deleteTarget.id;
-    setDeleteTarget(null);
-    setIsDeleting(true);
-    setTimeout(() => {
-      setCompanies((current) => current.filter((company) => company.id !== targetId));
-      setIsDeleting(false);
-      setDeleteResult('success');
-    }, 1000);
-  };
-
-  const openRegisterPanel = () => {
-    setEditTarget(null);
-    setPanelMode('create');
-  };
-
-  const openEditPanel = (company: AdminCompanyListItem) => {
-    setEditTarget(company);
-    setPanelMode('edit');
-  };
-
-  const closePanel = () => {
-    setPanelMode(null);
-    setEditTarget(null);
-  };
-
-  const requestSubmitConfirm = (values: AdminCompanyRegisterFormValues) => {
-    setPendingSubmit({
-      mode: panelMode === 'edit' ? 'edit' : 'register',
-      values,
-      targetId: editTarget?.id,
-    });
+  const requestSubmitConfirm = (mode: 'register' | 'edit', targetId?: number) => {
+    return (values: AdminCompanyRegisterFormValues) => {
+      setPendingSubmit({ mode, values, targetId });
+    };
   };
 
   const cancelSubmitConfirm = () => setPendingSubmit(null);
@@ -241,42 +100,55 @@ export function AdminCompanyManagement({
 
     const submission = pendingSubmit;
     setPendingSubmit(null);
-    closePanel();
-    setSubmittingMode(submission.mode);
-    setTimeout(() => {
-      if (submission.mode === 'register') {
-        setCompanies((current) => [buildRegisteredCompany(submission.values), ...current]);
-        setSubmittingMode(null);
-        setShowRegisterComplete(true);
-      } else {
-        setCompanies((current) =>
-          current.map((company) =>
-            company.id === submission.targetId
-              ? applyEditValues(company, submission.values)
-              : company,
-          ),
-        );
-        setSubmittingMode(null);
-        setShowEditComplete(true);
-      }
-    }, 1000);
+
+    const payload = {
+      name: submission.values.name,
+      companyType: submission.values.type,
+      mouStatus: submission.values.mouStatus,
+      sourceName: 'manual',
+      description: submission.values.description || null,
+      mouStartDate: submission.values.mouStartDate || null,
+      mouEndDate: submission.values.mouEndDate || null,
+    };
+
+    if (submission.mode === 'register') {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          setIsCreatePanelOpen(false);
+          setShowRegisterComplete(true);
+        },
+        onError: (error) => showToast({ tone: 'error', message: error.message }),
+      });
+    } else if (submission.targetId !== undefined) {
+      updateMutation.mutate(
+        { companyId: submission.targetId, payload },
+        {
+          onSuccess: () => {
+            closeEditPanel();
+            setShowEditComplete(true);
+          },
+          onError: (error) => showToast({ tone: 'error', message: error.message }),
+        },
+      );
+    }
   };
 
-  const editInitialValues: AdminCompanyEditInitialValues | undefined = editTarget
+  const editRecord = editDetailQuery.data;
+  const editInitialValues: AdminCompanyEditInitialValues | undefined = editRecord
     ? {
-        name: editTarget.name,
-        type: editTarget.type,
-        infoSource: editTarget.infoSource,
-        mouStatus: editTarget.mouStatus,
-        ...parseMouPeriod(editTarget.mouPeriod),
-        description: '',
-        memo: '',
+        name: editRecord.name,
+        type: editRecord.companyType,
+        mouStatus: editRecord.mouStatus,
+        mouStartDate: editRecord.mouStartDate ?? '',
+        mouEndDate: editRecord.mouEndDate ?? '',
+        description: editRecord.description ?? '',
       }
     : undefined;
 
   return (
     <div className="min-h-screen bg-neutral-50">
       <AdminCompanyHeader />
+      <AppToaster />
 
       <main className="px-4 py-8 xl:px-6 xl:py-10 2xl:px-10">
         <div className="w-full max-w-[1620px]">
@@ -306,10 +178,10 @@ export function AdminCompanyManagement({
               id="admin-company-count"
               className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900"
             >
-              총 {listStatus === 'success' ? filteredCompanies.length : companies.length}개 기업
+              총 {companies.length}개 기업
             </h2>
             <div className="mt-6">
-              {listStatus === 'loading' ? (
+              {listQuery.isLoading ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
                   <Icon name="spinner" className="size-[72px] animate-spin text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
@@ -322,7 +194,7 @@ export function AdminCompanyManagement({
                   </div>
                 </div>
               ) : null}
-              {listStatus === 'error' ? (
+              {listQuery.isError ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 text-center">
                   <Icon name="alertCircleOutline" className="size-[72px] text-neutral-600" />
                   <div className="flex flex-col items-center gap-3">
@@ -333,7 +205,7 @@ export function AdminCompanyManagement({
                       잠시 후 다시 시도해 주세요.
                     </p>
                   </div>
-                  <Button onClick={() => setListStatus('success')}>다시 시도</Button>
+                  <Button onClick={() => listQuery.refetch()}>다시 시도</Button>
                 </div>
               ) : null}
               {isNoCompaniesAtAll ? (
@@ -364,13 +236,9 @@ export function AdminCompanyManagement({
                   </div>
                 </div>
               ) : null}
-              {listStatus === 'success' && filteredCompanies.length > 0 ? (
+              {listQuery.isSuccess && companies.length > 0 ? (
                 <div className="overflow-hidden rounded-lg bg-white">
-                  <AdminCompanyTable
-                    companies={filteredCompanies}
-                    onDeleteClick={setDeleteTarget}
-                    onEditClick={openEditPanel}
-                  />
+                  <AdminCompanyTable companies={companies} onEditClick={openEditPanel} />
                 </div>
               ) : null}
             </div>
@@ -378,27 +246,41 @@ export function AdminCompanyManagement({
         </div>
       </main>
 
-      <DeleteConfirmDialog
-        company={deleteTarget ?? undefined}
-        isOpen={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={confirmDelete}
-      />
-      {isDeleting ? <DeletingDialog /> : null}
-      {isDeleteForbidden ? (
-        <DeleteForbiddenDialog onClose={() => setIsDeleteForbidden(false)} />
-      ) : null}
-      {deleteResult ? (
-        <DeleteResultDialog result={deleteResult} onClose={() => setDeleteResult(null)} />
-      ) : null}
       <AdminCompanyRegisterPanel
-        key={panelMode === 'edit' ? (editTarget?.id ?? 'edit') : 'create'}
-        isOpen={panelMode !== null}
-        mode={panelMode === 'edit' ? 'edit' : 'create'}
-        initialValues={panelMode === 'edit' ? editInitialValues : undefined}
-        onClose={closePanel}
-        onSubmit={requestSubmitConfirm}
+        isOpen={isCreatePanelOpen}
+        mode="create"
+        onClose={() => setIsCreatePanelOpen(false)}
+        onSubmit={requestSubmitConfirm('register')}
       />
+      {editingCompanyId !== null && editInitialValues ? (
+        <AdminCompanyRegisterPanel
+          key={editingCompanyId}
+          isOpen
+          mode="edit"
+          initialValues={editInitialValues}
+          onClose={closeEditPanel}
+          onSubmit={requestSubmitConfirm('edit', editingCompanyId)}
+        />
+      ) : null}
+      {editingCompanyId !== null && editDetailQuery.isLoading ? (
+        <AdminCompanyStatusDialog
+          icon={<Icon name="spinner" className="text-primary-700 size-16 animate-spin" />}
+          title="기업 정보를 불러오는 중입니다."
+          description="잠시만 기다려 주세요."
+        />
+      ) : null}
+      {editingCompanyId !== null && editDetailQuery.isError ? (
+        <AdminCompanyStatusDialog
+          icon={<Icon name="alertCircleOutline" className="size-16 text-neutral-600" />}
+          title="기업 정보를 불러오지 못했습니다."
+          description="잠시 후 다시 시도해 주세요."
+          actions={
+            <Button className="w-full" onClick={closeEditPanel}>
+              확인
+            </Button>
+          }
+        />
+      ) : null}
       {pendingSubmit ? (
         <RegisterConfirmDialog
           mode={pendingSubmit.mode}
@@ -407,7 +289,8 @@ export function AdminCompanyManagement({
           onConfirm={confirmSubmit}
         />
       ) : null}
-      {submittingMode ? <RegisteringDialog mode={submittingMode} /> : null}
+      {createMutation.isPending ? <RegisteringDialog mode="register" /> : null}
+      {updateMutation.isPending ? <RegisteringDialog mode="edit" /> : null}
       {showRegisterComplete ? (
         <RegisterCompleteDialog onClose={() => setShowRegisterComplete(false)} />
       ) : null}

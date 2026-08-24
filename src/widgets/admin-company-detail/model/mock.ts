@@ -9,7 +9,7 @@ import type {
 export const MOCK_ADMIN_COMPANY_DETAIL: AdminCompanyDetail = {
   id: 'admin-company-1',
   name: '플로우테크',
-  type: 'small',
+  type: 'GENERAL',
   representativeEmail: 'contact@flowtech.co.kr',
   representativePhone: '062-123-4567',
   address: '광주광역시 북구 첨단과기로 123',
@@ -17,7 +17,7 @@ export const MOCK_ADMIN_COMPANY_DETAIL: AdminCompanyDetail = {
   registeredAt: '2025.02.12',
   lastEditedBy: '이름',
   lastEditedAt: '2026.08.05 14:32',
-  mouStatus: 'signed',
+  mouStatus: 'ACTIVE',
   mouPeriod: '2025.03.01 ~ 2027.02.28',
   mouDaysLeft: 570,
   memo: '2026년 산학협력 프로그램 우선 협의 기업입니다. 채용 공고 등록 전 담당 교사 확인이 필요합니다.',

@@ -13,9 +13,9 @@ describe('DuplicateNameDialog', () => {
         attemptedName="플로우테크"
         existingCompany={{
           name: '플로우테크',
-          type: 'small',
+          type: 'GENERAL',
           infoSource: 'direct',
-          mouStatus: 'signed',
+          mouStatus: 'ACTIVE',
           registeredAt: '2025.02.12',
           statusLabel: '활성',
         }}
@@ -28,7 +28,7 @@ describe('DuplicateNameDialog', () => {
     expect(
       screen.getByText('기업명 ‘플로우테크’와 동일한 기업이 이미 등록되어 있습니다.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('중소기업')).toBeInTheDocument();
+    expect(screen.getByText('일반기업')).toBeInTheDocument();
     expect(screen.getByText('활성')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '입력 내용 수정' }));

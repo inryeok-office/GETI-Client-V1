@@ -1,7 +1,26 @@
 export { CompanyCard } from './ui/CompanyCard';
 
-export { companyKeys, useCompanyOptionsQuery } from './api/useCompanyQueries';
-export type { CompanyOption } from './api/companyApi';
+export {
+  createCompany,
+  fetchAllCompanyOptions,
+  fetchCompanyDetail,
+  fetchCompanyList,
+  updateCompany,
+} from './api/companyApi';
+export type {
+  CompanyMutationPayload,
+  CompanyOption,
+  FetchCompanyListParams,
+  UpdateCompanyParams,
+} from './api/companyApi';
+export {
+  companyKeys,
+  useCompanyDetailQuery,
+  useCompanyListQuery,
+  useCompanyOptionsQuery,
+  useCreateCompanyMutation,
+  useUpdateCompanyMutation,
+} from './api/useCompanyQueries';
 
 export {
   ADMIN_COMPANY_JOB_STATUS_LABEL,
@@ -16,6 +35,8 @@ export type {
   AdminCompanyJobConnectionType,
   AdminCompanyJobStatus,
   AdminCompanyListItem,
+  AdminCompanyListResponse,
+  AdminCompanyRecord,
   AdminCompanyStats,
   AdminCompanyType,
   CompanyDetail,

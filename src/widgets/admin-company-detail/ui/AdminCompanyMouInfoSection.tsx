@@ -1,9 +1,10 @@
 import { MOU_STATUS_LABEL, type AdminCompanyDetail, type MouStatus } from '@/entities/company';
 
 const MOU_BADGE_CLASS: Record<MouStatus, string> = {
-  signed: 'bg-[#eaf8f2] text-[#16835f]',
-  unsigned: 'bg-neutral-100 text-neutral-600',
-  expired: 'bg-[#fef2f2] text-status-error',
+  ACTIVE: 'bg-[#eaf8f2] text-[#16835f]',
+  NONE: 'bg-neutral-100 text-neutral-600',
+  EXPIRED: 'bg-[#fef2f2] text-status-error',
+  TERMINATED: 'bg-neutral-100 text-neutral-600',
 };
 
 interface AdminCompanyMouInfoSectionProps {
