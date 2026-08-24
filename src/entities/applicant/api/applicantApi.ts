@@ -10,6 +10,7 @@ import type {
 
 const BASE_PATH = '/api/v1/admin/job-applications';
 const JOBS_BASE_PATH = '/api/v1/admin/jobs';
+const TEACHER_LIST_PATH = '/api/v1/admin/members';
 
 /** `applicantDepartment` 필터 값. 회원 프로필의 department enum과 동일하다. */
 export type ApplicantDepartment = 'SW_DEVELOPMENT' | 'SMART_IOT' | 'AI';
@@ -27,6 +28,8 @@ export interface FetchApplicantListParams {
   mineOnly?: boolean;
   /** GETI-Server-V1 #181. */
   companyId?: number;
+  /** 담당 교사 memberId. `GET /api/v1/admin/members?role=TEACHER`로 채운 드롭다운 값. GETI-Server-V1 #181. */
+  managerMemberId?: number;
   page?: number;
   size?: number;
 }
@@ -137,6 +140,27 @@ export async function fetchAllJobApplicants(jobId: number): Promise<JobApplicant
       applicantName: applicant.applicantName,
     })),
   );
+}
+
+export interface TeacherOption {
+  memberId: number;
+  name: string | null;
+}
+
+interface AdminMemberListResponse {
+  members: TeacherOption[];
+}
+
+/**
+ * 지원자 관리 화면의 "담당자" 드롭다운 선택지. `GET /api/v1/admin/members?role=TEACHER`
+ * (GETI-Server-V1 #182, PR #198)는 ACTIVE 교사를 이름 오름차순으로 이미 정렬해 돌려주고
+ * Pagination이 없어(교사 수가 학교 규모) 한 번만 호출하면 된다.
+ */
+export async function fetchTeacherOptions(): Promise<TeacherOption[]> {
+  const { data } = await api.get<ApiResponse<AdminMemberListResponse>>(TEACHER_LIST_PATH, {
+    params: { role: 'TEACHER' },
+  });
+  return data.data.members;
 }
 
 export interface ExportedFile {

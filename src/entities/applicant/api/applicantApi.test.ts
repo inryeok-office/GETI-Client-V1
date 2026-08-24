@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { exportJobApplications, fetchAllJobApplicants } from './applicantApi';
+import { exportJobApplications, fetchAllJobApplicants, fetchTeacherOptions } from './applicantApi';
 import type { ApplicantListItem, ApplicantListResponse } from '../model/types';
 
 /** `discordDeliveryApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 캡처한다. */
@@ -99,6 +99,49 @@ describe('fetchAllJobApplicants', () => {
       { applicationId: 1, applicantName: '박서준' },
       { applicationId: 2, applicantName: '박보검' },
     ]);
+  });
+});
+
+describe('fetchTeacherOptions', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('role=TEACHER로 GET하고 members 배열을 반환한다', async () => {
+    const stub = stubServer(() => ({
+      success: true,
+      data: {
+        members: [
+          { memberId: 1, name: '강교사' },
+          { memberId: 2, name: '김교사' },
+        ],
+      },
+    }));
+    restore = stub.restore;
+
+    const result = await fetchTeacherOptions();
+
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({
+      url: '/api/v1/admin/members',
+      params: { role: 'TEACHER' },
+    });
+    expect(result).toEqual([
+      { memberId: 1, name: '강교사' },
+      { memberId: 2, name: '김교사' },
+    ]);
+  });
+
+  it('name이 null인 회원도 그대로 전달한다', async () => {
+    const stub = stubServer(() => ({
+      success: true,
+      data: { members: [{ memberId: 3, name: null }] },
+    }));
+    restore = stub.restore;
+
+    const result = await fetchTeacherOptions();
+
+    expect(result).toEqual([{ memberId: 3, name: null }]);
   });
 });
 
