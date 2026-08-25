@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import {
-  useCompanyDetailQuery,
+  useAdminCompanyDetailQuery,
   useCompanyListQuery,
   useCreateCompanyMutation,
   useUpdateCompanyMutation,
@@ -48,9 +48,11 @@ const LIST_SIZE = 100;
  * 어드민 기업 관리 화면. 검색·필터, 목록 표, 등록/수정 패널, 등록·수정 확인/결과 모달을 조합한다.
  * `GET /companies`로 목록을, `POST /admin/companies` · `PATCH /admin/companies/{id}`로
  * 등록·수정을 연동한다(Issue #121).
- * "수정" 클릭 시 목록 응답(`CompanySummaryResponse`)에 없는 필드(설명 · MOU 기간 등)를 채우려고
- * `GET /companies/{id}` 상세를 다시 불러온 뒤에만 패널을 연다 — 목록 값만으로 패널을 열면
- * 기존 MOU 기간 · 설명이 빈 값으로 보여 실수로 지워질 수 있다.
+ * "수정" 클릭 시 목록 응답(`CompanySummaryResponse`)에 없는 필드(설명 · MOU 기간 · 메모 등)를
+ * 채우려고 `GET /admin/companies/{id}` 상세를 다시 불러온 뒤에만 패널을 연다 — 목록 값만으로
+ * 패널을 열면 기존 MOU 기간 · 설명 · 메모가 빈 값으로 보여 저장 시 실수로 지워질 수 있다.
+ * 학생·교사도 볼 수 있는 `GET /companies/{id}`가 아니라 어드민 전용 상세를 쓰는 이유는 메모가
+ * 그 응답에만 있어서다(어드민 기업 상세, Issue #167).
  * 삭제는 서버가 아직 활성 공고 여부를 검증하지 않아(`COMPANY_HAS_ACTIVE_JOBS` 미구현) 이번
  * 범위에서 뺐다 — 백엔드 확인 후 별도로 진행한다.
  */
@@ -72,7 +74,7 @@ export function AdminCompanyManagement() {
   const [showRegisterComplete, setShowRegisterComplete] = useState(false);
   const [showEditComplete, setShowEditComplete] = useState(false);
 
-  const editDetailQuery = useCompanyDetailQuery(editingCompanyId);
+  const editDetailQuery = useAdminCompanyDetailQuery(editingCompanyId);
   const createMutation = useCreateCompanyMutation();
   const updateMutation = useUpdateCompanyMutation();
 
@@ -109,6 +111,7 @@ export function AdminCompanyManagement() {
       description: submission.values.description || null,
       mouStartDate: submission.values.mouStartDate || null,
       mouEndDate: submission.values.mouEndDate || null,
+      memo: submission.values.memo || null,
     };
 
     if (submission.mode === 'register') {
@@ -142,6 +145,7 @@ export function AdminCompanyManagement() {
         mouStartDate: editRecord.mouStartDate ?? '',
         mouEndDate: editRecord.mouEndDate ?? '',
         description: editRecord.description ?? '',
+        memo: editRecord.memo ?? '',
       }
     : undefined;
 

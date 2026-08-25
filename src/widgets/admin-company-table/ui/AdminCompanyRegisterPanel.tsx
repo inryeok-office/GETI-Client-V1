@@ -18,6 +18,7 @@ export interface AdminCompanyRegisterFormValues {
   /** `yyyy-MM-dd`. */
   mouEndDate: string;
   description: string;
+  memo: string;
 }
 
 export interface AdminCompanyEditInitialValues {
@@ -27,6 +28,7 @@ export interface AdminCompanyEditInitialValues {
   mouStartDate: string;
   mouEndDate: string;
   description: string;
+  memo: string;
 }
 
 interface AdminCompanyRegisterPanelProps {
@@ -57,7 +59,9 @@ const INPUT_CLASS_NAME =
  * "수정" 모드는 같은 패널 컴포넌트를 재사용하되 제목·버튼 문구만 바꾼다(Figma 933:16623).
  * "정보 출처" 선택은 뺐다 — 서버 `sourceName`은 자유 텍스트라 direct/external 개념이 없고,
  * 이 화면은 관리자가 직접 등록하는 경로라 항상 `sourceName: "manual"`로 보낸다(Issue #121).
- * "관리 메모" 입력란도 뺐다 — Company 엔티티에 memo 필드가 없어 저장할 곳이 없다.
+ * "관리 메모"는 어드민 기업 상세(#113)의 "관련 메모" 섹션 편집에도 이 패널을 그대로 재사용하기
+ * 위해 추가했다 — `CompanyCreateRequest`/`CompanyUpdateRequest`에 `memo` 필드가 생겨 저장할 곳이
+ * 생겼다(GETI-Server-V1 #205 Decision Audit → PR #210, Issue #167).
  * 간격 · 색상은 Figma(기업 등록 패널 869:33869)의 값을 그대로 옮겼다.
  */
 export function AdminCompanyRegisterPanel({
@@ -73,6 +77,7 @@ export function AdminCompanyRegisterPanel({
   const [mouStartDate, setMouStartDate] = useState(initialValues?.mouStartDate ?? '');
   const [mouEndDate, setMouEndDate] = useState(initialValues?.mouEndDate ?? '');
   const [description, setDescription] = useState(initialValues?.description ?? '');
+  const [memo, setMemo] = useState(initialValues?.memo ?? '');
 
   if (!isOpen) return null;
 
@@ -95,6 +100,7 @@ export function AdminCompanyRegisterPanel({
       mouStartDate,
       mouEndDate,
       description,
+      memo,
     });
   };
 
@@ -220,6 +226,19 @@ export function AdminCompanyRegisterPanel({
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="기업 설명을 입력해 주세요."
                 className={`mt-2 ${INPUT_CLASS_NAME}`}
+              />
+            </div>
+
+            <div>
+              <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+                관리 메모
+              </p>
+              <textarea
+                value={memo}
+                onChange={(event) => setMemo(event.target.value)}
+                placeholder="관리자만 볼 수 있는 메모를 입력해 주세요."
+                rows={4}
+                className={`mt-2 resize-none ${INPUT_CLASS_NAME}`}
               />
             </div>
           </div>
