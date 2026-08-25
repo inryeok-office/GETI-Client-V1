@@ -4,8 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-import { MOCK_NOTIFICATIONS } from '@/entities/notification';
-import { NotificationPanel } from '@/features/notification-panel';
+import { useUnreadNotificationCountQuery } from '@/entities/notification';
+import { NotificationPanelContainer } from '@/features/notification-panel';
 import { Icon } from '@/shared/ui/icon';
 
 const NAV_ITEMS = [
@@ -64,6 +64,12 @@ function usePopoverOpenState() {
 export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
   const { isOpen: isNotificationOpen, popoverRef: notificationPopoverRef } = usePopoverOpenState();
   const { isOpen: isProfileMenuOpen, popoverRef: profilePopoverRef } = usePopoverOpenState();
+  const unreadNotificationCountQuery = useUnreadNotificationCountQuery();
+  const unreadNotificationCount = unreadNotificationCountQuery.data?.unreadCount ?? 0;
+  const unreadNotificationLabel =
+    unreadNotificationCount > 99 ? '99+' : String(unreadNotificationCount);
+  const notificationButtonLabel =
+    unreadNotificationCount > 0 ? `알림, 읽지 않은 알림 ${unreadNotificationCount}개` : '알림';
 
   function closeProfileMenu() {
     profilePopoverRef.current?.hidePopover?.();
@@ -122,10 +128,18 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
             popoverTarget={STUDENT_NOTIFICATION_POPOVER_ID}
             aria-controls={STUDENT_NOTIFICATION_POPOVER_ID}
             aria-expanded={isNotificationOpen}
-            aria-label="알림"
-            className={`flex size-[40px] items-center justify-center rounded-[9px] text-[#525252] ${isNotificationOpen ? 'bg-[#f5f5f5]' : 'bg-white'}`}
+            aria-label={notificationButtonLabel}
+            className={`relative flex size-[40px] items-center justify-center rounded-[9px] text-[#525252] ${isNotificationOpen ? 'bg-[#f5f5f5]' : 'bg-white'}`}
           >
             <Icon name="bell" className="size-[19px]" />
+            {unreadNotificationCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="absolute top-[2px] right-[1px] flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#ef4444] px-[4px] text-[10px] leading-none font-semibold text-white"
+              >
+                {unreadNotificationLabel}
+              </span>
+            ) : null}
           </button>
           <button
             type="button"
@@ -150,7 +164,7 @@ export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
         popover="auto"
         className="inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2-56px))] z-50 m-0 w-[420px] max-w-[calc(100vw-32px)] overflow-visible border-0 bg-transparent p-0"
       >
-        <NotificationPanel notifications={MOCK_NOTIFICATIONS} />
+        {isNotificationOpen ? <NotificationPanelContainer isOpen /> : null}
       </div>
       <div
         ref={profilePopoverRef}

@@ -1,7 +1,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SiteHeader } from './SiteHeader';
+
+vi.mock('@/entities/notification', () => ({
+  useUnreadNotificationCountQuery: () => ({ data: { unreadCount: 3 } }),
+}));
+
+vi.mock('@/features/notification-panel', () => ({
+  NotificationPanelContainer: ({ isOpen }: { isOpen: boolean }) => (
+    <div data-testid="notification-panel" data-open={isOpen} />
+  ),
+}));
 
 describe('SiteHeader', () => {
   it('구현된 일반 사용자 화면으로 이동하는 링크를 제공한다', () => {
@@ -34,10 +44,11 @@ describe('SiteHeader', () => {
       'href',
       '/bookmarks',
     );
-    expect(screen.getByRole('button', { name: '알림' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '알림, 읽지 않은 알림 3개' })).toHaveAttribute(
       'popovertarget',
       'student-notification-panel',
     );
+    expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '사용자 메뉴' })).toHaveAttribute(
       'popovertarget',
       'student-profile-menu',
@@ -56,7 +67,9 @@ describe('SiteHeader', () => {
   it('알림 버튼을 누르면 팝오버의 확장 상태를 반영한다', () => {
     render(<SiteHeader />);
 
-    const notificationButton = screen.getByRole('button', { name: '알림' });
+    const notificationButton = screen.getByRole('button', {
+      name: '알림, 읽지 않은 알림 3개',
+    });
     const notificationPopover = document.getElementById('student-notification-panel');
     if (!notificationPopover) throw new Error('알림 팝오버를 찾을 수 없습니다.');
 

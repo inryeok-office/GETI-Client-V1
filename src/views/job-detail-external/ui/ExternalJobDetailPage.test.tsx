@@ -27,6 +27,10 @@ vi.mock('@/entities/job', async () => {
   return { ...actual, useJobDetailQuery: mockUseJobDetailQuery };
 });
 
+vi.mock('@/widgets/site-header', () => ({
+  SiteHeader: () => <div data-testid="site-header" />,
+}));
+
 const BASE_JOB: JobDetail = {
   jobId: 1,
   title: '백엔드 개발 인턴',

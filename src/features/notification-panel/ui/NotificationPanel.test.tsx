@@ -7,20 +7,24 @@ import { NotificationPanel } from './NotificationPanel';
 
 const NOTIFICATIONS: Notification[] = [
   {
-    notificationId: '1',
+    notificationId: 1,
     title: '지원서 수정 요청이 도착했습니다.',
     content: '제출한 지원서를 확인해 주세요.',
     relativeTime: '10분 전',
     isRead: false,
     targetStatus: 'AVAILABLE',
+    targetType: 'JOB_APPLICATION',
+    deepLink: '/applications/1',
   },
   {
-    notificationId: '2',
+    notificationId: 2,
     title: '삭제된 공고 알림입니다.',
     content: '공고를 확인해 주세요.',
     relativeTime: '어제',
     isRead: true,
     targetStatus: 'DELETED',
+    targetType: 'JOB',
+    deepLink: null,
   },
 ];
 
