@@ -1,0 +1,212 @@
+'use client';
+
+import Image from 'next/image';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+
+import { useUnreadNotificationCountQuery } from '@/entities/notification';
+import { NotificationPanelContainer } from '@/features/notification-panel';
+import { Icon } from '@/shared/ui/icon';
+
+const NAV_ITEMS = [
+  { href: '/jobs', label: '채용 공고' },
+  { href: '/companies', label: '기업 정보' },
+  { href: '/recommendations', label: 'AI 추천' },
+  { href: '/programs', label: '취업 프로그램' },
+  { href: '/portfolios', label: '포트폴리오' },
+] as const;
+
+const PROFILE_MENU_ITEMS = [
+  { href: '/profile', label: '내 프로필' },
+  { href: '/applications', label: '내 지원 내역' },
+  { href: '/students', label: '다른 학생 찾아보기' },
+  { href: '/inquiries', label: '문의' },
+] as const;
+
+type SiteNavLabel = (typeof NAV_ITEMS)[number]['label'];
+
+interface SiteHeaderProps {
+  activeNav?: SiteNavLabel | null;
+}
+
+const STUDENT_NOTIFICATION_POPOVER_ID = 'student-notification-panel';
+const STUDENT_PROFILE_POPOVER_ID = 'student-profile-menu';
+
+interface PopoverToggleEvent extends Event {
+  newState: 'closed' | 'open';
+}
+
+function usePopoverOpenState() {
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const popover = popoverRef.current;
+    if (!popover) return;
+
+    const handleToggle = (event: Event) => {
+      setIsOpen((event as PopoverToggleEvent).newState === 'open');
+    };
+
+    popover.addEventListener('toggle', handleToggle);
+    return () => popover.removeEventListener('toggle', handleToggle);
+  }, []);
+
+  return { isOpen, popoverRef };
+}
+
+/**
+ * 전 화면 공통 상단 내비게이션. 여러 도메인의 라우팅 링크를 모아둔 앱 전역 UI 블록이다.
+ * 구현된 화면은 링크로 연결하고, 아직 대상 라우트가 없는 메뉴는 비활성 상태로 표시한다.
+ * 디자인 단계라 로그인 사용자 정보 · 알림 개수는 목업 값을 쓴다.
+ * 간격 · 색상은 Figma(node 500:1509)의 헤더 값을 그대로 옮겼다.
+ */
+export function SiteHeader({ activeNav = null }: SiteHeaderProps) {
+  const { isOpen: isNotificationOpen, popoverRef: notificationPopoverRef } = usePopoverOpenState();
+  const { isOpen: isProfileMenuOpen, popoverRef: profilePopoverRef } = usePopoverOpenState();
+  const unreadNotificationCountQuery = useUnreadNotificationCountQuery();
+  const unreadNotificationCount = unreadNotificationCountQuery.data?.unreadCount ?? 0;
+  const unreadNotificationLabel =
+    unreadNotificationCount > 99 ? '99+' : String(unreadNotificationCount);
+  const notificationButtonLabel =
+    unreadNotificationCount > 0 ? `알림, 읽지 않은 알림 ${unreadNotificationCount}개` : '알림';
+
+  function closeProfileMenu() {
+    profilePopoverRef.current?.hidePopover?.();
+  }
+
+  return (
+    <header className="border-b border-[#e5e5e5] bg-white">
+      <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-4">
+        <div className="flex items-center gap-[48px]">
+          <Link
+            href="/"
+            aria-label="GETI 홈"
+            className="relative size-[56px] shrink-0 overflow-hidden"
+          >
+            <Image
+              src="/geti-logo.png"
+              alt="GETI"
+              width={82}
+              height={82}
+              className="absolute top-[-22.73%] left-[-22.73%] max-w-none"
+            />
+          </Link>
+          <nav aria-label="주요 메뉴" className="flex items-center gap-[32px]">
+            {NAV_ITEMS.map(({ href, label }) => {
+              const className =
+                'text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]';
+
+              return href ? (
+                <Link
+                  key={label}
+                  href={href}
+                  aria-current={label === activeNav ? 'page' : undefined}
+                  className={className}
+                >
+                  {label}
+                </Link>
+              ) : (
+                <span key={label} aria-disabled="true" className={className}>
+                  {label}
+                </span>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-[8px]">
+          <Link
+            href="/bookmarks"
+            aria-label="저장한 공고 보기"
+            className="flex size-[40px] items-center justify-center rounded-[9px] text-[#525252]"
+          >
+            <Icon name="savedJobs" className="size-[19px]" />
+          </Link>
+          <button
+            type="button"
+            popoverTarget={STUDENT_NOTIFICATION_POPOVER_ID}
+            aria-controls={STUDENT_NOTIFICATION_POPOVER_ID}
+            aria-expanded={isNotificationOpen}
+            aria-label={notificationButtonLabel}
+            className={`relative flex size-[40px] items-center justify-center rounded-[9px] text-[#525252] ${isNotificationOpen ? 'bg-[#f5f5f5]' : 'bg-white'}`}
+          >
+            <Icon name="bell" className="size-[19px]" />
+            {unreadNotificationCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="absolute top-[2px] right-[1px] flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#ef4444] px-[4px] text-[10px] leading-none font-semibold text-white"
+              >
+                {unreadNotificationLabel}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            popoverTarget={STUDENT_PROFILE_POPOVER_ID}
+            aria-controls={STUDENT_PROFILE_POPOVER_ID}
+            aria-expanded={isProfileMenuOpen}
+            aria-label="사용자 메뉴"
+            className={`flex items-center gap-[10px] rounded-[8px] p-[8px] ${isProfileMenuOpen ? 'bg-neutral-100' : 'bg-white'}`}
+          >
+            <span className="size-[34px] rounded-full bg-neutral-100" aria-hidden="true" />
+            <span className="text-label text-neutral-600">이름</span>
+            <Icon
+              name="chevronDown"
+              className={`h-[8px] w-[16px] text-neutral-600 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={notificationPopoverRef}
+        id={STUDENT_NOTIFICATION_POPOVER_ID}
+        popover="auto"
+        className="inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2-56px))] z-50 m-0 w-[420px] max-w-[calc(100vw-32px)] overflow-visible border-0 bg-transparent p-0"
+      >
+        {isNotificationOpen ? <NotificationPanelContainer isOpen /> : null}
+      </div>
+      <div
+        ref={profilePopoverRef}
+        id={STUDENT_PROFILE_POPOVER_ID}
+        popover="auto"
+        aria-label="사용자 메뉴"
+        className="bg-neutral-0 shadow-subtle inset-auto top-[72px] right-[max(16px,calc((100%-1280px)/2))] z-50 m-0 w-[284px] rounded-[12px] border border-neutral-200 p-[17px]"
+      >
+        <div className="flex items-center gap-[12px] pt-[4px] pb-[16px]">
+          <span className="size-[44px] shrink-0 rounded-full bg-neutral-100" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-[16px] leading-[1.4] font-medium tracking-[-0.16px] text-neutral-900">
+              이름
+            </p>
+            <p className="text-body truncate text-[#495057]">s0000@gsm.hs.kr</p>
+          </div>
+        </div>
+
+        <nav aria-label="사용자 계정 메뉴" className="border-y border-neutral-200 py-[8px]">
+          {PROFILE_MENU_ITEMS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={closeProfileMenu}
+              className="text-body flex min-h-[45px] items-center rounded-[8px] p-[12px] text-neutral-900 hover:bg-neutral-50 focus-visible:bg-neutral-50 focus-visible:outline-none"
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="pt-[8px]">
+          <button
+            type="button"
+            disabled
+            aria-label="로그아웃 (인증 연동 예정)"
+            className="text-body text-status-error flex min-h-[45px] w-full items-center rounded-[8px] p-[12px] text-left"
+          >
+            로그아웃
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,514 @@
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import {
+  APPLICANT_STATUS_LABEL,
+  useApplicantDetailQuery,
+  useApplicantListQuery,
+  type ApplicantDepartment,
+  type ApplicantStatus,
+} from '@/entities/applicant';
+import { Icon } from '@/shared/ui/icon';
+import { PageState } from '@/shared/ui/page-state';
+
+import { ApplicantDetailPanel } from './ApplicantDetailPanel';
+import { ApplicantFilterBar } from './ApplicantFilterBar';
+import { ApplicantTable } from './ApplicantTable';
+import { DownloadModal } from './DownloadModal';
+
+/**
+ * 목록 화면(`/admin/applicants`)과 상세 화면(`/admin/applicants/[applicantId]`) 둘 다
+ * Server Component(`app/(admin)/admin/applicants/**\/page.tsx`)가 넘겨주는 초기 URL
+ * 쿼리스트링. `views/job-list`의 `JobListSearchParams`와 같은 패턴이다.
+ */
+export interface AdminApplicantSearchParams {
+  q?: string;
+  page?: string;
+  scope?: string;
+  jobId?: string;
+  status?: string;
+  cohort?: string;
+  department?: string;
+  companyId?: string;
+  managerMemberId?: string;
+}
+
+interface AdminApplicantPageProps {
+  /** /admin/applicants/[applicantId]로 들어왔을 때 그 id가 있으면 상세 패널을 목록 위에 띄운다. */
+  applicantId?: string;
+  /** ?variant=download일 때 자료 일괄 다운로드 모달을 띄운다. */
+  variant?: 'download';
+  initialSearchParams?: AdminApplicantSearchParams;
+}
+
+type ApplicantScope = 'mine' | 'all';
+
+const SCOPE_TABS: { value: ApplicantScope; label: string }[] = [
+  { value: 'mine', label: '담당 공고' },
+  { value: 'all', label: '전체보기' },
+];
+
+const PAGE_SIZE = 20;
+/** 검색어 입력마다 요청을 보내지 않도록 두는 최소한의 디바운스(ms). widgets/job-list와 동일한 값. */
+const SEARCH_DEBOUNCE_MS = 300;
+
+const VALID_DEPARTMENTS: ApplicantDepartment[] = ['SW_DEVELOPMENT', 'SMART_IOT', 'AI'];
+
+function parseJobId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function parseStatus(value?: string): ApplicantStatus | null {
+  return value !== undefined && value in APPLICANT_STATUS_LABEL ? (value as ApplicantStatus) : null;
+}
+
+function parseCohort(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseDepartment(value?: string): ApplicantDepartment | null {
+  return VALID_DEPARTMENTS.includes(value as ApplicantDepartment)
+    ? (value as ApplicantDepartment)
+    : null;
+}
+
+function parseCompanyId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function parseManagerMemberId(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+interface FilterState {
+  searchQuery: string;
+  scope: ApplicantScope;
+  jobIdFilter: number | null;
+  statusFilter: ApplicantStatus | null;
+  cohortFilter: number | null;
+  departmentFilter: ApplicantDepartment | null;
+  companyIdFilter: number | null;
+  managerMemberIdFilter: number | null;
+  page: number;
+}
+
+/**
+ * 현재 검색 · 필터 · 담당 범위 · 페이지를 쿼리스트링으로 만든다. URL 동기화 effect와 "상세
+ * 보기" 링크(`ApplicantTable`) · 다운로드 모달 진입 링크가 모두 이 함수를 공유해, 조회
+ * 조건이 화면 전환 후에도 유지된다(PR #136 코드리뷰 반영 — `ApplicantTable`의 상세 링크가
+ * 쿼리스트링을 안 붙여 상세 화면 진입 시 필터가 풀리던 문제).
+ */
+function buildFilterSearchParams({
+  searchQuery,
+  scope,
+  jobIdFilter,
+  statusFilter,
+  cohortFilter,
+  departmentFilter,
+  companyIdFilter,
+  managerMemberIdFilter,
+  page,
+}: FilterState): URLSearchParams {
+  const params = new URLSearchParams();
+  if (searchQuery) params.set('q', searchQuery);
+  if (scope === 'all') params.set('scope', 'all');
+  if (jobIdFilter !== null) params.set('jobId', String(jobIdFilter));
+  if (statusFilter !== null) params.set('status', statusFilter);
+  if (cohortFilter !== null) params.set('cohort', String(cohortFilter));
+  if (departmentFilter !== null) params.set('department', departmentFilter);
+  if (companyIdFilter !== null) params.set('companyId', String(companyIdFilter));
+  if (managerMemberIdFilter !== null) params.set('managerMemberId', String(managerMemberIdFilter));
+  if (page > 0) params.set('page', String(page + 1));
+  return params;
+}
+
+/**
+ * 지원자 관리 화면. 헤더 + 타이틀 + 필터 바(`ApplicantFilterBar`) + 지원자 테이블(`ApplicantTable`) +
+ * 상세 패널(`ApplicantDetailPanel`) + 자료 일괄 다운로드 모달(`DownloadModal`)을 조합한다.
+ * `GET /admin/job-applications`로 목록을, `applicantId`가 있으면 `GET /admin/job-applications/{id}`로
+ * 상세를 함께 불러온다(entities/applicant의 TanStack Query 훅).
+ * "담당 공고 / 전체보기" 탭은 GETI-Server-V1 #181로 추가된 `mineOnly` 쿼리 파라미터에 연결된다
+ * (서버가 Authentication Principal 기준으로 스코프를 계산한다 — 이전에는 `GET /me/profile`
+ * 비교 + 100건 상한 우회로 클라이언트에서 직접 걸렀다, Issue #135).
+ * `ApplicantFilterBar`의 검색창 · 기수 · 학과 · 기업 · 공고 · 담당자 · 상태는 각각
+ * `applicantName`(디바운스) · `cohort` · `department` · `companyId` · `jobId` ·
+ * `managerMemberId` · `status` 파라미터에 실제로 연결돼 있다(기업 목록은 `entities/company`의
+ * `useCompanyOptionsQuery`, Issue #137; 담당자 목록은 `entities/applicant`의
+ * `useTeacherOptionsQuery`, Issue #161).
+ * 검색 · 필터 · 담당 범위 · 페이지는 `JobListPage`와 동일하게 URL 쿼리스트링과 동기화한다 —
+ * 최초 값은 Server Component가 넘겨준 `initialSearchParams`에서 복원하고, 변경 시
+ * `router.replace`로 반영한다(새로고침 · 뒤로가기에도 조회 조건이 유지된다, PR #136 코드리뷰 반영).
+ * 간격 · 색상은 Figma(node 586:15965)의 값을 그대로 옮겼다. 담당 공고 탭 · 페이지네이션은
+ * Figma에 없어 기존 어드민 탭(예: 교직원 가입 관리) 스타일을 따랐다.
+ */
+export function AdminApplicantPage({
+  applicantId,
+  variant,
+  initialSearchParams,
+}: AdminApplicantPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [scope, setScope] = useState<ApplicantScope>(() =>
+    initialSearchParams?.scope === 'all' ? 'all' : 'mine',
+  );
+  const [page, setPage] = useState(() => {
+    const raw = Number(initialSearchParams?.page);
+    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+  });
+  const [jobIdFilter, setJobIdFilter] = useState<number | null>(() =>
+    parseJobId(initialSearchParams?.jobId),
+  );
+  const [statusFilter, setStatusFilter] = useState<ApplicantStatus | null>(() =>
+    parseStatus(initialSearchParams?.status),
+  );
+  const [cohortFilter, setCohortFilter] = useState<number | null>(() =>
+    parseCohort(initialSearchParams?.cohort),
+  );
+  const [departmentFilter, setDepartmentFilter] = useState<ApplicantDepartment | null>(() =>
+    parseDepartment(initialSearchParams?.department),
+  );
+  const [companyIdFilter, setCompanyIdFilter] = useState<number | null>(() =>
+    parseCompanyId(initialSearchParams?.companyId),
+  );
+  const [managerMemberIdFilter, setManagerMemberIdFilter] = useState<number | null>(() =>
+    parseManagerMemberId(initialSearchParams?.managerMemberId),
+  );
+  const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
+  const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
+
+  /**
+   * JobListPage와 동일한 디바운스 effect. 페이지 초기화는 여기가 아니라 실제 입력 이벤트
+   * (`handleSearchInputChange`)에서 동기로 처리한다 — 이 effect는 디바운스된 searchQuery
+   * 커밋만 담당해 React Strict Mode의 이중 실행에도 안전하다(JobListPage 주석 참고).
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  /** "상세 보기" 링크(`ApplicantTable`)에 이어 붙일 쿼리스트링. `variant`는 포함하지 않는다. */
+  const filterQueryString = buildFilterSearchParams({
+    searchQuery,
+    scope,
+    jobIdFilter,
+    statusFilter,
+    cohortFilter,
+    departmentFilter,
+    companyIdFilter,
+    managerMemberIdFilter,
+    page,
+  }).toString();
+
+  /** 검색 · 필터 · 담당 범위 · 페이지가 바뀔 때마다 URL 쿼리스트링을 갱신한다. */
+  useEffect(() => {
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      companyIdFilter,
+      managerMemberIdFilter,
+      page,
+    });
+    if (variant === 'download') params.set('variant', 'download');
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [
+    searchQuery,
+    scope,
+    jobIdFilter,
+    statusFilter,
+    cohortFilter,
+    departmentFilter,
+    companyIdFilter,
+    managerMemberIdFilter,
+    page,
+    variant,
+    pathname,
+    router,
+  ]);
+
+  /**
+   * 다운로드 모달 열기. 필터가 걸려 있어도 그대로 유지한 채 이동한다(PR #136 코드리뷰 반영 —
+   * 이전엔 `/admin/applicants?variant=download`로 하드코딩해 필터가 순간적으로 사라졌었다).
+   * 모달은 상세 화면이 아니라 항상 목록 경로에서 여는 게 의도라 `pathname` 대신 목록 경로를
+   * 고정으로 쓴다.
+   */
+  function openDownloadModal() {
+    const params = buildFilterSearchParams({
+      searchQuery,
+      scope,
+      jobIdFilter,
+      statusFilter,
+      cohortFilter,
+      departmentFilter,
+      companyIdFilter,
+      managerMemberIdFilter,
+      page,
+    });
+    params.set('variant', 'download');
+    router.push(`/admin/applicants?${params.toString()}`);
+  }
+
+  const listQuery = useApplicantListQuery({
+    page,
+    size: PAGE_SIZE,
+    jobId: jobIdFilter ?? undefined,
+    status: statusFilter ?? undefined,
+    cohort: cohortFilter ?? undefined,
+    department: departmentFilter ?? undefined,
+    companyId: companyIdFilter ?? undefined,
+    managerMemberId: managerMemberIdFilter ?? undefined,
+    applicantName: searchQuery.trim() || undefined,
+    mineOnly: scope === 'mine',
+  });
+
+  /**
+   * "공고" 필터 드롭다운 선택지. 지금 불러온 목록(`listQuery.data.content`)에 실제로 등장하는
+   * 공고만 보여준다 — 공고로 필터를 걸면 선택지도 그 공고 하나로 좁아진다("전체"를 다시 고르면
+   * 필터가 풀리고 원래 목록에 있던 다른 공고들이 다시 보인다).
+   */
+  const jobOptionMap = new Map<number, string>();
+  for (const applicant of listQuery.data?.content ?? []) {
+    if (applicant.jobTitle) jobOptionMap.set(applicant.jobId, applicant.jobTitle);
+  }
+  const jobOptions = Array.from(jobOptionMap, ([jobId, title]) => ({ jobId, title }));
+  const parsedApplicantId = applicantId ? Number(applicantId) : NaN;
+  const detailApplicationId = Number.isInteger(parsedApplicantId) ? parsedApplicantId : null;
+  const detailQuery = useApplicantDetailQuery(detailApplicationId);
+  const isDownloadModalOpen = variant === 'download';
+
+  const applicants = listQuery.data?.content ?? [];
+  const totalCount = listQuery.data?.totalElements ?? 0;
+  const isListLoading = listQuery.isLoading;
+  const isListError = listQuery.isError;
+  /**
+   * "담당 공고" 탭의 빈 상태 문구는 아무 검색·필터도 없을 때만 쓴다. 검색어나 기수 · 학과 ·
+   * 공고 · 상태 필터가 걸려 있는데 결과가 0건이면, 담당 지원자가 아예 없는 게 아니라 그
+   * 조건에 맞는 사람이 없는 것뿐이라 "전체보기"와 같은 문구를 보여준다(PR #136 코드리뷰 반영).
+   */
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    jobIdFilter !== null ||
+    statusFilter !== null ||
+    cohortFilter !== null ||
+    departmentFilter !== null ||
+    companyIdFilter !== null ||
+    managerMemberIdFilter !== null,
+  );
+
+  function selectScope(nextScope: ApplicantScope) {
+    setScope(nextScope);
+    setPage(0);
+  }
+
+  function selectJobFilter(jobId: number | null) {
+    setJobIdFilter(jobId);
+    setPage(0);
+  }
+
+  function selectStatusFilter(status: ApplicantStatus | null) {
+    setStatusFilter(status);
+    setPage(0);
+  }
+
+  function selectCohortFilter(cohort: number | null) {
+    setCohortFilter(cohort);
+    setPage(0);
+  }
+
+  function selectDepartmentFilter(department: ApplicantDepartment | null) {
+    setDepartmentFilter(department);
+    setPage(0);
+  }
+
+  function selectCompanyFilter(companyId: number | null) {
+    setCompanyIdFilter(companyId);
+    setPage(0);
+  }
+
+  function selectManagerFilter(managerMemberId: number | null) {
+    setManagerMemberIdFilter(managerMemberId);
+    setPage(0);
+  }
+
+  function handleSearchInputChange(value: string) {
+    setSearchInput(value);
+    setPage(0);
+  }
+
+  return (
+    <div className="bg-neutral-50">
+      <header className="flex h-[80px] items-center justify-between border-b border-neutral-200 bg-white px-[40px]">
+        <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">지원자 관리</p>
+        <div className="flex items-center gap-[12px]">
+          <span className="bg-primary-100 size-[32px] rounded-full" />
+          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-600">
+            개발자 · 외 1개
+          </p>
+          <Icon name="chevronRight" className="h-[12px] w-[24px] rotate-90 text-neutral-600" />
+        </div>
+      </header>
+
+      <main className="flex flex-col gap-[24px] px-[40px] py-[40px]">
+        <div className="flex flex-col gap-[32px]">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-[8px]">
+              <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-neutral-900">
+                지원자 관리
+              </h1>
+              <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-700">
+                공고별 지원자를 조회하고 검토 상태를 관리합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openDownloadModal}
+              className="bg-primary-700 flex h-[56px] items-center justify-center rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none"
+            >
+              자료 일괄 다운로드
+            </button>
+          </div>
+
+          <ApplicantFilterBar
+            searchValue={searchInput}
+            onSearchChange={handleSearchInputChange}
+            selectedCohort={cohortFilter}
+            onCohortChange={selectCohortFilter}
+            selectedDepartment={departmentFilter}
+            onDepartmentChange={selectDepartmentFilter}
+            selectedCompanyId={companyIdFilter}
+            onCompanyChange={selectCompanyFilter}
+            jobOptions={jobOptions}
+            selectedJobId={jobIdFilter}
+            onJobChange={selectJobFilter}
+            selectedManagerMemberId={managerMemberIdFilter}
+            onManagerChange={selectManagerFilter}
+            selectedStatus={statusFilter}
+            onStatusChange={selectStatusFilter}
+          />
+        </div>
+
+        <div className="flex border-b border-neutral-200">
+          {SCOPE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => selectScope(tab.value)}
+              className={`border-b-2 px-[16px] py-[12px] text-[16px] leading-[1.6] tracking-[-0.16px] focus:outline-none ${
+                scope === tab.value
+                  ? 'border-primary-700 text-primary-700 font-semibold'
+                  : 'border-transparent text-neutral-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {isListLoading ? (
+          <div className="min-h-[420px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="loading"
+              title="지원자 목록을 불러오는 중입니다."
+              description="잠시만 기다려 주세요."
+            />
+          </div>
+        ) : isListError ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-[16px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="error"
+              title="지원자 목록을 불러오지 못했습니다."
+              description="잠시 후 다시 시도해 주세요."
+            />
+            <button
+              type="button"
+              onClick={() => listQuery.refetch()}
+              className="bg-primary-700 rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : applicants.length === 0 ? (
+          <div className="min-h-[420px] rounded-[16px] border border-neutral-200 bg-white">
+            <PageState
+              variant="empty"
+              title="등록된 지원자가 없습니다."
+              description={
+                scope === 'mine' && !hasActiveFilters
+                  ? '내가 담당하는 공고에 지원한 학생이 아직 없습니다.'
+                  : '조건에 맞는 지원자가 아직 없습니다.'
+              }
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[24px]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
+              총 {totalCount}명
+            </p>
+
+            <ApplicantTable applicants={applicants} queryString={filterQueryString} />
+
+            {listQuery.data && listQuery.data.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-[12px]">
+                <button
+                  type="button"
+                  disabled={listQuery.data.first}
+                  onClick={() => setPage((current) => current - 1)}
+                  className="rounded-[8px] border border-neutral-200 px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+                >
+                  이전
+                </button>
+                <p className="text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700">
+                  {page + 1} / {listQuery.data.totalPages}
+                </p>
+                <button
+                  type="button"
+                  disabled={listQuery.data.last}
+                  onClick={() => setPage((current) => current + 1)}
+                  className="rounded-[8px] border border-neutral-200 px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+                >
+                  다음
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {applicantId && (
+        <div className="fixed inset-0 z-40 flex">
+          <div className="ml-[220px] flex-1 bg-black/24" />
+          {detailQuery.isLoading ? (
+            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 items-center justify-center bg-white">
+              <Icon name="spinner" className="size-[48px] animate-spin text-neutral-600" />
+            </div>
+          ) : detailQuery.isError || !detailQuery.data ? (
+            <div className="flex w-[720px] max-w-[calc(100vw-220px)] shrink-0 items-center justify-center bg-white">
+              <PageState
+                variant="error"
+                title="지원자 상세 정보를 불러오지 못했습니다."
+                description="잠시 후 다시 시도해 주세요."
+              />
+            </div>
+          ) : (
+            <ApplicantDetailPanel detail={detailQuery.data} />
+          )}
+        </div>
+      )}
+
+      {isDownloadModalOpen && <DownloadModal />}
+    </div>
+  );
+}

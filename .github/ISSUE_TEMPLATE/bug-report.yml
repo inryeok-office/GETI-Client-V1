@@ -1,0 +1,79 @@
+name: "🐛 Bug Report"
+description: "버그를 발견했을 때 사용합니다."
+title: "[BUG] "
+labels:
+  - "🐛 bug"
+  - "📝 ready"
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 설명
+      description: 어떤 버그인지 명확하고 간결하게 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: 재현 절차
+      description: 버그를 재현하는 단계를 순서대로 작성해 주세요.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 기대 동작
+      description: 원래 어떻게 동작해야 하는지 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: 실제 동작
+      description: 실제로 어떻게 동작했는지 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 영향 범위
+      description: 영향을 받는 페이지, 컴포넌트, FSD 슬라이스 등을 작성해 주세요.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 실행 환경
+      description: |
+        재현에 필요한 환경 정보를 작성해 주세요.
+        예: OS, 브라우저와 버전, 화면 크기(데스크톱/모바일), Node 버전, 브랜치/커밋
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 또는 스크린샷
+      description: |
+        콘솔 에러, 네트워크 응답, 스크린샷/GIF를 첨부해 주세요.
+        Secret, Token, Password 등 민감 정보는 절대 포함하지 마세요.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 추가 정보
+      description: 그 외 참고할 내용이 있다면 작성해 주세요.
+    validations:
+      required: false
