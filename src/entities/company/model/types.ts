@@ -139,3 +139,54 @@ export interface AdminCompanyAuditLogEntry {
   /** 예: "2026.08.05 14:32 · 이름". */
   actedAtWithActor: string;
 }
+
+/**
+ * `GET /api/v1/admin/companies/{id}` 응답(`AdminCompanyDetailResponse`)과 동일하다.
+ * 연락처 · 메모 · 통계 · 연결된 공고 · 감사 로그까지 포함해 목록·학생용 상세보다 필드가 많다
+ * (Issue #167, GETI-Server-V1 #205 Decision Audit → PR #210 → PR #230).
+ */
+export interface AdminCompanyDetailRecord {
+  companyId: number;
+  name: string;
+  companyType: AdminCompanyType;
+  mouStatus: MouStatus;
+  sourceName: string | null;
+  homepageUrl: string | null;
+  logoUrl: string | null;
+  description: string | null;
+  industry: string | null;
+  address: string | null;
+  mouStartDate: string | null;
+  mouEndDate: string | null;
+  representativeEmail: string | null;
+  representativePhone: string | null;
+  memo: string | null;
+  lastEditedBy: string | null;
+  /** ISO 일시. */
+  lastEditedAt: string | null;
+  stats: AdminCompanyStats;
+  connectedJobs: AdminCompanyConnectedJobRecord[];
+  recentChanges: AdminCompanyAuditLogEntryRecord[];
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/** `AdminCompanyDetailRecord.connectedJobs`의 한 항목(`AdminCompanyConnectedJobResponse`)과 동일하다. */
+export interface AdminCompanyConnectedJobRecord {
+  jobId: number;
+  title: string;
+  /** GETI-Server `PostingType`(GENERAL/MOU/SCHOOL) 원본값. */
+  postingType: string;
+  /** GETI-Server `JobStatus`(DRAFT/PUBLISHED/CLOSED/DELETED) 원본값. */
+  status: string;
+  applicantCount: number;
+}
+
+/** `AdminCompanyDetailRecord.recentChanges`의 한 항목(`AdminCompanyAuditLogEntryResponse`)과 동일하다. */
+export interface AdminCompanyAuditLogEntryRecord {
+  id: number;
+  /** 감사 로그 액션 코드(예: `COMPANY_UPDATED`). 필드 단위가 아니라 액션 단위로만 구분된다. */
+  title: string;
+  /** `"{ISO 일시} · {담당자 이름 또는 '알 수 없음'}"` 형식. */
+  actedAtWithActor: string;
+}

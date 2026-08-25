@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  AdminCompanyDetailRecord,
   AdminCompanyListResponse,
   AdminCompanyRecord,
   AdminCompanyType,
@@ -35,6 +36,20 @@ export async function fetchCompanyDetail(companyId: number): Promise<AdminCompan
   return data.data;
 }
 
+/**
+ * `GET /api/v1/admin/companies/{id}` — 어드민 기업 상세 조회. 연락처 · 메모 · 통계 · 연결된
+ * 공고 · 감사 로그까지 포함한 응답으로, 위 학생·목록용 상세(`fetchCompanyDetail`)와는 다른
+ * 엔드포인트다(Issue #167).
+ */
+export async function fetchAdminCompanyDetail(
+  companyId: number,
+): Promise<AdminCompanyDetailRecord> {
+  const { data } = await api.get<ApiResponse<AdminCompanyDetailRecord>>(
+    `${ADMIN_BASE_PATH}/${companyId}`,
+  );
+  return data.data;
+}
+
 export interface CompanyMutationPayload {
   name: string;
   companyType: AdminCompanyType;
@@ -46,6 +61,8 @@ export interface CompanyMutationPayload {
   mouStartDate?: string | null;
   /** `yyyy-MM-dd`. */
   mouEndDate?: string | null;
+  /** 관리자 전용 내부 메모. */
+  memo?: string | null;
 }
 
 /** `POST /api/v1/admin/companies` — 기업 등록. */
