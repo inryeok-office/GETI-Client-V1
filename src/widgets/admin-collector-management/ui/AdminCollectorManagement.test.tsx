@@ -110,6 +110,7 @@ describe('AdminCollectorManagement', () => {
     renderManagement();
 
     expect(screen.getByRole('heading', { name: '외부 수집 관리' })).toBeInTheDocument();
+    expect(screen.getByText('2026.08.01 09:03')).toBeInTheDocument();
     expect(screen.getByText('일부 실패')).toBeInTheDocument();
     expect(screen.getByText('오류 없음')).toBeInTheDocument();
     expect(screen.getByText('-')).toBeInTheDocument();

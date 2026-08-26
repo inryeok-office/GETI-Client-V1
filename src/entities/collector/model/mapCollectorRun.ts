@@ -10,15 +10,10 @@ export function isCollectorRunInProgress(status: CollectorRunApiSummary['status'
 }
 
 function formatCollectorRunDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(value);
+  if (!match) return value;
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const [, year, month, day, hours, minutes, seconds] = match;
   return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
 }
 

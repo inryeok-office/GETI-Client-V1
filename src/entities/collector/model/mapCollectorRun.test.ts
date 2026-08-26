@@ -58,4 +58,13 @@ describe('collector run mapper', () => {
       'invalid-date',
     );
   });
+
+  it('타임존 변환 없이 서버 LocalDateTime을 표시한다', () => {
+    expect(
+      mapCollectorRunSummary({
+        ...SUMMARY,
+        startedAt: '2026-08-01T09:00:12.123456789',
+      }).executedAt,
+    ).toBe('2026.08.01 09:00:12');
+  });
 });
