@@ -23,8 +23,13 @@ export function StudentProfileContent({ student }: StudentProfileContentProps) {
             {student.name}
           </h1>
           <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
-            {student.cohort}기 · {student.major}
+            {student.summary}
           </p>
+          {student.desiredJob ? (
+            <p className="text-primary-700 mt-1 text-sm font-medium">
+              희망 직무 · {student.desiredJob}
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -37,16 +42,22 @@ export function StudentProfileContent({ student }: StudentProfileContentProps) {
           </ProfileSection>
 
           <ProfileSection title="기술 스택">
-            <ul className="flex flex-wrap gap-2 pt-5" aria-label="기술 스택 목록">
-              {student.skills.map((skill) => (
-                <li
-                  key={skill}
-                  className="bg-primary-100 text-primary-700 flex h-8 items-center rounded-2xl px-3 text-[13px] leading-5 font-semibold"
-                >
-                  {skill}
-                </li>
-              ))}
-            </ul>
+            {student.skills.length > 0 ? (
+              <ul className="flex flex-wrap gap-2 pt-5" aria-label="기술 스택 목록">
+                {student.skills.map((skill) => (
+                  <li
+                    key={skill}
+                    className="bg-primary-100 text-primary-700 flex h-8 items-center rounded-2xl px-3 text-[13px] leading-5 font-semibold"
+                  >
+                    {skill}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="pt-5 text-[15px] leading-[26px] text-neutral-600">
+                등록된 기술 스택이 없습니다.
+              </p>
+            )}
           </ProfileSection>
         </div>
 
@@ -55,9 +66,13 @@ export function StudentProfileContent({ student }: StudentProfileContentProps) {
             링크
           </h2>
           <div className="flex flex-col gap-2 pt-5">
-            {student.links.map((link) => (
-              <ProfileLink key={link.label} link={link} />
-            ))}
+            {student.links.length > 0 ? (
+              student.links.map((link) => (
+                <ProfileLink key={`${link.label}-${link.href}`} link={link} />
+              ))
+            ) : (
+              <p className="text-[15px] leading-[26px] text-neutral-600">등록된 링크가 없습니다.</p>
+            )}
           </div>
         </section>
       </div>
@@ -83,26 +98,20 @@ function ProfileLink({ link }: { link: StudentProfileLink }) {
       <span className="min-w-0 flex-1 truncate text-[15px] leading-[26px] font-semibold text-neutral-900">
         {link.label}
       </span>
-      {link.isPrivate ? (
-        <Image src="/icons/student-lock.svg" alt="비공개" width={20} height={20} />
-      ) : (
-        <Icon name="externalLink" className="size-5 text-neutral-500" />
-      )}
+      <Icon name="externalLink" className="size-5 text-neutral-500" />
     </>
   );
   const className =
     'flex h-14 items-center gap-3 rounded-[9px] border border-neutral-200 bg-white px-4';
 
-  return link.href ? (
+  return (
     <a
       href={link.href}
       className={`${className} focus-visible:outline-primary-700 transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2`}
-      target={link.href.startsWith('http') ? '_blank' : undefined}
-      rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+      target="_blank"
+      rel="noreferrer"
     >
       {content}
     </a>
-  ) : (
-    <div className={className}>{content}</div>
   );
 }

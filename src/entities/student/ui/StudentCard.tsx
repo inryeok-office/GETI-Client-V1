@@ -3,10 +3,13 @@ import Link from 'next/link';
 import type { StudentListItem } from '../model/types';
 
 interface StudentCardProps {
+  returnQuery?: string;
   student: StudentListItem;
 }
 
-export function StudentCard({ student }: StudentCardProps) {
+export function StudentCard({ returnQuery = '', student }: StudentCardProps) {
+  const detailHref = `/students/${student.id}${returnQuery ? `?${returnQuery}` : ''}`;
+
   return (
     <article className="flex flex-col gap-10 overflow-hidden rounded-lg bg-white p-6">
       <div className="flex items-center gap-4">
@@ -16,13 +19,13 @@ export function StudentCard({ student }: StudentCardProps) {
             {student.name}
           </h2>
           <p className="truncate text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
-            {student.cohort}기 · {student.major}
+            {student.summary}
           </p>
         </div>
       </div>
 
       <Link
-        href={`/students/${student.id}`}
+        href={detailHref}
         className="focus-visible:outline-primary-700 flex h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-900 transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         프로필 보기

@@ -1,11 +1,11 @@
 import Image from 'next/image';
-import Link from 'next/link';
 
 import { Icon } from '@/shared/ui/icon';
 
-export type StudentDirectoryStatus = 'empty' | 'error' | 'loading' | 'private';
+export type StudentDirectoryStatus = 'empty' | 'error' | 'idle' | 'loading' | 'private';
 
 interface StudentDirectoryStateProps {
+  onRetry: () => void;
   status: StudentDirectoryStatus;
 }
 
@@ -18,6 +18,10 @@ const STATE_COPY: Record<StudentDirectoryStatus, { description: string; title: s
     description: '잠시 후 다시 시도해 주세요.',
     title: '학생 정보를 불러오지 못했습니다.',
   },
+  idle: {
+    description: '검색할 학생 이름을 입력해 주세요.',
+    title: '학생 공개 프로필을 검색해보세요.',
+  },
   loading: {
     description: '잠시만 기다려 주세요.',
     title: '정보를 불러오는 중입니다.',
@@ -28,12 +32,12 @@ const STATE_COPY: Record<StudentDirectoryStatus, { description: string; title: s
   },
 };
 
-export function StudentDirectoryState({ status }: StudentDirectoryStateProps) {
+export function StudentDirectoryState({ onRetry, status }: StudentDirectoryStateProps) {
   const copy = STATE_COPY[status];
 
   return (
     <section
-      className="absolute inset-x-0 top-[calc(50%_+_61px)] flex -translate-y-1/2 flex-col items-center gap-6 text-center"
+      className="flex min-h-[360px] flex-col items-center justify-center gap-6 text-center"
       aria-live={status === 'loading' ? 'polite' : undefined}
     >
       {status === 'private' ? (
@@ -43,9 +47,11 @@ export function StudentDirectoryState({ status }: StudentDirectoryStateProps) {
           name={
             status === 'empty'
               ? 'searchLarge'
-              : status === 'loading'
-                ? 'spinner'
-                : 'alertCircleOutline'
+              : status === 'idle'
+                ? 'searchLarge'
+                : status === 'loading'
+                  ? 'spinner'
+                  : 'alertCircleOutline'
           }
           className={`size-[72px] text-neutral-500 ${status === 'loading' ? 'animate-spin' : ''}`}
         />
@@ -62,12 +68,13 @@ export function StudentDirectoryState({ status }: StudentDirectoryStateProps) {
         </div>
 
         {status === 'error' ? (
-          <Link
-            href="/students"
+          <button
+            type="button"
+            onClick={onRetry}
             className="bg-primary-700 hover:bg-primary-600 focus-visible:outline-primary-700 flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             다시 시도
-          </Link>
+          </button>
         ) : null}
       </div>
     </section>
