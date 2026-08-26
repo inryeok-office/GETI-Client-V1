@@ -8,4 +8,19 @@ export {
   type MemberRole,
 } from './model/types';
 export type { MyProfile } from './model/myProfile';
-export { useMyProfileQuery } from './api/useMyProfileQuery';
+export type {
+  DepartmentCode,
+  MajorMetadata,
+  TechStackCategory,
+  TechStackMetadata,
+  UpdateMyProfileRequest,
+} from './model/profileSetup';
+export {
+  fetchMajorMetadata,
+  fetchTechStackMetadata,
+  replaceMyMajors,
+  replaceMyTechStacks,
+  updateMyProfile,
+} from './api/profileSetupApi';
+export { memberKeys, useMyProfileQuery } from './api/useMyProfileQuery';
+export { useMajorMetadataQuery, useTechStackMetadataQuery } from './api/useProfileSetupQueries';
