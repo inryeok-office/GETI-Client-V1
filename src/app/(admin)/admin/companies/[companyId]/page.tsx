@@ -1,5 +1,10 @@
 import { AdminCompanyDetailPage } from '@/views/admin-company-detail';
 
-export default function Page() {
-  return <AdminCompanyDetailPage />;
+interface PageProps {
+  params: Promise<{ companyId: string }>;
+}
+
+export default async function Page({ params }: PageProps) {
+  const { companyId } = await params;
+  return <AdminCompanyDetailPage companyId={companyId} />;
 }

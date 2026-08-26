@@ -18,17 +18,20 @@ interface AdminCompanyDetailProps {
   connectedJobs: AdminCompanyConnectedJob[];
   stats: AdminCompanyStats;
   auditLog: AdminCompanyAuditLogEntry[];
+  onEditClick: () => void;
 }
 
 /**
- * 어드민 기업 상세 화면의 레이아웃 뼈대. Figma(어드민 기업 상세 937:7245)의 조회 상태 구조를 그대로 옮겼다.
- * 로딩 · 에러 · 편집 모드 · 모달은 이번 범위에 포함하지 않으며, 이후 이 구조 위에 상태별로 이어 붙인다.
+ * 어드민 기업 상세 화면의 레이아웃 뼈대. Figma(어드민 기업 상세 937:7245)의 조회 상태 구조를 옮겼다.
+ * 로딩 · 에러 상태는 `AdminCompanyDetailEmptyState`가 이 컴포넌트 자리를 통째로 대신한다.
+ * 편집은 "관련 메모" 섹션의 "수정" 버튼(`onEditClick`)이 유일한 진입점이다(Issue #167).
  */
 export function AdminCompanyDetail({
   company,
   connectedJobs,
   stats,
   auditLog,
+  onEditClick,
 }: AdminCompanyDetailProps) {
   return (
     <div className="flex w-[1620px] flex-col gap-8 pt-[30px]">
@@ -41,7 +44,7 @@ export function AdminCompanyDetail({
         </div>
         <div className="flex flex-col gap-8 self-stretch">
           <AdminCompanyStatsSection stats={stats} />
-          <AdminCompanyMemoSection memo={company.memo} />
+          <AdminCompanyMemoSection memo={company.memo} onEditClick={onEditClick} />
           <AdminCompanyAuditLogSection entries={auditLog} />
         </div>
       </div>

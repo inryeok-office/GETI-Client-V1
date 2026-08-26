@@ -1,9 +1,12 @@
+import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
 export type AdminCompanyDetailBodyStatus = 'loading' | 'network-error';
 
 interface AdminCompanyDetailEmptyStateProps {
   status: AdminCompanyDetailBodyStatus;
+  /** `network-error`일 때만 쓴다. 전달하지 않으면 "다시 시도" 버튼을 보여주지 않는다. */
+  onRetry?: () => void;
 }
 
 const BODY_STATUS_COPY: Record<
@@ -25,7 +28,10 @@ const BODY_STATUS_COPY: Record<
  * 사이드바 · 헤더는 그대로 두고 이 영역만 갈아 끼우는 자리로 쓴다.
  * 간격 · 색상은 Figma(기업 상세 - 로딩 939:9228, 기업 상세 - 네트워크 오류 939:9724)의 값을 그대로 옮겼다.
  */
-export function AdminCompanyDetailEmptyState({ status }: AdminCompanyDetailEmptyStateProps) {
+export function AdminCompanyDetailEmptyState({
+  status,
+  onRetry,
+}: AdminCompanyDetailEmptyStateProps) {
   const copy = BODY_STATUS_COPY[status];
 
   return (
@@ -44,6 +50,9 @@ export function AdminCompanyDetailEmptyState({ status }: AdminCompanyDetailEmpty
             {copy.description}
           </p>
         </div>
+        {status === 'network-error' && onRetry ? (
+          <Button onClick={onRetry}>다시 시도</Button>
+        ) : null}
       </div>
     </div>
   );

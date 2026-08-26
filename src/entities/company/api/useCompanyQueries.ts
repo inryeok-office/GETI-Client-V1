@@ -10,6 +10,7 @@ import {
 
 import {
   createCompany,
+  fetchAdminCompanyDetail,
   fetchAllCompanyOptions,
   fetchCompanyDetail,
   fetchCompanyList,
@@ -23,6 +24,7 @@ export const companyKeys = {
   all: ['companies'] as const,
   list: (params: FetchCompanyListParams) => [...companyKeys.all, 'list', params] as const,
   detail: (companyId: number) => [...companyKeys.all, 'detail', companyId] as const,
+  adminDetail: (companyId: number) => [...companyKeys.all, 'admin-detail', companyId] as const,
   options: () => [...companyKeys.all, 'options'] as const,
 };
 
@@ -44,6 +46,14 @@ export function useCompanyDetailQuery(companyId: number | null) {
   return useQuery({
     queryKey: companyKeys.detail(companyId ?? -1),
     queryFn: companyId === null ? skipToken : () => fetchCompanyDetail(companyId),
+  });
+}
+
+/** 어드민 기업 상세 화면. companyId가 null이면(라우트 파라미터가 정수가 아닐 때) 요청을 보내지 않는다. */
+export function useAdminCompanyDetailQuery(companyId: number | null) {
+  return useQuery({
+    queryKey: companyKeys.adminDetail(companyId ?? -1),
+    queryFn: companyId === null ? skipToken : () => fetchAdminCompanyDetail(companyId),
   });
 }
 

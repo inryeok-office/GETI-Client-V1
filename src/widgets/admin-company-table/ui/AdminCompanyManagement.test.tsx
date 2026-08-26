@@ -8,16 +8,18 @@ import { ApiError } from '@/shared/api';
 
 import { AdminCompanyManagement } from './AdminCompanyManagement';
 
-const { fetchCompanyList, fetchCompanyDetail, createCompany, updateCompany } = vi.hoisted(() => ({
-  fetchCompanyList: vi.fn(),
-  fetchCompanyDetail: vi.fn(),
-  createCompany: vi.fn(),
-  updateCompany: vi.fn(),
-}));
+const { fetchCompanyList, fetchAdminCompanyDetail, createCompany, updateCompany } = vi.hoisted(
+  () => ({
+    fetchCompanyList: vi.fn(),
+    fetchAdminCompanyDetail: vi.fn(),
+    createCompany: vi.fn(),
+    updateCompany: vi.fn(),
+  }),
+);
 
 vi.mock('@/entities/company/api/companyApi', () => ({
   fetchCompanyList,
-  fetchCompanyDetail,
+  fetchAdminCompanyDetail,
   createCompany,
   updateCompany,
 }));
@@ -57,7 +59,7 @@ function renderWithQueryClient(ui: ReactNode) {
 describe('AdminCompanyManagement', () => {
   beforeEach(() => {
     fetchCompanyList.mockReset();
-    fetchCompanyDetail.mockReset();
+    fetchAdminCompanyDetail.mockReset();
     createCompany.mockReset();
     updateCompany.mockReset();
   });
@@ -190,9 +192,9 @@ describe('AdminCompanyManagement', () => {
     );
   });
 
-  it('수정 버튼을 누르면 상세 조회 후 값이 채워진 패널이 열리고, 확정하면 수정 API를 호출한다', async () => {
+  it('수정 버튼을 누르면 상세 조회 후 값(메모 포함)이 채워진 패널이 열리고, 확정하면 수정 API를 호출한다', async () => {
     fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
-    fetchCompanyDetail.mockResolvedValue({
+    fetchAdminCompanyDetail.mockResolvedValue({
       companyId: 1,
       name: '플로우테크',
       companyType: 'GENERAL',
@@ -205,6 +207,14 @@ describe('AdminCompanyManagement', () => {
       address: null,
       mouStartDate: '2025-03-01',
       mouEndDate: '2027-02-28',
+      representativeEmail: null,
+      representativePhone: null,
+      memo: '기존 메모',
+      lastEditedBy: null,
+      lastEditedAt: null,
+      stats: { totalConnectedJobs: 0, activeJobCount: 0, totalApplicationCount: 0 },
+      connectedJobs: [],
+      recentChanges: [],
       createdAt: '2025-01-01T00:00:00',
       updatedAt: '2025-01-01T00:00:00',
     });
@@ -215,10 +225,11 @@ describe('AdminCompanyManagement', () => {
 
     await userEvent.click(screen.getAllByRole('button', { name: '수정' })[0]);
 
-    await waitFor(() => expect(fetchCompanyDetail).toHaveBeenCalledWith(1));
+    await waitFor(() => expect(fetchAdminCompanyDetail).toHaveBeenCalledWith(1));
     const panel = await screen.findByRole('dialog', { name: '기업 수정' });
     expect(within(panel).getByDisplayValue('플로우테크')).toBeInTheDocument();
     expect(within(panel).getByDisplayValue('기존 설명')).toBeInTheDocument();
+    expect(within(panel).getByDisplayValue('기존 메모')).toBeInTheDocument();
 
     await userEvent.click(within(panel).getByRole('button', { name: '수정하기' }));
 
@@ -229,12 +240,57 @@ describe('AdminCompanyManagement', () => {
       expect(updateCompany).toHaveBeenCalledWith(
         expect.objectContaining({
           companyId: 1,
-          payload: expect.objectContaining({ name: '플로우테크' }),
+          payload: expect.objectContaining({ name: '플로우테크', memo: '기존 메모' }),
         }),
       ),
     );
     await waitFor(() =>
       expect(screen.getByText('기업 수정이 완료되었습니다.')).toBeInTheDocument(),
+    );
+  });
+
+  it('메모를 지우고 수정하면 null이 아니라 빈 문자열을 보낸다(서버 PATCH는 null을 기존 값 유지로 처리한다)', async () => {
+    fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
+    fetchAdminCompanyDetail.mockResolvedValue({
+      companyId: 1,
+      name: '플로우테크',
+      companyType: 'GENERAL',
+      mouStatus: 'ACTIVE',
+      sourceName: 'manual',
+      homepageUrl: null,
+      logoUrl: null,
+      description: '기존 설명',
+      industry: null,
+      address: null,
+      mouStartDate: '2025-03-01',
+      mouEndDate: '2027-02-28',
+      representativeEmail: null,
+      representativePhone: null,
+      memo: '기존 메모',
+      lastEditedBy: null,
+      lastEditedAt: null,
+      stats: { totalConnectedJobs: 0, activeJobCount: 0, totalApplicationCount: 0 },
+      connectedJobs: [],
+      recentChanges: [],
+      createdAt: '2025-01-01T00:00:00',
+      updatedAt: '2025-01-01T00:00:00',
+    });
+    updateCompany.mockResolvedValue({ companyId: 1, name: '플로우테크' });
+
+    renderWithQueryClient(<AdminCompanyManagement />);
+    await waitFor(() => expect(screen.getByText('플로우테크')).toBeInTheDocument());
+    await userEvent.click(screen.getAllByRole('button', { name: '수정' })[0]);
+
+    const panel = await screen.findByRole('dialog', { name: '기업 수정' });
+    await userEvent.clear(within(panel).getByDisplayValue('기존 메모'));
+    await userEvent.click(within(panel).getByRole('button', { name: '수정하기' }));
+    const confirmDialog = screen.getByRole('dialog', { name: '변경사항을 저장할까요?' });
+    await userEvent.click(within(confirmDialog).getByRole('button', { name: '변경사항 저장' }));
+
+    await waitFor(() =>
+      expect(updateCompany).toHaveBeenCalledWith(
+        expect.objectContaining({ payload: expect.objectContaining({ memo: '' }) }),
+      ),
     );
   });
 

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import type {
   AdminCompanyAuditLogEntry,
@@ -56,6 +57,7 @@ describe('AdminCompanyDetail', () => {
         connectedJobs={JOBS}
         stats={STATS}
         auditLog={AUDIT_LOG}
+        onEditClick={vi.fn()}
       />,
     );
 
@@ -66,5 +68,22 @@ describe('AdminCompanyDetail', () => {
     expect(screen.getByText('전체 연결 공고')).toBeInTheDocument();
     expect(screen.getByText('2026년 산학협력 프로그램 우선 협의 기업입니다.')).toBeInTheDocument();
     expect(screen.getByText('기업 등록')).toBeInTheDocument();
+  });
+
+  it('"관련 메모"의 수정 버튼을 클릭하면 onEditClick이 호출된다', async () => {
+    const user = userEvent.setup();
+    const onEditClick = vi.fn();
+    render(
+      <AdminCompanyDetail
+        company={COMPANY}
+        connectedJobs={JOBS}
+        stats={STATS}
+        auditLog={AUDIT_LOG}
+        onEditClick={onEditClick}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '수정' }));
+    expect(onEditClick).toHaveBeenCalledTimes(1);
   });
 });

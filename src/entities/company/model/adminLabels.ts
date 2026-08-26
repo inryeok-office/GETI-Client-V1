@@ -27,3 +27,23 @@ export const ADMIN_COMPANY_JOB_STATUS_LABEL: Record<AdminCompanyJobStatus, strin
   reviewing: '검토중',
   closed: '마감',
 };
+
+/**
+ * 어드민 기업 상세 "연결된 공고"의 공고 유형 한글 라벨. GETI-Server `PostingType`과 동일한
+ * 값을 쓴다. 공식 한글 라벨이 정의돼 있지 않아 임의로 정했다(Issue #167).
+ */
+export const ADMIN_COMPANY_JOB_TYPE_LABEL: Record<string, string> = {
+  GENERAL: '일반 공고',
+  MOU: 'MOU 공고',
+  SCHOOL: '학교 공고',
+};
+
+/**
+ * 어드민 기업 상세 "최근 변경"의 감사 로그 액션 한글 라벨. GETI-Server 감사 로그는 필드 단위가
+ * 아니라 `COMPANY_CREATED`/`COMPANY_UPDATED`/`COMPANY_DELETED` 3개 액션 코드만 준다(Issue #167).
+ */
+export const ADMIN_COMPANY_AUDIT_ACTION_LABEL: Record<string, string> = {
+  COMPANY_CREATED: '기업 등록',
+  COMPANY_UPDATED: '기업 정보 수정',
+  COMPANY_DELETED: '기업 삭제',
+};
