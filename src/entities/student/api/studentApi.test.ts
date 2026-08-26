@@ -79,15 +79,19 @@ describe('studentApi', () => {
   it('학생 검색용 전공과 기술 스택 선택지를 조회한다', async () => {
     const majors = [{ majorId: 1, name: '웹 개발', active: true }];
     const techStacks = [{ techStackId: 10, name: 'React', category: 'FRONTEND' }];
+    const controller = new AbortController();
     mockGet
       .mockResolvedValueOnce({ data: { success: true, data: { items: majors } } })
       .mockResolvedValueOnce({ data: { success: true, data: { items: techStacks } } });
 
-    await expect(fetchStudentMajorOptions()).resolves.toBe(majors);
-    await expect(fetchStudentTechStackOptions()).resolves.toBe(techStacks);
+    await expect(fetchStudentMajorOptions(controller.signal)).resolves.toBe(majors);
+    await expect(fetchStudentTechStackOptions(controller.signal)).resolves.toBe(techStacks);
     expect(mockGet).toHaveBeenNthCalledWith(1, '/api/v1/metadata/majors', {
       params: { activeOnly: true },
+      signal: controller.signal,
     });
-    expect(mockGet).toHaveBeenNthCalledWith(2, '/api/v1/metadata/tech-stacks');
+    expect(mockGet).toHaveBeenNthCalledWith(2, '/api/v1/metadata/tech-stacks', {
+      signal: controller.signal,
+    });
   });
 });

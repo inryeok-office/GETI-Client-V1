@@ -156,6 +156,26 @@ describe('StudentListPage', () => {
     expect(lastReplacedParams().get('q')).toBe('김철수');
   });
 
+  it('검색어가 바뀌어도 디바운스가 끝나기 전에는 현재 페이지의 요청을 유지한다', () => {
+    vi.useFakeTimers();
+    mockUseStudentListQuery.mockReturnValue(
+      listResult({ content: [PUBLIC_STUDENT], totalPages: 3 }),
+    );
+    render(<StudentListPage initialSearchParams={{ q: '홍', page: '2' }} />);
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '김' } });
+
+    expect(mockUseStudentListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: '홍', page: 1 }),
+    );
+
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(mockUseStudentListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: '김', page: 0 }),
+    );
+  });
+
   it('학과 필터를 변경하면 실제 조회와 URL에 함께 반영한다', () => {
     render(<StudentListPage initialSearchParams={{ q: '홍' }} />);
 
@@ -179,6 +199,16 @@ describe('StudentListPage', () => {
     render(<StudentListPage initialSearchParams={{ q: '홍' }} />);
 
     expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+  });
+
+  it('백그라운드 재조회 중에는 이전 검색 결과를 유지한다', () => {
+    mockUseStudentListQuery.mockReturnValue(
+      listResult({ content: [PUBLIC_STUDENT], isFetching: true }),
+    );
+    render(<StudentListPage initialSearchParams={{ q: '홍' }} />);
+
+    expect(screen.getByRole('heading', { name: '홍길동' })).toBeInTheDocument();
+    expect(screen.queryByText('정보를 불러오는 중입니다.')).not.toBeInTheDocument();
   });
 
   it('목록 오류에서 다시 시도하면 현재 Query를 refetch한다', () => {

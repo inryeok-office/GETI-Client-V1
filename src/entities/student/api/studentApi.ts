@@ -54,17 +54,23 @@ interface TechStackMetadataResponse {
 }
 
 /** 학생 검색의 전공 필터 선택지. 비활성 전공은 제외한다. */
-export async function fetchStudentMajorOptions(): Promise<StudentMajorOption[]> {
+export async function fetchStudentMajorOptions(
+  signal?: AbortSignal,
+): Promise<StudentMajorOption[]> {
   const { data } = await api.get<ApiResponse<MajorMetadataResponse>>('/api/v1/metadata/majors', {
     params: { activeOnly: true },
+    signal,
   });
   return data.data.items;
 }
 
 /** 학생 검색의 기술 스택 필터 선택지. */
-export async function fetchStudentTechStackOptions(): Promise<StudentTechStackOption[]> {
+export async function fetchStudentTechStackOptions(
+  signal?: AbortSignal,
+): Promise<StudentTechStackOption[]> {
   const { data } = await api.get<ApiResponse<TechStackMetadataResponse>>(
     '/api/v1/metadata/tech-stacks',
+    { signal },
   );
   return data.data.items;
 }

@@ -38,7 +38,7 @@ export function useStudentProfileQuery(memberId: number | null) {
 export function useStudentMajorOptionsQuery() {
   return useQuery({
     queryKey: studentKeys.majors(),
-    queryFn: fetchStudentMajorOptions,
+    queryFn: ({ signal }) => fetchStudentMajorOptions(signal),
     staleTime: 30 * 60_000,
   });
 }
@@ -46,7 +46,7 @@ export function useStudentMajorOptionsQuery() {
 export function useStudentTechStackOptionsQuery() {
   return useQuery({
     queryKey: studentKeys.techStacks(),
-    queryFn: fetchStudentTechStackOptions,
+    queryFn: ({ signal }) => fetchStudentTechStackOptions(signal),
     staleTime: 30 * 60_000,
   });
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   StudentCard,
@@ -35,21 +35,29 @@ interface StudentListPageProps {
 export function StudentListPage({ initialSearchParams }: StudentListPageProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const initialFilters = readInitialFilters(initialSearchParams);
 
   const [page, setPage] = useState(() => readInitialPage(initialSearchParams?.page));
   const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
   const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q?.trim() ?? '');
-  const [filters, setFilters] = useState<StudentSearchFilterValues>(initialFilters);
+  const [filters, setFilters] = useState<StudentSearchFilterValues>(() =>
+    readInitialFilters(initialSearchParams),
+  );
+  const committedSearchQueryRef = useRef(searchQuery);
 
   useEffect(() => {
-    const timer = setTimeout(() => setSearchQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => {
+      const nextSearchQuery = searchInput.trim();
+      if (nextSearchQuery === committedSearchQueryRef.current) return;
+
+      committedSearchQueryRef.current = nextSearchQuery;
+      setSearchQuery(nextSearchQuery);
+      setPage(0);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
   const handleSearchInputChange = (value: string) => {
     setSearchInput(value);
-    setPage(0);
   };
 
   const handleFiltersChange = (nextFilters: StudentSearchFilterValues) => {
@@ -87,7 +95,7 @@ export function StudentListPage({ initialSearchParams }: StudentListPageProps) {
 
   const status: StudentDirectoryStatus | 'success' = !searchQuery
     ? 'idle'
-    : listQuery.isLoading || listQuery.isFetching
+    : listQuery.isLoading
       ? 'loading'
       : listQuery.isError
         ? 'error'
