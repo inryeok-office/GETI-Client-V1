@@ -13,6 +13,7 @@ export async function completeProfile(request: CompleteProfileRequest): Promise<
   await replaceMyMajors(request.majorIds);
   await replaceMyTechStacks(request.techStackIds);
   await updateMyProfile({
+    cohort: request.cohort,
     department: request.department,
     desiredJob: request.desiredJob,
     phone: request.phone,

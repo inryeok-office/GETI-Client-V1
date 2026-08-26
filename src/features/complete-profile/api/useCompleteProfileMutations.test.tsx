@@ -23,6 +23,7 @@ vi.mock('./completeProfileApi', () => ({
 }));
 
 const REQUEST: CompleteProfileRequest = {
+  cohort: 10,
   department: 'AI',
   desiredJob: 'AI 엔지니어',
   majorIds: [3],

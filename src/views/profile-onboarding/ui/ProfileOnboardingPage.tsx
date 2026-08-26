@@ -28,7 +28,12 @@ import { ApiError } from '@/shared/api';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
-const COHORTS = ['8기', '9기', '10기'] as const;
+const COHORTS = [
+  { label: '8기', value: 8 },
+  { label: '9기', value: 9 },
+  { label: '10기', value: 10 },
+] as const;
+type Cohort = (typeof COHORTS)[number]['value'];
 const DEPARTMENTS: ReadonlyArray<{ code: DepartmentCode; label: string }> = [
   { code: 'SW_DEVELOPMENT', label: '소프트웨어개발과' },
   { code: 'SMART_IOT', label: '스마트IoT과' },
@@ -166,7 +171,7 @@ export function ProfileOnboardingPage() {
   const techStacksQuery = useTechStackMetadataQuery();
   const uploadMutation = useUploadProfileImageMutation();
   const completeMutation = useCompleteProfileMutation();
-  const [selectedCohort, setSelectedCohort] = useState<string | null>(null);
+  const [selectedCohort, setSelectedCohort] = useState<Cohort | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentCode | null>(null);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [desiredJob, setDesiredJob] = useState('');
@@ -318,11 +323,13 @@ export function ProfileOnboardingPage() {
     const errors = validateForm();
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
-    if (!uploadedProfileImageId || !selectedDepartment || !selectedMajorId) return;
+    if (!uploadedProfileImageId || !selectedCohort || !selectedDepartment || !selectedMajorId) {
+      return;
+    }
 
     try {
-      // cohort는 조회 응답에만 있고 PATCH 요청에는 허용되지 않아 서버의 로그인 학적 값을 유지한다.
       await completeMutation.mutateAsync({
+        cohort: selectedCohort,
         department: selectedDepartment,
         desiredJob: desiredJob.trim(),
         majorIds: [selectedMajorId],
@@ -458,11 +465,11 @@ export function ProfileOnboardingPage() {
                   <div className="mt-2 flex gap-3" aria-describedby="cohort-error">
                     {COHORTS.map((cohort) => (
                       <ChoiceButton
-                        key={cohort}
+                        key={cohort.value}
                         isDisabled={isBusy}
-                        isSelected={selectedCohort === cohort}
+                        isSelected={selectedCohort === cohort.value}
                         onClick={() => {
-                          setSelectedCohort(cohort);
+                          setSelectedCohort(cohort.value);
                           setFormErrors((current) => ({
                             ...current,
                             cohort: undefined,
@@ -470,7 +477,7 @@ export function ProfileOnboardingPage() {
                           }));
                         }}
                       >
-                        {cohort}
+                        {cohort.label}
                       </ChoiceButton>
                     ))}
                   </div>

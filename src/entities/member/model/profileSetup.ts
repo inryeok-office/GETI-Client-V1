@@ -16,6 +16,7 @@ export interface TechStackMetadata {
 }
 
 export interface UpdateMyProfileRequest {
+  cohort: number;
   department: DepartmentCode;
   desiredJob: string;
   phone: string | null;

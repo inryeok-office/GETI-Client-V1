@@ -26,6 +26,7 @@ vi.mock('@/entities/member', () => ({
 vi.mock('@/entities/session', () => ({ fetchSession: mockFetchSession }));
 
 const REQUEST: CompleteProfileRequest = {
+  cohort: 10,
   department: 'SMART_IOT',
   desiredJob: 'UXUI 디자이너',
   majorIds: [2],
@@ -61,6 +62,7 @@ describe('completeProfileApi', () => {
     expect(mockReplaceMyMajors).toHaveBeenCalledWith([2]);
     expect(mockReplaceMyTechStacks).toHaveBeenCalledWith([11]);
     expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+      cohort: 10,
       department: 'SMART_IOT',
       desiredJob: 'UXUI 디자이너',
       phone: null,

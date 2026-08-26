@@ -261,6 +261,7 @@ describe('ProfileOnboardingPage', () => {
 
     await waitFor(() => {
       expect(mockCompleteMutateAsync).toHaveBeenCalledWith({
+        cohort: 10,
         department: 'SMART_IOT',
         desiredJob: 'UXUI 디자이너',
         majorIds: [2],

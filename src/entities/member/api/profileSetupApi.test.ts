@@ -67,6 +67,7 @@ describe('profileSetupApi', () => {
 
   it('프로필 수정 요청을 그대로 전달한다', async () => {
     const request = {
+      cohort: 10,
       department: 'SMART_IOT' as const,
       desiredJob: 'UXUI 디자이너',
       phone: '010-1234-5678',
