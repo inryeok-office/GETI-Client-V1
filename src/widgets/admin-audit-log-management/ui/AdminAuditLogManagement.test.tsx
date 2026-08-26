@@ -1,129 +1,284 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-
-import type { AuditLogEntry } from '@/entities/audit-log';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminAuditLogManagement } from './AdminAuditLogManagement';
 
-const LOGS: AuditLogEntry[] = [
-  {
-    actionType: 'UPDATE',
-    actor: { email: 'admin@geti.kr', name: '개발자' },
-    auditLogId: 'audit-1',
-    changes: [{ after: '공개', before: '비공개', field: '공개 상태' }],
-    detailSummary: '공고 공개 상태 변경',
-    occurredAt: '2026.08.01 14:32:18',
-    requestPath: '/admin/jobs/JOB-2026-081',
-    result: 'SUCCESS',
-    resultMessage: '정상 처리',
-    summary: '공개 상태 변경',
-    targetId: 'JOB-2026-081',
-    targetType: '공고',
-  },
-];
+const { mockDetailQuery, mockListQuery, mockRouterReplace } = vi.hoisted(() => ({
+  mockDetailQuery: vi.fn(),
+  mockListQuery: vi.fn(),
+  mockRouterReplace: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/admin/audit-logs',
+  useRouter: () => ({ replace: mockRouterReplace }),
+}));
+
+vi.mock('@/entities/audit-log', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/entities/audit-log')>();
+  return {
+    ...actual,
+    useAdminAuditLogDetailQuery: mockDetailQuery,
+    useAdminAuditLogListQuery: mockListQuery,
+  };
+});
+
+const LIST_ITEM = {
+  actionType: 'UPDATE',
+  actorId: 7,
+  actorName: '개발자',
+  auditLogId: 100,
+  createdAt: '2026-08-01T14:32:18',
+  maskedDetail: '공고 공개 상태 변경',
+  requestPath: '/api/v1/admin/jobs/81',
+  result: 'SUCCESS' as const,
+  targetId: 81,
+  targetType: 'JOB',
+};
+
+const DETAIL = {
+  ...LIST_ITEM,
+  changes: [{ after: '공개', before: '비공개', field: '공개 상태' }],
+};
+
+function successListQuery(overrides: Record<string, unknown> = {}) {
+  return {
+    data: {
+      content: [LIST_ITEM],
+      first: true,
+      last: true,
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    },
+    isError: false,
+    isLoading: false,
+    isPlaceholderData: false,
+    refetch: vi.fn(),
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  mockDetailQuery.mockReset();
+  mockListQuery.mockReset();
+  mockRouterReplace.mockReset();
+
+  mockListQuery.mockReturnValue(successListQuery());
+  mockDetailQuery.mockImplementation((auditLogId: number | null) => ({
+    data: auditLogId === null ? undefined : DETAIL,
+    isError: false,
+    isLoading: false,
+    refetch: vi.fn(),
+  }));
+});
 
 describe('AdminAuditLogManagement', () => {
-  it('감사 로그 검색 조건과 작업 실행 이력을 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
+  it('서버 목록 모델과 전체 건수를 표시한다', () => {
+    render(<AdminAuditLogManagement />);
 
     expect(screen.getByRole('heading', { name: '감사 로그', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('총 1건')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '감사 로그 작업 실행 이력' })).toBeInTheDocument();
-    expect(screen.getByText('공개 상태 변경')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('공고 공개 상태 변경')).toBeInTheDocument();
   });
 
-  it('작업 유형 필터를 선택하면 선택값을 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
+  it('검색 조건을 서버 Query와 URL에 전달한다', async () => {
+    render(<AdminAuditLogManagement />);
 
+    fireEvent.change(screen.getByLabelText('기간 시작'), { target: { value: '20260801' } });
+    fireEvent.change(screen.getByLabelText('기간 종료'), { target: { value: '20260831' } });
+    fireEvent.change(screen.getByLabelText('작업자'), { target: { value: '7' } });
+    fireEvent.change(screen.getByLabelText('대상'), { target: { value: '81' } });
     fireEvent.click(screen.getByRole('combobox', { name: '작업 유형' }));
-    fireEvent.click(screen.getByRole('option', { name: 'UPDATE' }));
+    fireEvent.click(screen.getByRole('option', { name: 'COMPANY_UPDATED' }));
+    fireEvent.click(screen.getByRole('combobox', { name: '결과' }));
+    fireEvent.click(screen.getByRole('option', { name: '실패' }));
 
-    expect(screen.getByRole('combobox', { name: '작업 유형' })).toHaveTextContent('UPDATE');
-  });
-
-  it('선택한 기간으로 감사 로그를 필터링한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
-
-    const startDate = screen.getByLabelText('기간 시작');
-    const endDate = screen.getByLabelText('기간 종료');
-
-    expect(startDate).toHaveAttribute('placeholder', 'YYYY.MM.DD');
-    expect(endDate).toHaveAttribute('inputmode', 'numeric');
-
-    fireEvent.change(endDate, { target: { value: '2026.07.31' } });
-    expect(screen.getByText('감사 로그가 없습니다.')).toBeInTheDocument();
-  });
-
-  it('기간을 입력하지 않으면 전체 감사 로그를 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
-
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('');
-    expect(screen.getByLabelText('기간 종료')).toHaveValue('');
-    expect(screen.getByText('공개 상태 변경')).toBeInTheDocument();
-  });
-
-  it('기간 숫자를 입력하면 YYYY.MM.DD 형식으로 자동 변환한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
-
-    fireEvent.change(screen.getByLabelText('기간 시작'), {
-      target: { value: '20260801' },
+    await waitFor(() => {
+      expect(mockListQuery).toHaveBeenLastCalledWith(
+        {
+          actionType: 'COMPANY_UPDATED',
+          actorId: 7,
+          endAt: '2026-08-31T23:59:59.999999999',
+          page: 0,
+          result: 'FAILURE',
+          size: 20,
+          startAt: '2026-08-01T00:00:00',
+          targetId: 81,
+        },
+        { isEnabled: true },
+      );
     });
-
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026.08.01');
+    await waitFor(() => {
+      expect(mockRouterReplace).toHaveBeenLastCalledWith(
+        '/admin/audit-logs?startDate=2026.08.01&endDate=2026.08.31&actorId=7&actionType=COMPANY_UPDATED&targetId=81&result=FAILED',
+        { scroll: false },
+      );
+    });
   });
 
-  it('종료일이 시작일보다 빠르면 검증 메시지를 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
+  it('잘못된 기간은 안내하고 서버 Query에 전달하지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<AdminAuditLogManagement />);
 
-    fireEvent.change(screen.getByLabelText('기간 시작'), {
-      target: { value: '2026.07.01' },
-    });
-    fireEvent.change(screen.getByLabelText('기간 종료'), {
-      target: { value: '2026.06.30' },
-    });
+    await user.type(screen.getByLabelText('기간 시작'), '20260802');
+    await user.type(screen.getByLabelText('기간 종료'), '20260801');
 
     expect(screen.getByText('종료일은 시작일보다 빠를 수 없습니다.')).toBeInTheDocument();
+    expect(mockListQuery).toHaveBeenLastCalledWith(expect.any(Object), { isEnabled: false });
+    expect(screen.getByText('검색 기간을 확인해 주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('총 1건')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: '감사 로그 작업 실행 이력' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('존재하지 않는 날짜를 입력하면 검증 메시지를 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
+  it('텍스트 필터를 300ms 디바운스해 서버 Query에 전달한다', () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<AdminAuditLogManagement initialSearchParams={{ page: '2' }} />);
 
-    fireEvent.change(screen.getByLabelText('기간 시작'), {
-      target: { value: '20260230' },
-    });
+    try {
+      mockListQuery.mockClear();
+      fireEvent.change(screen.getByLabelText('작업자'), { target: { value: '7' } });
+      fireEvent.change(screen.getByLabelText('작업자'), { target: { value: '71' } });
 
-    expect(screen.getByText('YYYY.MM.DD 형식으로 입력해 주세요.')).toBeInTheDocument();
+      expect(mockListQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({ actorId: 71 }),
+        expect.any(Object),
+      );
+      expect(mockListQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ actorId: undefined, page: 0 }),
+        { isEnabled: false },
+      );
+
+      act(() => vi.advanceTimersByTime(300));
+
+      expect(mockListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ actorId: 71 }), {
+        isEnabled: true,
+      });
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
   });
 
-  it('상세 보기를 누르면 상세 패널을 표시하고 닫을 수 있다', () => {
-    render(<AdminAuditLogManagement initialStatus="success" logs={LOGS} />);
+  it('상세 보기를 누르면 실제 상세와 변경 항목을 표시한다', async () => {
+    const user = userEvent.setup();
+    render(<AdminAuditLogManagement />);
 
-    fireEvent.click(screen.getByRole('button', { name: '상세 보기' }));
-    expect(screen.getByRole('dialog', { name: '감사 로그 상세' })).toBeInTheDocument();
-    expect(screen.getByText(/admin@geti\.kr/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '상세 보기' }));
 
-    fireEvent.click(screen.getByRole('button', { name: '상세 패널 닫기' }));
+    const dialog = screen.getByRole('dialog', { name: '감사 로그 상세' });
+    expect(mockDetailQuery).toHaveBeenLastCalledWith(100);
+    expect(within(dialog).getByText('개발자 · #7')).toBeInTheDocument();
+    expect(within(dialog).getByText('비공개')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '상세 패널 닫기' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('목록 오류 상태에서 실제 Query를 다시 요청한다', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    mockListQuery.mockReturnValue(successListQuery({ data: undefined, isError: true, refetch }));
+
+    render(<AdminAuditLogManagement />);
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('상세 오류 상태에서 상세 Query를 다시 요청한다', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    mockDetailQuery.mockImplementation((auditLogId: number | null) => ({
+      data: undefined,
+      isError: auditLogId !== null,
+      isLoading: false,
+      refetch,
+    }));
+
+    render(<AdminAuditLogManagement />);
+    await user.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    expect(screen.getByRole('dialog', { name: '감사 로그 상세 조회 오류' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('상세를 불러오는 동안 로딩 패널을 표시한다', async () => {
+    const user = userEvent.setup();
+    mockDetailQuery.mockImplementation((auditLogId: number | null) => ({
+      data: undefined,
+      isError: false,
+      isLoading: auditLogId !== null,
+      refetch: vi.fn(),
+    }));
+
+    render(<AdminAuditLogManagement />);
+    await user.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    const dialog = screen.getByRole('dialog', { name: '감사 로그 상세를 불러오는 중' });
+    expect(
+      within(dialog).getByRole('status', { name: '감사 로그 상세를 불러오는 중' }),
+    ).toBeInTheDocument();
+  });
+
+  it('다음 페이지를 누르면 서버의 다음 페이지를 조회한다', async () => {
+    const user = userEvent.setup();
+    mockListQuery.mockReturnValue(
+      successListQuery({
+        data: {
+          content: [LIST_ITEM],
+          first: true,
+          last: false,
+          page: 0,
+          size: 20,
+          totalElements: 21,
+          totalPages: 2,
+        },
+      }),
+    );
+
+    render(<AdminAuditLogManagement />);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(mockListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }), {
+      isEnabled: true,
+    });
   });
 
   it.each([
     ['loading', '감사 로그를 불러오는 중'],
-    ['error', '감사 로그를 불러올 수 없습니다.'],
     ['empty', '감사 로그가 없습니다.'],
-  ] as const)('%s 상태를 표시한다', (initialStatus, accessibleName) => {
-    render(<AdminAuditLogManagement initialStatus={initialStatus} logs={[]} />);
+  ] as const)('%s 상태를 표시한다', (status, accessibleName) => {
+    mockListQuery.mockReturnValue(
+      successListQuery({
+        data:
+          status === 'empty'
+            ? {
+                content: [],
+                first: true,
+                last: true,
+                page: 0,
+                size: 20,
+                totalElements: 0,
+                totalPages: 0,
+              }
+            : undefined,
+        isLoading: status === 'loading',
+      }),
+    );
 
-    if (initialStatus === 'loading') {
+    render(<AdminAuditLogManagement />);
+
+    if (status === 'loading') {
       expect(screen.getByRole('status', { name: accessibleName })).toBeInTheDocument();
       return;
     }
-
     expect(screen.getByText(accessibleName)).toBeInTheDocument();
-  });
-
-  it('오류 상태에서 다시 시도하면 감사 로그 목록을 표시한다', () => {
-    render(<AdminAuditLogManagement initialStatus="error" logs={LOGS} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-    expect(screen.getByRole('region', { name: '감사 로그 작업 실행 이력' })).toBeInTheDocument();
   });
 });

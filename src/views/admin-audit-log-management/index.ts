@@ -1,1 +1,4 @@
-export { AdminAuditLogManagementPage } from './ui/AdminAuditLogManagementPage';
+export {
+  AdminAuditLogManagementPage,
+  type AdminAuditLogManagementPageProps,
+} from './ui/AdminAuditLogManagementPage';

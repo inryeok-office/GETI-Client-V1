@@ -1,26 +1,46 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, type ReactNode } from 'react';
 
-import type { AuditLogActionType, AuditLogEntry, AuditLogResult } from '@/entities/audit-log';
+import {
+  mapAuditLogDetail,
+  mapAuditLogListItem,
+  useAdminAuditLogDetailQuery,
+  useAdminAuditLogListQuery,
+  type AuditLogApiResult,
+  type AuditLogEntry,
+  type AuditLogResult,
+} from '@/entities/audit-log';
 import { Button } from '@/shared/ui/button';
 import { DropdownField } from '@/shared/ui/dropdown-field';
 import { Icon } from '@/shared/ui/icon';
 
-export type AdminAuditLogListStatus = 'empty' | 'error' | 'loading' | 'success';
+export type AdminAuditLogListStatus = 'empty' | 'error' | 'invalid' | 'loading' | 'success';
+
+export interface AdminAuditLogManagementSearchParams {
+  actionType?: string;
+  actorId?: string;
+  auditLogId?: string;
+  endDate?: string;
+  page?: string;
+  result?: string;
+  startDate?: string;
+  targetId?: string;
+}
 
 interface AdminAuditLogManagementProps {
-  initialSelectedAuditLogId?: string;
-  initialStatus: AdminAuditLogListStatus;
-  logs: AuditLogEntry[];
+  initialSearchParams?: AdminAuditLogManagementSearchParams;
 }
+
+const PAGE_SIZE = 20;
+const URL_SYNC_DELAY_MS = 300;
 
 const ACTION_OPTIONS = [
   { label: '전체', value: 'ALL' },
-  { label: 'CREATE', value: 'CREATE' },
-  { label: 'UPDATE', value: 'UPDATE' },
-  { label: 'DELETE', value: 'DELETE' },
-  { label: 'ANSWER', value: 'ANSWER' },
+  { label: 'COMPANY_CREATED', value: 'COMPANY_CREATED' },
+  { label: 'COMPANY_UPDATED', value: 'COMPANY_UPDATED' },
+  { label: 'COMPANY_DELETED', value: 'COMPANY_DELETED' },
 ] as const;
 
 const RESULT_OPTIONS = [
@@ -32,7 +52,21 @@ const RESULT_OPTIONS = [
 const RESULT_LABELS: Record<AuditLogResult, string> = {
   FAILED: '실패',
   SUCCESS: '성공',
+  UNKNOWN: '알 수 없음',
 };
+
+type AuditLogActionFilter = (typeof ACTION_OPTIONS)[number]['value'];
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedValue(value), delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [delay, value]);
+
+  return debouncedValue;
+}
 
 function isValidDateText(value: string) {
   const match = /^(\d{4})\.(\d{2})\.(\d{2})$/.exec(value);
@@ -48,23 +82,89 @@ function isValidDateText(value: string) {
   );
 }
 
-export function AdminAuditLogManagement({
-  initialSelectedAuditLogId,
-  initialStatus,
-  logs,
-}: AdminAuditLogManagementProps) {
-  const [actionType, setActionType] = useState<AuditLogActionType | 'ALL'>('ALL');
-  const [actorQuery, setActorQuery] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [listStatus, setListStatus] = useState(initialStatus);
-  const [result, setResult] = useState<AuditLogResult | 'ALL'>('ALL');
-  const [selectedAuditLogId, setSelectedAuditLogId] = useState<string | null>(
-    initialSelectedAuditLogId ?? null,
-  );
-  const [startDate, setStartDate] = useState('');
-  const [targetQuery, setTargetQuery] = useState('');
+function parsePositiveInteger(value?: string): number | null {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
-  const selectedLog = logs.find((log) => log.auditLogId === selectedAuditLogId);
+function parsePage(value?: string): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 1 ? parsed - 1 : 0;
+}
+
+function parseActionType(value?: string): AuditLogActionFilter {
+  return ACTION_OPTIONS.some((option) => option.value === value)
+    ? (value as AuditLogActionFilter)
+    : 'ALL';
+}
+
+function parseResult(value?: string): AuditLogResult | 'ALL' {
+  return value === 'SUCCESS' || value === 'FAILED' ? value : 'ALL';
+}
+
+function toApiResult(result: AuditLogResult | 'ALL'): AuditLogApiResult | undefined {
+  if (result === 'SUCCESS') return 'SUCCESS';
+  if (result === 'FAILED') return 'FAILURE';
+  return undefined;
+}
+
+function buildSearchParams({
+  actionType,
+  actorId,
+  auditLogId,
+  endDate,
+  page,
+  result,
+  startDate,
+  targetId,
+}: {
+  actionType: AuditLogActionFilter;
+  actorId: string;
+  auditLogId: number | null;
+  endDate: string;
+  page: number;
+  result: AuditLogResult | 'ALL';
+  startDate: string;
+  targetId: string;
+}) {
+  const params = new URLSearchParams();
+  if (startDate) params.set('startDate', startDate);
+  if (endDate) params.set('endDate', endDate);
+  if (actorId) params.set('actorId', actorId);
+  if (actionType !== 'ALL') params.set('actionType', actionType);
+  if (targetId) params.set('targetId', targetId);
+  if (result !== 'ALL') params.set('result', result);
+  if (page > 0) params.set('page', String(page + 1));
+  if (auditLogId !== null) params.set('auditLogId', String(auditLogId));
+  return params;
+}
+
+export function AdminAuditLogManagement({
+  initialSearchParams = {},
+}: AdminAuditLogManagementProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [actionType, setActionType] = useState<AuditLogActionFilter>(() =>
+    parseActionType(initialSearchParams.actionType),
+  );
+  const [actorQuery, setActorQuery] = useState(() => {
+    const actorId = parsePositiveInteger(initialSearchParams.actorId);
+    return actorId === null ? '' : String(actorId);
+  });
+  const [endDate, setEndDate] = useState(initialSearchParams.endDate ?? '');
+  const [page, setPage] = useState(() => parsePage(initialSearchParams.page));
+  const [result, setResult] = useState<AuditLogResult | 'ALL'>(() =>
+    parseResult(initialSearchParams.result),
+  );
+  const [selectedAuditLogId, setSelectedAuditLogId] = useState<number | null>(() =>
+    parsePositiveInteger(initialSearchParams.auditLogId),
+  );
+  const [startDate, setStartDate] = useState(initialSearchParams.startDate ?? '');
+  const [targetQuery, setTargetQuery] = useState(() => {
+    const targetId = parsePositiveInteger(initialSearchParams.targetId);
+    return targetId === null ? '' : String(targetId);
+  });
+
   const startDateError =
     startDate.length > 0 && !isValidDateText(startDate)
       ? 'YYYY.MM.DD 형식으로 입력해 주세요.'
@@ -75,34 +175,72 @@ export function AdminAuditLogManagement({
       : startDate.length > 0 && endDate.length > 0 && !startDateError && endDate < startDate
         ? '종료일은 시작일보다 빠를 수 없습니다.'
         : undefined;
-  const filteredLogs = useMemo(() => {
-    const normalizedActor = actorQuery.trim().toLocaleLowerCase('ko-KR');
-    const normalizedTarget = targetQuery.trim().toLocaleLowerCase('ko-KR');
+  const hasDateError = Boolean(startDateError || endDateError);
+  const debouncedActionType = useDebouncedValue(actionType, URL_SYNC_DELAY_MS);
+  const debouncedActorQuery = useDebouncedValue(actorQuery, URL_SYNC_DELAY_MS);
+  const debouncedTargetQuery = useDebouncedValue(targetQuery, URL_SYNC_DELAY_MS);
+  const isTextFilterPending =
+    actionType !== debouncedActionType ||
+    actorQuery !== debouncedActorQuery ||
+    targetQuery !== debouncedTargetQuery;
 
-    return logs.filter((log) => {
-      const matchesActor =
-        normalizedActor.length === 0 ||
-        log.actor.name.toLocaleLowerCase('ko-KR').includes(normalizedActor);
-      const targetText = `${log.targetType} ${log.targetId}`.toLocaleLowerCase('ko-KR');
-      const matchesTarget = normalizedTarget.length === 0 || targetText.includes(normalizedTarget);
-      const matchesAction = actionType === 'ALL' || log.actionType === actionType;
-      const matchesResult = result === 'ALL' || log.result === result;
-      const occurredDate = log.occurredAt.slice(0, 10);
-      const matchesDate =
-        startDateError || endDateError
-          ? true
-          : (startDate.length === 0 || occurredDate >= startDate) &&
-            (endDate.length === 0 || occurredDate <= endDate);
+  const listQuery = useAdminAuditLogListQuery(
+    {
+      actionType: debouncedActionType === 'ALL' ? undefined : debouncedActionType,
+      actorId: parsePositiveInteger(debouncedActorQuery) ?? undefined,
+      endAt:
+        endDate && !hasDateError ? `${endDate.replaceAll('.', '-')}T23:59:59.999999999` : undefined,
+      page,
+      result: toApiResult(result),
+      size: PAGE_SIZE,
+      startAt:
+        startDate && !hasDateError ? `${startDate.replaceAll('.', '-')}T00:00:00` : undefined,
+      targetId: parsePositiveInteger(debouncedTargetQuery) ?? undefined,
+    },
+    { isEnabled: !hasDateError && !isTextFilterPending },
+  );
+  const detailQuery = useAdminAuditLogDetailQuery(selectedAuditLogId);
+  const logs = listQuery.data?.content.map(mapAuditLogListItem) ?? [];
+  const selectedLog = detailQuery.data ? mapAuditLogDetail(detailQuery.data) : null;
+  const listStatus: AdminAuditLogListStatus = hasDateError
+    ? 'invalid'
+    : isTextFilterPending || listQuery.isLoading || listQuery.isPlaceholderData
+      ? 'loading'
+      : listQuery.isError
+        ? 'error'
+        : logs.length === 0
+          ? 'empty'
+          : 'success';
 
-      return matchesActor && matchesTarget && matchesAction && matchesResult && matchesDate;
-    });
+  useEffect(() => {
+    if (startDateError || endDateError) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const params = buildSearchParams({
+        actionType,
+        actorId: actorQuery,
+        auditLogId: selectedAuditLogId,
+        endDate,
+        page,
+        result,
+        startDate,
+        targetId: targetQuery,
+      });
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }, URL_SYNC_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
   }, [
     actionType,
     actorQuery,
     endDate,
     endDateError,
-    logs,
+    page,
+    pathname,
     result,
+    router,
+    selectedAuditLogId,
     startDate,
     startDateError,
     targetQuery,
@@ -118,6 +256,14 @@ export function AdminAuditLogManagement({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedAuditLogId]);
+
+  useEffect(() => {
+    if (!listQuery.data || listQuery.isPlaceholderData || listQuery.data.totalPages === 0) return;
+    if (page < listQuery.data.totalPages) return;
+
+    const timeoutId = window.setTimeout(() => setPage(listQuery.data.totalPages - 1), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [listQuery.data, listQuery.isPlaceholderData, page]);
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -140,58 +286,93 @@ export function AdminAuditLogManagement({
               label="기간 시작"
               placeholder="YYYY.MM.DD"
               value={startDate}
-              onChange={setStartDate}
+              onChange={(value) => {
+                setStartDate(value);
+                setPage(0);
+              }}
             />
             <AuditTextField
               errorMessage={endDateError}
               label="기간 종료"
               placeholder="YYYY.MM.DD"
               value={endDate}
-              onChange={setEndDate}
+              onChange={(value) => {
+                setEndDate(value);
+                setPage(0);
+              }}
             />
             <AuditTextField
+              isNumeric
               label="작업자"
-              placeholder="이름 검색"
+              placeholder="회원 ID 검색"
               value={actorQuery}
-              onChange={setActorQuery}
+              onChange={(value) => {
+                setActorQuery(value);
+                setPage(0);
+              }}
             />
             <AuditFilterDropdown
               label="작업 유형"
               options={ACTION_OPTIONS}
               value={actionType}
-              onChange={(value) => setActionType(value as AuditLogActionType | 'ALL')}
+              onChange={(value) => {
+                setActionType(value as AuditLogActionFilter);
+                setPage(0);
+              }}
             />
             <AuditTextField
+              isNumeric
               label="대상"
               placeholder="대상 ID 검색"
               value={targetQuery}
-              onChange={setTargetQuery}
+              onChange={(value) => {
+                setTargetQuery(value);
+                setPage(0);
+              }}
             />
             <AuditFilterDropdown
               isCaption
               label="결과"
               options={RESULT_OPTIONS}
               value={result}
-              onChange={(value) => setResult(value as AuditLogResult | 'ALL')}
+              onChange={(value) => {
+                setResult(value as AuditLogResult | 'ALL');
+                setPage(0);
+              }}
             />
           </section>
 
           <section className="mt-6">
-            <h2 className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-              작업 실행 이력
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+                작업 실행 이력
+              </h2>
+              {listQuery.data && !hasDateError ? (
+                <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
+                  총 {listQuery.data.totalElements.toLocaleString()}건
+                </p>
+              ) : null}
+            </div>
             <div className="mt-4">
               {listStatus === 'loading' ? <AuditLogTableSkeleton /> : null}
               {listStatus === 'error' ? (
-                <AuditLogError onRetry={() => setListStatus('success')} />
+                <AuditLogError onRetry={() => void listQuery.refetch()} />
               ) : null}
-              {listStatus === 'empty' || (listStatus === 'success' && filteredLogs.length === 0) ? (
-                <AuditLogEmpty />
-              ) : null}
-              {listStatus === 'success' && filteredLogs.length > 0 ? (
-                <AuditLogTable logs={filteredLogs} onSelectLog={setSelectedAuditLogId} />
+              {listStatus === 'invalid' ? <AuditLogInvalidFilter /> : null}
+              {listStatus === 'empty' ? <AuditLogEmpty /> : null}
+              {listStatus === 'success' ? (
+                <AuditLogTable logs={logs} onSelectLog={setSelectedAuditLogId} />
               ) : null}
             </div>
+            {listStatus === 'success' && listQuery.data && listQuery.data.totalPages > 1 ? (
+              <AuditLogPagination
+                currentPage={page}
+                isFirst={listQuery.data.first}
+                isLast={listQuery.data.last}
+                totalPages={listQuery.data.totalPages}
+                onPageChange={setPage}
+              />
+            ) : null}
           </section>
 
           <p className="bg-primary-50 text-primary-800 mt-6 rounded-lg px-4 py-3 text-xs leading-[1.5] tracking-[-0.12px]">
@@ -200,7 +381,16 @@ export function AdminAuditLogManagement({
         </div>
       </main>
 
-      {selectedLog ? (
+      {selectedAuditLogId !== null && detailQuery.isLoading ? (
+        <AuditLogDetailLoading onClose={() => setSelectedAuditLogId(null)} />
+      ) : null}
+      {selectedAuditLogId !== null && detailQuery.isError ? (
+        <AuditLogDetailError
+          onClose={() => setSelectedAuditLogId(null)}
+          onRetry={() => void detailQuery.refetch()}
+        />
+      ) : null}
+      {selectedLog && !detailQuery.isError ? (
         <AuditLogDetailPanel log={selectedLog} onClose={() => setSelectedAuditLogId(null)} />
       ) : null}
     </div>
@@ -224,6 +414,7 @@ function AdminAuditLogHeader() {
 
 interface AuditTextFieldProps {
   errorMessage?: string;
+  isNumeric?: boolean;
   label: string;
   onChange?: (value: string) => void;
   placeholder?: string;
@@ -232,6 +423,7 @@ interface AuditTextFieldProps {
 
 function AuditTextField({
   errorMessage,
+  isNumeric = false,
   label,
   onChange,
   placeholder,
@@ -240,6 +432,11 @@ function AuditTextField({
   const isDateField = label.startsWith('기간');
 
   const handleChange = (nextValue: string) => {
+    if (isNumeric) {
+      onChange?.(nextValue.replace(/\D/g, '').slice(0, 19));
+      return;
+    }
+
     if (!isDateField) {
       onChange?.(nextValue);
       return;
@@ -257,8 +454,8 @@ function AuditTextField({
       </span>
       <input
         type="text"
-        inputMode={isDateField ? 'numeric' : undefined}
-        maxLength={isDateField ? 10 : undefined}
+        inputMode={isDateField || isNumeric ? 'numeric' : undefined}
+        maxLength={isDateField ? 10 : isNumeric ? 19 : undefined}
         pattern={isDateField ? '\\d{4}\\.\\d{2}\\.\\d{2}' : undefined}
         aria-invalid={errorMessage ? true : undefined}
         value={value}
@@ -315,7 +512,7 @@ function AuditLogTable({
   onSelectLog,
 }: {
   logs: AuditLogEntry[];
-  onSelectLog: (auditLogId: string) => void;
+  onSelectLog: (auditLogId: number) => void;
 }) {
   return (
     <div
@@ -350,7 +547,8 @@ function AuditLogTable({
               <td className="px-5">{log.actor.name}</td>
               <td className="px-5">{log.actionType}</td>
               <td className="px-5">
-                {log.targetType} #{log.targetId}
+                {log.targetType}
+                {log.targetId === null ? '' : ` #${log.targetId}`}
               </td>
               <td className="px-5">{log.summary}</td>
               <td className="px-5">{RESULT_LABELS[log.result]}</td>
@@ -371,7 +569,183 @@ function AuditLogTable({
   );
 }
 
+interface AuditLogPaginationProps {
+  currentPage: number;
+  isFirst: boolean;
+  isLast: boolean;
+  onPageChange: (page: number) => void;
+  totalPages: number;
+}
+
+function AuditLogPagination({
+  currentPage,
+  isFirst,
+  isLast,
+  onPageChange,
+  totalPages,
+}: AuditLogPaginationProps) {
+  return (
+    <nav aria-label="감사 로그 목록 페이지" className="mt-6 flex items-center justify-center gap-3">
+      <button
+        type="button"
+        disabled={isFirst}
+        onClick={() => onPageChange(currentPage - 1)}
+        className="rounded-lg border border-neutral-200 px-4 py-2 text-sm leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+      >
+        이전
+      </button>
+      <p className="text-sm leading-[1.4] tracking-[-0.14px] text-neutral-700">
+        {currentPage + 1} / {totalPages}
+      </p>
+      <button
+        type="button"
+        disabled={isLast}
+        onClick={() => onPageChange(currentPage + 1)}
+        className="rounded-lg border border-neutral-200 px-4 py-2 text-sm leading-[1.4] tracking-[-0.14px] text-neutral-700 disabled:opacity-40"
+      >
+        다음
+      </button>
+    </nav>
+  );
+}
+
+function AuditLogDetailLoading({ onClose }: { onClose: () => void }) {
+  return (
+    <AuditLogDetailLayout label="감사 로그 상세를 불러오는 중" onClose={onClose}>
+      <div role="status" aria-label="감사 로그 상세를 불러오는 중" className="animate-pulse">
+        <div className="h-7 w-40 rounded bg-neutral-100" />
+        <div className="mt-8 h-5 w-3/4 rounded bg-neutral-100" />
+        <div className="mt-3 h-4 w-1/3 rounded bg-neutral-100" />
+        <div className="mt-8 space-y-5">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="flex gap-5">
+              <span className="h-4 w-24 rounded bg-neutral-100" />
+              <span className="h-4 w-52 rounded bg-neutral-100" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </AuditLogDetailLayout>
+  );
+}
+
+function AuditLogDetailError({ onClose, onRetry }: { onClose: () => void; onRetry: () => void }) {
+  return (
+    <AuditLogDetailLayout label="감사 로그 상세 조회 오류" onClose={onClose}>
+      <section
+        role="alert"
+        className="flex h-full flex-col items-center justify-center text-center"
+      >
+        <Icon name="alertCircleLarge" className="size-12 text-neutral-500" />
+        <h2 className="mt-6 text-xl leading-[1.4] font-semibold text-neutral-900">
+          감사 로그 상세를 불러올 수 없습니다.
+        </h2>
+        <p className="mt-3 text-base leading-[1.6] text-neutral-600">잠시 후 다시 시도해 주세요.</p>
+        <Button className="mt-4" onClick={onRetry}>
+          다시 시도
+        </Button>
+      </section>
+    </AuditLogDetailLayout>
+  );
+}
+
 function AuditLogDetailPanel({ log, onClose }: { log: AuditLogEntry; onClose: () => void }) {
+  return (
+    <AuditLogDetailLayout label="감사 로그 상세" onClose={onClose}>
+      <div className="flex items-center justify-between pb-1">
+        <h2
+          id="audit-log-detail-title"
+          className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900"
+        >
+          감사 로그 상세
+        </h2>
+        <button
+          type="button"
+          aria-label="상세 패널 닫기"
+          onClick={onClose}
+          className="flex size-5 items-center justify-center"
+        >
+          <Icon name="close" className="size-[11.667px] text-neutral-900" />
+        </button>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-1">
+        <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-800">
+          {log.detailSummary}
+        </p>
+        <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
+          {log.occurredAt} · {RESULT_LABELS[log.result]}
+        </p>
+      </div>
+
+      <dl className="mt-6 flex flex-col gap-4">
+        <AuditDetailRow
+          label="작업자"
+          value={`${log.actor.name}${log.actor.memberId === null ? '' : ` · #${log.actor.memberId}`}`}
+        />
+        <AuditDetailRow label="작업 유형" value={log.actionType} />
+        <AuditDetailRow
+          label="대상"
+          value={`${log.targetType}${log.targetId === null ? '' : ` #${log.targetId}`}`}
+        />
+        <AuditDetailRow label="요청 경로" value={log.requestPath ?? '-'} />
+        <AuditDetailRow label="결과" value={log.resultMessage} />
+      </dl>
+
+      <section className="mt-6">
+        <h3 className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+          변경 요약
+        </h3>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
+          <table className="w-full min-w-[615px] table-fixed text-left">
+            <thead className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
+              <tr className="h-[52px]">
+                {['필드', '변경 전', '변경 후'].map((label) => (
+                  <th key={label} scope="col" className="px-4 font-normal">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-800">
+              {log.changes.map((change) => (
+                <tr key={change.field} className="h-[52px]">
+                  <td className="px-4">{change.field}</td>
+                  <td className="px-4">{change.before ?? '-'}</td>
+                  <td className="px-4">{change.after ?? '-'}</td>
+                </tr>
+              ))}
+              {log.changes.length === 0 ? (
+                <tr className="h-[72px]">
+                  <td colSpan={3} className="px-4 text-center text-neutral-500">
+                    기록된 변경 항목이 없습니다.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div className="bg-primary-50 text-primary-700 mt-6 rounded-lg p-4">
+        <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px]">민감 정보 보호</p>
+        <p className="mt-2 text-xs leading-[1.5] tracking-[-0.12px]">
+          토큰, 비밀번호와 파일 원문은 감사 로그에 표시하지 않습니다.
+        </p>
+      </div>
+    </AuditLogDetailLayout>
+  );
+}
+
+function AuditLogDetailLayout({
+  children,
+  label,
+  onClose,
+}: {
+  children: ReactNode;
+  label: string;
+  onClose: () => void;
+}) {
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-40">
       <button
@@ -383,77 +757,10 @@ function AuditLogDetailPanel({ log, onClose }: { log: AuditLogEntry; onClose: ()
       <aside
         role="dialog"
         aria-modal="true"
-        aria-labelledby="audit-log-detail-title"
+        aria-label={label}
         className="absolute top-0 right-0 z-10 h-full w-[680px] max-w-full overflow-y-auto bg-white px-8 py-6"
       >
-        <div className="flex items-center justify-between pb-1">
-          <h2
-            id="audit-log-detail-title"
-            className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900"
-          >
-            감사 로그 상세
-          </h2>
-          <button
-            type="button"
-            aria-label="상세 패널 닫기"
-            onClick={onClose}
-            className="flex size-5 items-center justify-center"
-          >
-            <Icon name="close" className="size-[11.667px] text-neutral-900" />
-          </button>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-1">
-          <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-800">
-            {log.detailSummary}
-          </p>
-          <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-            {log.occurredAt} · {RESULT_LABELS[log.result]}
-          </p>
-        </div>
-
-        <dl className="mt-6 flex flex-col gap-4">
-          <AuditDetailRow label="작업자" value={`${log.actor.name} · ${log.actor.email}`} />
-          <AuditDetailRow label="작업 유형" value={log.actionType} />
-          <AuditDetailRow label="대상" value={`${log.targetType} #${log.targetId}`} />
-          <AuditDetailRow label="요청 경로" value={log.requestPath} />
-          <AuditDetailRow label="결과" value={log.resultMessage} />
-        </dl>
-
-        <section className="mt-6">
-          <h3 className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-            변경 요약
-          </h3>
-          <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
-            <table className="w-full min-w-[615px] table-fixed text-left">
-              <thead className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-                <tr className="h-[52px]">
-                  {['필드', '변경 전', '변경 후'].map((label) => (
-                    <th key={label} scope="col" className="px-4 font-normal">
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-800">
-                {log.changes.map((change) => (
-                  <tr key={change.field} className="h-[52px]">
-                    <td className="px-4">{change.field}</td>
-                    <td className="px-4">{change.before}</td>
-                    <td className="px-4">{change.after}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <div className="bg-primary-50 text-primary-700 mt-6 rounded-lg p-4">
-          <p className="text-sm leading-[1.4] font-medium tracking-[-0.14px]">민감 정보 보호</p>
-          <p className="mt-2 text-xs leading-[1.5] tracking-[-0.12px]">
-            토큰, 비밀번호와 파일 원문은 감사 로그에 표시하지 않습니다.
-          </p>
-        </div>
+        {children}
       </aside>
     </div>
   );
@@ -518,6 +825,20 @@ function AuditLogEmpty() {
       </h2>
       <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
         검색 조건을 변경하거나 작업 기록이 생성된 뒤 다시 확인해 주세요.
+      </p>
+    </section>
+  );
+}
+
+function AuditLogInvalidFilter() {
+  return (
+    <section className="flex min-h-[384px] flex-col items-center justify-center rounded-xl border border-neutral-200 bg-white text-center">
+      <Icon name="alertCircleLarge" className="size-12 text-neutral-500" />
+      <h2 className="mt-6 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
+        검색 기간을 확인해 주세요.
+      </h2>
+      <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
+        올바른 날짜를 입력하면 감사 로그를 다시 조회합니다.
       </p>
     </section>
   );
