@@ -120,6 +120,42 @@ describe('AdminAuditLogManagement', () => {
     });
   });
 
+  it('URL의 페이지 크기를 검증해 서버 Query와 URL에 유지한다', async () => {
+    mockListQuery.mockReturnValue(
+      successListQuery({
+        data: {
+          content: [LIST_ITEM],
+          first: false,
+          last: false,
+          page: 1,
+          size: 50,
+          totalElements: 150,
+          totalPages: 3,
+        },
+      }),
+    );
+
+    render(<AdminAuditLogManagement initialSearchParams={{ page: '2', size: '50' }} />);
+
+    expect(mockListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, size: 50 }),
+      { isEnabled: true },
+    );
+    await waitFor(() => {
+      expect(mockRouterReplace).toHaveBeenLastCalledWith('/admin/audit-logs?page=2&size=50', {
+        scroll: false,
+      });
+    });
+  });
+
+  it('허용 범위를 벗어난 페이지 크기는 기본값으로 조회한다', () => {
+    render(<AdminAuditLogManagement initialSearchParams={{ size: '101' }} />);
+
+    expect(mockListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ size: 20 }), {
+      isEnabled: true,
+    });
+  });
+
   it('잘못된 기간은 안내하고 서버 Query에 전달하지 않는다', async () => {
     const user = userEvent.setup();
     render(<AdminAuditLogManagement />);
@@ -134,6 +170,17 @@ describe('AdminAuditLogManagement', () => {
     expect(
       screen.queryByRole('region', { name: '감사 로그 작업 실행 이력' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('안전한 정수 범위를 벗어난 ID는 안내하고 서버 Query에 전달하지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<AdminAuditLogManagement />);
+
+    await user.type(screen.getByLabelText('작업자'), '9007199254740992');
+
+    expect(screen.getByText('처리할 수 있는 회원 ID 범위를 초과했습니다.')).toBeInTheDocument();
+    expect(mockListQuery).toHaveBeenLastCalledWith(expect.any(Object), { isEnabled: false });
+    expect(screen.getByText('검색 ID를 확인해 주세요.')).toBeInTheDocument();
   });
 
   it('텍스트 필터를 300ms 디바운스해 서버 Query에 전달한다', () => {
@@ -163,6 +210,19 @@ describe('AdminAuditLogManagement', () => {
       unmount();
       vi.useRealTimers();
     }
+  });
+
+  it('작업 유형 선택은 디바운스하지 않고 서버 Query에 전달한다', () => {
+    render(<AdminAuditLogManagement />);
+    mockListQuery.mockClear();
+
+    fireEvent.click(screen.getByRole('combobox', { name: '작업 유형' }));
+    fireEvent.click(screen.getByRole('option', { name: 'COMPANY_UPDATED' }));
+
+    expect(mockListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ actionType: 'COMPANY_UPDATED' }),
+      { isEnabled: true },
+    );
   });
 
   it('상세 보기를 누르면 실제 상세와 변경 항목을 표시한다', async () => {
@@ -248,6 +308,30 @@ describe('AdminAuditLogManagement', () => {
 
     expect(mockListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }), {
       isEnabled: true,
+    });
+  });
+
+  it('현재 페이지가 서버의 마지막 페이지를 벗어나면 유효한 마지막 페이지로 보정한다', async () => {
+    mockListQuery.mockReturnValue(
+      successListQuery({
+        data: {
+          content: [LIST_ITEM],
+          first: false,
+          last: true,
+          page: 4,
+          size: 20,
+          totalElements: 21,
+          totalPages: 2,
+        },
+      }),
+    );
+
+    render(<AdminAuditLogManagement initialSearchParams={{ page: '5' }} />);
+
+    await waitFor(() => {
+      expect(mockListQuery).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }), {
+        isEnabled: true,
+      });
     });
   });
 

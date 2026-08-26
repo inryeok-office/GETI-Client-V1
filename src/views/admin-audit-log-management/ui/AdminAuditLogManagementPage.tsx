@@ -12,10 +12,5 @@ export async function AdminAuditLogManagementPage({
 }: AdminAuditLogManagementPageProps) {
   const resolvedSearchParams = await searchParams;
 
-  return (
-    <AdminAuditLogManagement
-      key={JSON.stringify(resolvedSearchParams)}
-      initialSearchParams={resolvedSearchParams}
-    />
-  );
+  return <AdminAuditLogManagement initialSearchParams={resolvedSearchParams} />;
 }

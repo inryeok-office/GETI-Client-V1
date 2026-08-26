@@ -25,6 +25,7 @@ export interface AdminAuditLogManagementSearchParams {
   endDate?: string;
   page?: string;
   result?: string;
+  size?: string;
   startDate?: string;
   targetId?: string;
 }
@@ -33,7 +34,8 @@ interface AdminAuditLogManagementProps {
   initialSearchParams?: AdminAuditLogManagementSearchParams;
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
 const URL_SYNC_DELAY_MS = 300;
 
 const ACTION_OPTIONS = [
@@ -92,6 +94,13 @@ function parsePage(value?: string): number {
   return Number.isSafeInteger(parsed) && parsed > 1 ? parsed - 1 : 0;
 }
 
+function parsePageSize(value?: string): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= MAX_PAGE_SIZE
+    ? parsed
+    : DEFAULT_PAGE_SIZE;
+}
+
 function parseActionType(value?: string): AuditLogActionFilter {
   return ACTION_OPTIONS.some((option) => option.value === value)
     ? (value as AuditLogActionFilter)
@@ -115,6 +124,7 @@ function buildSearchParams({
   endDate,
   page,
   result,
+  size,
   startDate,
   targetId,
 }: {
@@ -124,6 +134,7 @@ function buildSearchParams({
   endDate: string;
   page: number;
   result: AuditLogResult | 'ALL';
+  size: number;
   startDate: string;
   targetId: string;
 }) {
@@ -135,6 +146,7 @@ function buildSearchParams({
   if (targetId) params.set('targetId', targetId);
   if (result !== 'ALL') params.set('result', result);
   if (page > 0) params.set('page', String(page + 1));
+  if (size !== DEFAULT_PAGE_SIZE) params.set('size', String(size));
   if (auditLogId !== null) params.set('auditLogId', String(auditLogId));
   return params;
 }
@@ -153,6 +165,7 @@ export function AdminAuditLogManagement({
   });
   const [endDate, setEndDate] = useState(initialSearchParams.endDate ?? '');
   const [page, setPage] = useState(() => parsePage(initialSearchParams.page));
+  const pageSize = parsePageSize(initialSearchParams.size);
   const [result, setResult] = useState<AuditLogResult | 'ALL'>(() =>
     parseResult(initialSearchParams.result),
   );
@@ -175,34 +188,43 @@ export function AdminAuditLogManagement({
       : startDate.length > 0 && endDate.length > 0 && !startDateError && endDate < startDate
         ? '종료일은 시작일보다 빠를 수 없습니다.'
         : undefined;
-  const hasDateError = Boolean(startDateError || endDateError);
-  const debouncedActionType = useDebouncedValue(actionType, URL_SYNC_DELAY_MS);
+  const actorIdError =
+    actorQuery.length > 0 && parsePositiveInteger(actorQuery) === null
+      ? '처리할 수 있는 회원 ID 범위를 초과했습니다.'
+      : undefined;
+  const targetIdError =
+    targetQuery.length > 0 && parsePositiveInteger(targetQuery) === null
+      ? '처리할 수 있는 대상 ID 범위를 초과했습니다.'
+      : undefined;
+  const hasFilterError = Boolean(startDateError || endDateError || actorIdError || targetIdError);
   const debouncedActorQuery = useDebouncedValue(actorQuery, URL_SYNC_DELAY_MS);
   const debouncedTargetQuery = useDebouncedValue(targetQuery, URL_SYNC_DELAY_MS);
   const isTextFilterPending =
-    actionType !== debouncedActionType ||
-    actorQuery !== debouncedActorQuery ||
-    targetQuery !== debouncedTargetQuery;
+    actorQuery !== debouncedActorQuery || targetQuery !== debouncedTargetQuery;
 
   const listQuery = useAdminAuditLogListQuery(
     {
-      actionType: debouncedActionType === 'ALL' ? undefined : debouncedActionType,
+      actionType: actionType === 'ALL' ? undefined : actionType,
       actorId: parsePositiveInteger(debouncedActorQuery) ?? undefined,
       endAt:
-        endDate && !hasDateError ? `${endDate.replaceAll('.', '-')}T23:59:59.999999999` : undefined,
+        endDate && !hasFilterError
+          ? `${endDate.replaceAll('.', '-')}T23:59:59.999999999`
+          : undefined,
       page,
       result: toApiResult(result),
-      size: PAGE_SIZE,
+      size: pageSize,
       startAt:
-        startDate && !hasDateError ? `${startDate.replaceAll('.', '-')}T00:00:00` : undefined,
+        startDate && !hasFilterError
+          ? `${startDate.replaceAll('.', '-')}T00:00:00`
+          : undefined,
       targetId: parsePositiveInteger(debouncedTargetQuery) ?? undefined,
     },
-    { isEnabled: !hasDateError && !isTextFilterPending },
+    { isEnabled: !hasFilterError && !isTextFilterPending },
   );
   const detailQuery = useAdminAuditLogDetailQuery(selectedAuditLogId);
   const logs = listQuery.data?.content.map(mapAuditLogListItem) ?? [];
   const selectedLog = detailQuery.data ? mapAuditLogDetail(detailQuery.data) : null;
-  const listStatus: AdminAuditLogListStatus = hasDateError
+  const listStatus: AdminAuditLogListStatus = hasFilterError
     ? 'invalid'
     : isTextFilterPending || listQuery.isLoading || listQuery.isPlaceholderData
       ? 'loading'
@@ -213,7 +235,7 @@ export function AdminAuditLogManagement({
           : 'success';
 
   useEffect(() => {
-    if (startDateError || endDateError) return;
+    if (startDateError || endDateError || actorIdError || targetIdError) return;
 
     const timeoutId = window.setTimeout(() => {
       const params = buildSearchParams({
@@ -223,6 +245,7 @@ export function AdminAuditLogManagement({
         endDate,
         page,
         result,
+        size: pageSize,
         startDate,
         targetId: targetQuery,
       });
@@ -233,6 +256,7 @@ export function AdminAuditLogManagement({
     return () => window.clearTimeout(timeoutId);
   }, [
     actionType,
+    actorIdError,
     actorQuery,
     endDate,
     endDateError,
@@ -241,9 +265,11 @@ export function AdminAuditLogManagement({
     result,
     router,
     selectedAuditLogId,
+    pageSize,
     startDate,
     startDateError,
     targetQuery,
+    targetIdError,
   ]);
 
   useEffect(() => {
@@ -302,6 +328,7 @@ export function AdminAuditLogManagement({
               }}
             />
             <AuditTextField
+              errorMessage={actorIdError}
               isNumeric
               label="작업자"
               placeholder="회원 ID 검색"
@@ -321,6 +348,7 @@ export function AdminAuditLogManagement({
               }}
             />
             <AuditTextField
+              errorMessage={targetIdError}
               isNumeric
               label="대상"
               placeholder="대상 ID 검색"
@@ -347,7 +375,7 @@ export function AdminAuditLogManagement({
               <h2 className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
                 작업 실행 이력
               </h2>
-              {listQuery.data && !hasDateError ? (
+              {listQuery.data && !hasFilterError ? (
                 <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
                   총 {listQuery.data.totalElements.toLocaleString()}건
                 </p>
@@ -358,7 +386,9 @@ export function AdminAuditLogManagement({
               {listStatus === 'error' ? (
                 <AuditLogError onRetry={() => void listQuery.refetch()} />
               ) : null}
-              {listStatus === 'invalid' ? <AuditLogInvalidFilter /> : null}
+              {listStatus === 'invalid' ? (
+                <AuditLogInvalidFilter hasIdError={Boolean(actorIdError || targetIdError)} />
+              ) : null}
               {listStatus === 'empty' ? <AuditLogEmpty /> : null}
               {listStatus === 'success' ? (
                 <AuditLogTable logs={logs} onSelectLog={setSelectedAuditLogId} />
@@ -830,15 +860,17 @@ function AuditLogEmpty() {
   );
 }
 
-function AuditLogInvalidFilter() {
+function AuditLogInvalidFilter({ hasIdError }: { hasIdError: boolean }) {
   return (
     <section className="flex min-h-[384px] flex-col items-center justify-center rounded-xl border border-neutral-200 bg-white text-center">
       <Icon name="alertCircleLarge" className="size-12 text-neutral-500" />
       <h2 className="mt-6 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-        검색 기간을 확인해 주세요.
+        {hasIdError ? '검색 ID를 확인해 주세요.' : '검색 기간을 확인해 주세요.'}
       </h2>
       <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
-        올바른 날짜를 입력하면 감사 로그를 다시 조회합니다.
+        {hasIdError
+          ? '안전하게 처리할 수 있는 양의 정수 ID를 입력해 주세요.'
+          : '올바른 날짜를 입력하면 감사 로그를 다시 조회합니다.'}
       </p>
     </section>
   );
