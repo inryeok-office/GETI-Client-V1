@@ -42,9 +42,9 @@ function detailRecord(overrides: Partial<AdminCompanyDetailRecord> = {}): AdminC
 describe('mapAdminCompanyDetail', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // 종료일(mouEndDate)도 시각 없는 날짜 문자열이라 UTC로 파싱된다 — 로컬 타임존과 무관하게
-    // 정확히 24시간 배수의 차이가 나도록 시스템 시각도 같은 방식(날짜만)으로 맞춘다.
-    vi.setSystemTime(new Date('2026-08-24'));
+    // Date 생성자에 연·월·일을 따로 넘기면 로컬 타임존 자정으로 만들어진다 — 테스트를 실행하는
+    // 머신의 타임존과 무관하게 getFullYear/getMonth/getDate가 항상 2026-08-24를 가리키게 한다.
+    vi.setSystemTime(new Date(2026, 7, 24));
   });
 
   afterEach(() => {
@@ -109,6 +109,15 @@ describe('mapAdminCompanyDetail', () => {
       detailRecord({ mouStatus: 'ACTIVE', mouEndDate: '2026-08-29' }),
     );
     expect(result.mouDaysLeft).toBe(5);
+  });
+
+  it('로컬 시각이 자정 직후여도(UTC 기준 전날) 종료일이 오늘이면 D-0으로 계산한다', () => {
+    // 자정을 살짝 지난 시각으로 맞춰 시각(자정 여부)이 아니라 달력 날짜만으로 비교하는지 검증한다.
+    vi.setSystemTime(new Date(2026, 7, 29, 0, 1));
+    const result = mapAdminCompanyDetail(
+      detailRecord({ mouStatus: 'ACTIVE', mouEndDate: '2026-08-29' }),
+    );
+    expect(result.mouDaysLeft).toBe(0);
   });
 });
 

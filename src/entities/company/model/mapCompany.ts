@@ -71,11 +71,20 @@ function formatDateTime(value: string): string {
   return `${year}.${month}.${day} ${hours}:${minutes}`;
 }
 
-/** MOU 종료일까지 남은 일수. `ACTIVE` 상태가 아니거나 종료일이 없으면 null(미체결·만료면 null). */
+/**
+ * MOU 종료일까지 남은 일수. `ACTIVE` 상태가 아니거나 종료일이 없으면 null(미체결·만료면 null).
+ * `mouEndDate`는 시각 없는 날짜 문자열이라 UTC 자정으로 파싱된다 — "오늘"도 시각을 버리고
+ * 같은 방식(로컬 달력 날짜를 UTC 자정으로)으로 맞춰야 시간대·시각에 따라 하루씩 밀리지 않는다
+ * (PR #169 코드리뷰 반영).
+ */
 function computeMouDaysLeft(mouStatus: MouStatus, mouEndDate: string | null): number | null {
   if (mouStatus !== 'ACTIVE' || !mouEndDate) return null;
-  const diffMs = new Date(mouEndDate).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+  const now = new Date();
+  const todayUtcMidnight = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const endUtcMidnight = new Date(mouEndDate).getTime();
+  const diffDays = Math.round((endUtcMidnight - todayUtcMidnight) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
 }
 
 /**
