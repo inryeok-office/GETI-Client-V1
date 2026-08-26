@@ -433,9 +433,7 @@ export function ProfileOnboardingPage() {
               role="alert"
               className="border-status-error/20 bg-status-error/5 flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
             >
-              <p className="text-status-error text-sm">
-                프로필 선택 정보를 불러오지 못했습니다.
-              </p>
+              <p className="text-status-error text-sm">프로필 선택 정보를 불러오지 못했습니다.</p>
               <button
                 type="button"
                 onClick={handleRetryMetadata}

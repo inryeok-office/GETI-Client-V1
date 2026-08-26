@@ -165,9 +165,7 @@ describe('ProfileOnboardingPage', () => {
 
     render(<ProfileOnboardingPage />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '프로필 선택 정보를 불러오지 못했습니다.',
-    );
+    expect(screen.getByRole('alert')).toHaveTextContent('프로필 선택 정보를 불러오지 못했습니다.');
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect(mockTechStackRefetch).toHaveBeenCalledOnce();
