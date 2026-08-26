@@ -214,9 +214,7 @@ export function AdminAuditLogManagement({
       result: toApiResult(result),
       size: pageSize,
       startAt:
-        startDate && !hasFilterError
-          ? `${startDate.replaceAll('.', '-')}T00:00:00`
-          : undefined,
+        startDate && !hasFilterError ? `${startDate.replaceAll('.', '-')}T00:00:00` : undefined,
       targetId: parsePositiveInteger(debouncedTargetQuery) ?? undefined,
     },
     { isEnabled: !hasFilterError && !isTextFilterPending },
