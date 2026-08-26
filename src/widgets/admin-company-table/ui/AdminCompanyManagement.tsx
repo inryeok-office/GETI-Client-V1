@@ -111,7 +111,10 @@ export function AdminCompanyManagement() {
       description: submission.values.description || null,
       mouStartDate: submission.values.mouStartDate || null,
       mouEndDate: submission.values.mouEndDate || null,
-      memo: submission.values.memo || null,
+      // PATCH는 null/미전달을 "기존 값 유지"로 처리한다(CompanyUpdateRequest KDoc) — null로
+      // 접으면 수정 시 메모를 지워도 반영되지 않는다. 빈 문자열은 그대로 보내 실제로 비워지게
+      // 한다(PR #169 코드리뷰 반영).
+      memo: submission.values.memo,
     };
 
     if (submission.mode === 'register') {

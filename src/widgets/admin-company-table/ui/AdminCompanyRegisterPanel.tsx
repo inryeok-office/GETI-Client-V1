@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import {
   ADMIN_COMPANY_TYPE_LABEL,
@@ -35,6 +35,8 @@ interface AdminCompanyRegisterPanelProps {
   isOpen: boolean;
   mode?: 'create' | 'edit';
   initialValues?: AdminCompanyEditInitialValues;
+  /** 등록/수정 요청이 진행 중이면 제출 버튼을 잠가 중복 제출을 막는다. */
+  isSubmitting?: boolean;
   onClose: () => void;
   onSubmit: (values: AdminCompanyRegisterFormValues) => void;
 }
@@ -68,6 +70,7 @@ export function AdminCompanyRegisterPanel({
   isOpen,
   mode = 'create',
   initialValues,
+  isSubmitting = false,
   onClose,
   onSubmit,
 }: AdminCompanyRegisterPanelProps) {
@@ -78,6 +81,7 @@ export function AdminCompanyRegisterPanel({
   const [mouEndDate, setMouEndDate] = useState(initialValues?.mouEndDate ?? '');
   const [description, setDescription] = useState(initialValues?.description ?? '');
   const [memo, setMemo] = useState(initialValues?.memo ?? '');
+  const memoFieldId = useId();
 
   if (!isOpen) return null;
 
@@ -89,9 +93,10 @@ export function AdminCompanyRegisterPanel({
     name.trim() !== '' &&
     type !== '' &&
     (!isMouPeriodRequired || (mouStartDate !== '' && mouEndDate !== ''));
+  const canSubmit = isValid && !isSubmitting;
 
   const handleSubmit = () => {
-    if (!isValid) return;
+    if (!canSubmit) return;
 
     onSubmit({
       name: name.trim(),
@@ -230,10 +235,14 @@ export function AdminCompanyRegisterPanel({
             </div>
 
             <div>
-              <p className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+              <label
+                htmlFor={memoFieldId}
+                className="px-1 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
+              >
                 관리 메모
-              </p>
+              </label>
               <textarea
+                id={memoFieldId}
                 value={memo}
                 onChange={(event) => setMemo(event.target.value)}
                 placeholder="관리자만 볼 수 있는 메모를 입력해 주세요."
@@ -254,10 +263,10 @@ export function AdminCompanyRegisterPanel({
           </button>
           <button
             type="button"
-            disabled={!isValid}
+            disabled={!canSubmit}
             onClick={handleSubmit}
             className={`rounded-lg px-6 py-3 text-sm leading-[1.4] font-medium tracking-[-0.14px] transition-colors ${
-              isValid
+              canSubmit
                 ? 'bg-primary-700 hover:bg-primary-600 text-white'
                 : 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             }`}

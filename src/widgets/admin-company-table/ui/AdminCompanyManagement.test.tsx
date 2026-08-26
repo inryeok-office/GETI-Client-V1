@@ -249,6 +249,51 @@ describe('AdminCompanyManagement', () => {
     );
   });
 
+  it('메모를 지우고 수정하면 null이 아니라 빈 문자열을 보낸다(서버 PATCH는 null을 기존 값 유지로 처리한다)', async () => {
+    fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
+    fetchAdminCompanyDetail.mockResolvedValue({
+      companyId: 1,
+      name: '플로우테크',
+      companyType: 'GENERAL',
+      mouStatus: 'ACTIVE',
+      sourceName: 'manual',
+      homepageUrl: null,
+      logoUrl: null,
+      description: '기존 설명',
+      industry: null,
+      address: null,
+      mouStartDate: '2025-03-01',
+      mouEndDate: '2027-02-28',
+      representativeEmail: null,
+      representativePhone: null,
+      memo: '기존 메모',
+      lastEditedBy: null,
+      lastEditedAt: null,
+      stats: { totalConnectedJobs: 0, activeJobCount: 0, totalApplicationCount: 0 },
+      connectedJobs: [],
+      recentChanges: [],
+      createdAt: '2025-01-01T00:00:00',
+      updatedAt: '2025-01-01T00:00:00',
+    });
+    updateCompany.mockResolvedValue({ companyId: 1, name: '플로우테크' });
+
+    renderWithQueryClient(<AdminCompanyManagement />);
+    await waitFor(() => expect(screen.getByText('플로우테크')).toBeInTheDocument());
+    await userEvent.click(screen.getAllByRole('button', { name: '수정' })[0]);
+
+    const panel = await screen.findByRole('dialog', { name: '기업 수정' });
+    await userEvent.clear(within(panel).getByDisplayValue('기존 메모'));
+    await userEvent.click(within(panel).getByRole('button', { name: '수정하기' }));
+    const confirmDialog = screen.getByRole('dialog', { name: '변경사항을 저장할까요?' });
+    await userEvent.click(within(confirmDialog).getByRole('button', { name: '변경사항 저장' }));
+
+    await waitFor(() =>
+      expect(updateCompany).toHaveBeenCalledWith(
+        expect.objectContaining({ payload: expect.objectContaining({ memo: '' }) }),
+      ),
+    );
+  });
+
   it('등록 API가 실패하면 오류 토스트를 표시한다', async () => {
     fetchCompanyList.mockResolvedValue(LIST_RESPONSE);
     createCompany.mockRejectedValue(new ApiError('이미 등록된 기업입니다.', 409));
