@@ -1,9 +1,17 @@
 import { AdminCollectorManagementPage } from '@/views/admin-collector-management';
 
 interface AdminCollectorRouteProps {
-  searchParams: Promise<{ runId?: string; variant?: string }>;
+  searchParams: Promise<{
+    endDate?: string;
+    page?: string;
+    runId?: string;
+    size?: string;
+    sourceId?: string;
+    startDate?: string;
+    status?: string;
+  }>;
 }
 
-export default function AdminCollectorRoute({ searchParams }: AdminCollectorRouteProps) {
-  return <AdminCollectorManagementPage searchParams={searchParams} />;
+export default async function AdminCollectorRoute({ searchParams }: AdminCollectorRouteProps) {
+  return <AdminCollectorManagementPage initialSearchParams={await searchParams} />;
 }
