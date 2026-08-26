@@ -1,8 +1,9 @@
-import { AdminAuditLogManagementPage } from '@/views/admin-audit-log-management';
+import {
+  AdminAuditLogManagementPage,
+  type AdminAuditLogManagementPageProps,
+} from '@/views/admin-audit-log-management';
 
-interface AdminAuditLogsRouteProps {
-  searchParams: Promise<{ auditLogId?: string; variant?: string }>;
-}
+type AdminAuditLogsRouteProps = AdminAuditLogManagementPageProps;
 
 export default function AdminAuditLogsRoute({ searchParams }: AdminAuditLogsRouteProps) {
   return <AdminAuditLogManagementPage searchParams={searchParams} />;
