@@ -109,6 +109,23 @@ describe('AdminCompanyDetailPage', () => {
     expect(screen.getByText('기업 정보 수정')).toBeInTheDocument();
   });
 
+  it('로딩 중에 미리 마운트되지 않고, 조회 성공 후 수정을 누르면 최신 값으로 채워진 패널이 열린다', async () => {
+    mockUseAdminCompanyDetailQuery.mockReturnValue(idleQuery({ isLoading: true, data: undefined }));
+    const { rerender } = render(<AdminCompanyDetailPage companyId="1" />);
+
+    expect(screen.getByText('정보를 불러오는 중입니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    mockUseAdminCompanyDetailQuery.mockReturnValue(idleQuery());
+    rerender(<AdminCompanyDetailPage companyId="1" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '수정' }));
+
+    const panel = screen.getByRole('dialog', { name: '기업 수정' });
+    expect(within(panel).getByDisplayValue('플로우테크')).toBeInTheDocument();
+    expect(within(panel).getByDisplayValue('기존 메모')).toBeInTheDocument();
+  });
+
   it('"관련 메모"의 수정 버튼을 누르면 기존 값이 채워진 패널이 열리고, 제출하면 수정 API를 호출한다', async () => {
     render(<AdminCompanyDetailPage companyId="1" />);
 
@@ -127,6 +144,30 @@ describe('AdminCompanyDetailPage', () => {
       }),
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
+  });
+
+  it('메모를 지우고 제출하면 null이 아니라 빈 문자열을 보낸다(서버 PATCH는 null을 기존 값 유지로 처리한다)', async () => {
+    render(<AdminCompanyDetailPage companyId="1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '수정' }));
+    const panel = screen.getByRole('dialog', { name: '기업 수정' });
+    fireEvent.change(screen.getByDisplayValue('기존 메모'), { target: { value: '' } });
+    fireEvent.click(within(panel).getByRole('button', { name: '수정하기' }));
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ memo: '' }) }),
+      expect.anything(),
+    );
+  });
+
+  it('수정 요청이 진행 중이면 제출 버튼을 잠가 중복 제출을 막는다', () => {
+    mockUseUpdateCompanyMutation.mockReturnValue({ mutate: mockMutate, isPending: true });
+    render(<AdminCompanyDetailPage companyId="1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '수정' }));
+    const panel = screen.getByRole('dialog', { name: '기업 수정' });
+
+    expect(within(panel).getByRole('button', { name: '수정하기' })).toBeDisabled();
   });
 
   it('수정 성공 시 패널을 닫고 성공 토스트를 보여준다', async () => {

@@ -72,7 +72,10 @@ export function AdminCompanyDetailPage({ companyId }: AdminCompanyDetailPageProp
           description: values.description || null,
           mouStartDate: values.mouStartDate || null,
           mouEndDate: values.mouEndDate || null,
-          memo: values.memo || null,
+          // PATCH는 null/미전달을 "기존 값 유지"로 처리해 명시적으로 비우는 걸 지원하지 않는다
+          // (CompanyUpdateRequest KDoc) — null로 접으면 메모를 지워도 서버에 반영되지 않는다.
+          // 빈 문자열은 그대로 보내 실제로 비워지게 한다(PR #169 코드리뷰 반영).
+          memo: values.memo,
         },
       },
       {
@@ -109,13 +112,16 @@ export function AdminCompanyDetailPage({ companyId }: AdminCompanyDetailPageProp
         )}
       </main>
 
-      <AdminCompanyRegisterPanel
-        isOpen={isEditOpen}
-        mode="edit"
-        initialValues={editInitialValues}
-        onClose={() => setIsEditOpen(false)}
-        onSubmit={handleSubmit}
-      />
+      {isEditOpen && editInitialValues ? (
+        <AdminCompanyRegisterPanel
+          isOpen
+          mode="edit"
+          initialValues={editInitialValues}
+          isSubmitting={updateMutation.isPending}
+          onClose={() => setIsEditOpen(false)}
+          onSubmit={handleSubmit}
+        />
+      ) : null}
     </>
   );
 }
