@@ -1,27 +1,60 @@
-import { SiteHeader } from '@/widgets/site-header';
-import { BookmarkList, type BookmarkListStatus } from '@/widgets/bookmark-list';
+'use client';
 
-import { MOCK_BOOKMARKED_JOBS } from '../model/mock';
-import { BookmarkUnavailablePage } from './BookmarkUnavailablePage';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import { useBookmarkListQuery, useDeleteBookmarkMutation } from '@/entities/bookmark';
+import { BookmarkList, type BookmarkListStatus } from '@/widgets/bookmark-list';
+import { SiteHeader } from '@/widgets/site-header';
+
+import { mapBookmarkJobToListItem } from '../model/mapBookmarkJob';
 
 interface BookmarkListPageProps {
-  searchParams: Promise<{ variant?: string }>;
+  initialPage?: number;
 }
 
-const STATUS_BY_VARIANT: Record<string, BookmarkListStatus> = {
-  empty: 'empty',
-  error: 'error',
-  loading: 'loading',
-};
+const PAGE_SIZE = 20;
 
-export async function BookmarkListPage({ searchParams }: BookmarkListPageProps) {
-  const { variant } = await searchParams;
+export function BookmarkListPage({ initialPage = 0 }: BookmarkListPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
 
-  if (variant === 'unavailable') return <BookmarkUnavailablePage />;
+  const [page, setPage] = useState(initialPage);
+  const [removalErrorJobId, setRemovalErrorJobId] = useState<string | null>(null);
 
-  const status = STATUS_BY_VARIANT[variant ?? 'success'] ?? 'success';
-  const isRemovalError = variant === 'remove-error';
-  const jobs = status === 'empty' ? [] : MOCK_BOOKMARKED_JOBS;
+  const listQuery = useBookmarkListQuery({ page, size: PAGE_SIZE });
+  const deleteBookmarkMutation = useDeleteBookmarkMutation();
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (page > 0) params.set('page', String(page + 1));
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [page, pathname, router]);
+
+  const status: BookmarkListStatus = listQuery.isLoading
+    ? 'initialLoading'
+    : listQuery.isFetching && listQuery.isPlaceholderData
+      ? 'pageLoading'
+      : listQuery.isError
+        ? 'error'
+        : (listQuery.data?.content.length ?? 0) === 0
+          ? 'empty'
+          : 'success';
+
+  const jobs = (listQuery.data?.content ?? []).map(mapBookmarkJobToListItem);
+
+  const handleRemoveBookmark = async (jobId: string) => {
+    setRemovalErrorJobId(null);
+
+    try {
+      await deleteBookmarkMutation.mutateAsync(Number(jobId));
+      if (jobs.length === 1 && page > 0) setPage(page - 1);
+    } catch {
+      setRemovalErrorJobId(jobId);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
@@ -38,10 +71,15 @@ export async function BookmarkListPage({ searchParams }: BookmarkListPageProps) 
 
         <section className="mt-[32px]">
           <BookmarkList
-            initialJobs={jobs}
-            initialRemovalErrorJobId={isRemovalError ? 'bookmark-3' : null}
-            mockRemovalResult={isRemovalError ? 'error' : 'success'}
+            currentPage={page + 1}
+            jobs={jobs}
+            removalErrorJobId={removalErrorJobId}
             status={status}
+            totalCount={listQuery.data?.totalElements ?? 0}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            onRemoveBookmark={handleRemoveBookmark}
+            onRetry={() => listQuery.refetch()}
           />
         </section>
       </main>
