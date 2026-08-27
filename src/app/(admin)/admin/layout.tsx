@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 
+import { SessionGuard } from '@/features/session-guard';
 import { AdminNavigation, type AdminNavSection } from '@/widgets/admin-navigation';
+
+const ADMIN_ROLES = ['DEVELOPER', 'TEACHER'] as const;
 
 const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   { items: [{ href: '/admin', label: '대시보드' }] },
@@ -37,9 +40,11 @@ const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-neutral-50">
-      <AdminNavigation sections={ADMIN_NAV_SECTIONS} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <SessionGuard allowedRoles={ADMIN_ROLES}>
+      <div className="flex min-h-screen bg-neutral-50">
+        <AdminNavigation sections={ADMIN_NAV_SECTIONS} />
+        <main className="min-w-0 flex-1">{children}</main>
+      </div>
+    </SessionGuard>
   );
 }

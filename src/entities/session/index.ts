@@ -1,3 +1,4 @@
 export { fetchSession } from './api/sessionApi';
 export { sessionKeys } from './api/sessionKeys';
-export type { Session } from './model/session';
+export { useSessionQuery } from './api/useSessionQuery';
+export type { Session, SessionRole } from './model/session';
