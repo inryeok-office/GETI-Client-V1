@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { executeStaffApprovalAction, fetchStaffApprovalRequests } from './staffApprovalApi';
+import {
+  executeStaffApprovalAction,
+  fetchStaffApprovalCount,
+  fetchStaffApprovalRequests,
+} from './staffApprovalApi';
 import type { AdminMemberSearchItem } from '../model/types';
 
 /** `applicantApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 캡처한다. */
@@ -37,9 +41,13 @@ function searchItem(overrides: Partial<AdminMemberSearchItem> = {}): AdminMember
 }
 
 function searchResponse(
-  overrides: { content?: AdminMemberSearchItem[]; totalPages?: number } = {},
+  overrides: {
+    content?: AdminMemberSearchItem[];
+    totalElements?: number;
+    totalPages?: number;
+  } = {},
 ) {
-  return { success: true, data: { content: [], totalPages: 1, ...overrides } };
+  return { success: true, data: { content: [], totalElements: 0, totalPages: 1, ...overrides } };
 }
 
 describe('fetchStaffApprovalRequests', () => {
@@ -102,6 +110,28 @@ describe('fetchStaffApprovalRequests', () => {
     expect(stub.requests).toHaveLength(2);
     expect(stub.requests.map((request) => request.params.page)).toEqual([0, 1]);
     expect(result.map((request) => request.memberId)).toEqual([1, 2]);
+  });
+});
+
+describe('fetchStaffApprovalCount', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('size=1로 조회하고 totalElements만 반환한다', async () => {
+    const stub = stubServer(() =>
+      searchResponse({ content: [searchItem()], totalElements: 8, totalPages: 8 }),
+    );
+    restore = stub.restore;
+
+    const result = await fetchStaffApprovalCount('pending');
+
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({
+      url: '/api/v1/admin/members/search',
+      params: { role: 'TEACHER', status: 'PENDING', page: 0, size: 1 },
+    });
+    expect(result).toBe(8);
   });
 });
 

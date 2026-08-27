@@ -10,6 +10,7 @@ import {
   fetchApplicantDetail,
   fetchApplicantHistory,
   fetchApplicantList,
+  fetchApplicationStatusCounts,
   fetchTeacherOptions,
   type ExecuteApplicantActionParams,
   type ExportJobApplicationsParams,
@@ -23,6 +24,7 @@ export const applicantKeys = {
   jobApplicantOptions: (jobId: number) =>
     [...applicantKeys.all, 'job-applicant-options', jobId] as const,
   teacherOptions: () => [...applicantKeys.all, 'teacher-options'] as const,
+  statusCounts: () => [...applicantKeys.all, 'status-counts'] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
@@ -60,6 +62,14 @@ export function useTeacherOptionsQuery() {
   return useQuery({
     queryKey: applicantKeys.teacherOptions(),
     queryFn: fetchTeacherOptions,
+  });
+}
+
+/** 관리자 대시보드 KPI · 지원 처리 현황 표에 쓰는 지원서 상태별 건수. 필터 없는 전역 집계다. */
+export function useApplicationStatusCountsQuery() {
+  return useQuery({
+    queryKey: applicantKeys.statusCounts(),
+    queryFn: fetchApplicationStatusCounts,
   });
 }
 

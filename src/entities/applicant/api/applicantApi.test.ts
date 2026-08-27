@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { exportJobApplications, fetchAllJobApplicants, fetchTeacherOptions } from './applicantApi';
+import {
+  exportJobApplications,
+  fetchAllJobApplicants,
+  fetchApplicationStatusCounts,
+  fetchTeacherOptions,
+} from './applicantApi';
 import type { ApplicantListItem, ApplicantListResponse } from '../model/types';
 
 /** `discordDeliveryApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 캡처한다. */
@@ -142,6 +147,31 @@ describe('fetchTeacherOptions', () => {
     const result = await fetchTeacherOptions();
 
     expect(result).toEqual([{ memberId: 3, name: null }]);
+  });
+});
+
+describe('fetchApplicationStatusCounts', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('status-counts를 GET하고 totalCount·counts를 반환한다', async () => {
+    const stub = stubServer(() => ({
+      success: true,
+      data: { totalCount: 84, counts: { SUBMITTED: 42, REVISION_REQUESTED: 14, APPROVED: 28 } },
+    }));
+    restore = stub.restore;
+
+    const result = await fetchApplicationStatusCounts();
+
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({
+      url: '/api/v1/admin/job-applications/status-counts',
+    });
+    expect(result).toEqual({
+      totalCount: 84,
+      counts: { SUBMITTED: 42, REVISION_REQUESTED: 14, APPROVED: 28 },
+    });
   });
 });
 

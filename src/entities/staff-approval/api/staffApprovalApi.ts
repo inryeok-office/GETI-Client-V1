@@ -13,6 +13,7 @@ const BASE_PATH = '/api/v1/admin/members';
 
 interface AdminMemberSearchResponse {
   content: AdminMemberSearchItem[];
+  totalElements: number;
   totalPages: number;
 }
 
@@ -61,6 +62,18 @@ export async function fetchStaffApprovalRequests(
     .flatMap(({ content }) => content)
     .map(mapStaffApprovalRequest)
     .filter((request): request is StaffApprovalRequest => request !== null);
+}
+
+/**
+ * 해당 상태의 교직원 가입 요청 건수만 센다. 관리자 대시보드 "가입 승인 대기" KPI용 —
+ * 목록 전체를 순회하는 `fetchStaffApprovalRequests`와 달리 `size=1`로 `totalElements`만 읽는다.
+ */
+export async function fetchStaffApprovalCount(status: StaffApprovalStatus): Promise<number> {
+  const { data } = await api.get<ApiResponse<AdminMemberSearchResponse>>(`${BASE_PATH}/search`, {
+    params: { role: 'TEACHER', status: SERVER_STATUS_BY_TAB[status], page: 0, size: 1 },
+  });
+
+  return data.data.totalElements;
 }
 
 export interface ExecuteStaffApprovalActionParams {
