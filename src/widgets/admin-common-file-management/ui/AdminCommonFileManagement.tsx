@@ -52,6 +52,7 @@ interface CommonFileUploadItem {
   id: number;
   name: string;
   progress: number;
+  purpose: CommonFilePurpose;
   status: CommonFileUploadStatus;
 }
 
@@ -143,8 +144,11 @@ export function AdminCommonFileManagement({
     const nextFiles = Array.from(selectedFiles);
     if (nextFiles.length === 0) return;
 
+    const uploadedCount = uploads.filter(
+      (upload) => upload.purpose === uploadPurpose && upload.status === 'success',
+    ).length;
     const validationErrors = nextFiles.map((file, index) =>
-      getUploadValidationError(file, index, uploadPolicy),
+      getUploadValidationError(file, uploadedCount + index, uploadPolicy),
     );
     const validFileCount = validationErrors.filter((error) => !error).length;
     let failedCount = nextFiles.length - validFileCount;
@@ -158,6 +162,7 @@ export function AdminCommonFileManagement({
           id: index,
           name: file.name,
           progress: 0,
+          purpose: uploadPurpose,
           status: errorMessage ? 'error' : 'pending',
         };
       }),
