@@ -1,9 +1,10 @@
+import type { StudentSearchParams } from '@/entities/student';
 import { StudentListPage } from '@/views/student-list';
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; variant?: string }>;
+  searchParams: Promise<StudentSearchParams>;
 }
 
-export default function Page({ searchParams }: PageProps) {
-  return <StudentListPage searchParams={searchParams} />;
+export default async function Page({ searchParams }: PageProps) {
+  return <StudentListPage initialSearchParams={await searchParams} />;
 }

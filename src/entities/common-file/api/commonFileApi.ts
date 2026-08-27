@@ -2,7 +2,8 @@ import { api, type ApiResponse } from '@/shared/api';
 
 import type {
   CommonFileListApiResponse,
-  CommonFileUploadApiResponse,
+  CommonFilePurpose,
+  CommonFileUploadResponse,
   FetchCommonFileListParams,
   UploadCommonFileVariables,
 } from '../model/types';
@@ -19,23 +20,36 @@ export async function fetchAdminCommonFileList(
   return data.data;
 }
 
-export async function uploadCommonFile({
-  file,
-  onProgress,
-  purpose,
-  signal,
-}: UploadCommonFileVariables): Promise<CommonFileUploadApiResponse> {
+export function uploadCommonFile(
+  file: File,
+  purpose: CommonFilePurpose,
+): Promise<CommonFileUploadResponse>;
+export function uploadCommonFile(
+  variables: UploadCommonFileVariables,
+): Promise<CommonFileUploadResponse>;
+export async function uploadCommonFile(
+  fileOrVariables: File | UploadCommonFileVariables,
+  directPurpose?: CommonFilePurpose,
+): Promise<CommonFileUploadResponse> {
+  const variables = isUploadVariables(fileOrVariables)
+    ? fileOrVariables
+    : { file: fileOrVariables, purpose: directPurpose as CommonFilePurpose };
+  const { file, onProgress, purpose, signal } = variables;
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('purpose', purpose);
 
-  const { data } = await api.post<ApiResponse<CommonFileUploadApiResponse>>(FILES_PATH, formData, {
+  const { data } = await api.post<ApiResponse<CommonFileUploadResponse>>(FILES_PATH, formData, {
+    params: { purpose },
     headers: { 'Content-Type': 'multipart/form-data' },
     ...(signal ? { signal } : {}),
-    onUploadProgress: ({ loaded, total }) => {
-      if (!total) return;
-      onProgress?.(Math.min(100, Math.round((loaded / total) * 100)));
-    },
+    ...(onProgress
+      ? {
+          onUploadProgress: ({ loaded, total }: { loaded: number; total?: number }) => {
+            if (!total) return;
+            onProgress(Math.min(100, Math.round((loaded / total) * 100)));
+          },
+        }
+      : {}),
   });
   onProgress?.(100);
   return data.data;
@@ -46,4 +60,10 @@ export async function downloadCommonFile(fileId: number): Promise<Blob> {
     responseType: 'blob',
   });
   return response.data;
+}
+
+function isUploadVariables(
+  value: File | UploadCommonFileVariables,
+): value is UploadCommonFileVariables {
+  return 'file' in value;
 }

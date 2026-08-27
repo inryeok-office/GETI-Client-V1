@@ -19,8 +19,10 @@ export type {
   CommonFileOwnerType,
   CommonFilePurpose,
   CommonFileStatus,
+  CommonFileUpload,
   CommonFileUploadApiResponse,
   CommonFileUploadPolicy,
+  CommonFileUploadResponse,
   FetchCommonFileListParams,
   UploadCommonFileVariables,
 } from './model/types';

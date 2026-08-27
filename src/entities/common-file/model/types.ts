@@ -50,7 +50,7 @@ export interface CommonFileListApiResponse {
   totalPages: number;
 }
 
-export interface CommonFileUploadApiResponse {
+export interface CommonFileUploadResponse {
   contentType: string;
   createdAt: string;
   fileId: number;
@@ -58,6 +58,8 @@ export interface CommonFileUploadApiResponse {
   purpose: CommonFilePurpose;
   size: number;
 }
+
+export type CommonFileUploadApiResponse = CommonFileUploadResponse;
 
 export interface FetchCommonFileListParams {
   originalName?: string;
@@ -90,4 +92,10 @@ export interface CommonFileUploadPolicy {
   acceptedExtensions: readonly string[];
   maxFileCount: number;
   maxFileSizeBytes: number;
+}
+
+/** 기존 프로필 업로드 UI가 사용하는 진행 표시 모델. */
+export interface CommonFileUpload {
+  name: string;
+  progress: number;
 }
