@@ -4,12 +4,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { useBookmarkListQuery, useDeleteBookmarkMutation } from '@/entities/bookmark';
-import { ApiError } from '@/shared/api';
 import { BookmarkList, type BookmarkListStatus } from '@/widgets/bookmark-list';
 import { SiteHeader } from '@/widgets/site-header';
 
 import { mapBookmarkJobToListItem } from '../model/mapBookmarkJob';
-import { BookmarkUnavailablePage } from './BookmarkUnavailablePage';
 
 interface BookmarkListPageProps {
   initialPage?: number;
@@ -37,7 +35,7 @@ export function BookmarkListPage({ initialPage = 0 }: BookmarkListPageProps) {
 
   const status: BookmarkListStatus = listQuery.isLoading
     ? 'initialLoading'
-    : listQuery.isFetching
+    : listQuery.isFetching && listQuery.isPlaceholderData
       ? 'pageLoading'
       : listQuery.isError
         ? 'error'
@@ -57,10 +55,6 @@ export function BookmarkListPage({ initialPage = 0 }: BookmarkListPageProps) {
       setRemovalErrorJobId(jobId);
     }
   };
-
-  if (listQuery.error instanceof ApiError && listQuery.error.code === 'FORBIDDEN') {
-    return <BookmarkUnavailablePage />;
-  }
 
   return (
     <div className="min-h-screen bg-[#f7f7f8]">
