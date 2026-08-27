@@ -1,2 +1,2 @@
 export { AdminCommonFileManagement } from './ui/AdminCommonFileManagement';
-export type { AdminCommonFileVariant } from './ui/AdminCommonFileManagement';
+export type { AdminCommonFileListStatus } from './ui/AdminCommonFileManagement';

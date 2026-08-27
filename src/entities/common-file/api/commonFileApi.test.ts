@@ -1,19 +1,54 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { uploadCommonFile } from './commonFileApi';
+import { downloadCommonFile, fetchAdminCommonFileList, uploadCommonFile } from './commonFileApi';
 
-const { mockPost } = vi.hoisted(() => ({ mockPost: vi.fn() }));
+const { mockGet, mockPost } = vi.hoisted(() => ({ mockGet: vi.fn(), mockPost: vi.fn() }));
 
-vi.mock('@/shared/api', () => ({
-  api: { post: mockPost },
-}));
+vi.mock('@/shared/api', () => ({ api: { get: mockGet, post: mockPost } }));
 
 beforeEach(() => {
+  mockGet.mockReset();
   mockPost.mockReset();
 });
 
 describe('commonFileApi', () => {
-  it('파일과 용도를 multipart 요청으로 전달하고 업로드 결과를 반환한다', async () => {
+  it('관리자 파일 목록을 검색·필터·페이지 조건과 함께 조회한다', async () => {
+    const responseData = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
+    mockGet.mockResolvedValue({ data: { success: true, data: responseData } });
+
+    await expect(
+      fetchAdminCommonFileList({ originalName: '이력서', purpose: 'JOB_APPLICATION' }),
+    ).resolves.toBe(responseData);
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/admin/files', {
+      params: { page: 0, size: 20, originalName: '이력서', purpose: 'JOB_APPLICATION' },
+    });
+  });
+
+  it('파일과 목적을 multipart 요청으로 업로드하고 진행률을 전달한다', async () => {
+    const onProgress = vi.fn();
+    const file = new File(['resume'], 'resume.pdf', { type: 'application/pdf' });
+    const responseData = { fileId: 1, originalName: 'resume.pdf' };
+    mockPost.mockImplementation((_url, _body, config) => {
+      config.onUploadProgress({ loaded: 5, total: 10 });
+      return Promise.resolve({ data: { success: true, data: responseData } });
+    });
+
+    await expect(uploadCommonFile({ file, purpose: 'JOB_APPLICATION', onProgress })).resolves.toBe(
+      responseData,
+    );
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/files', expect.any(FormData), {
+      params: { purpose: 'JOB_APPLICATION' },
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: expect.any(Function),
+    });
+    const formData = mockPost.mock.calls[0][1] as FormData;
+    expect(formData.get('file')).toBe(file);
+    expect(formData.get('purpose')).toBeNull();
+    expect(onProgress).toHaveBeenNthCalledWith(1, 50);
+    expect(onProgress).toHaveBeenLastCalledWith(100);
+  });
+
+  it('프로필 업로드 호출 형식을 유지한다', async () => {
     const file = new File(['image'], 'profile.png', { type: 'image/png' });
     const uploadedFile = {
       fileId: 77,
@@ -27,13 +62,17 @@ describe('commonFileApi', () => {
 
     await expect(uploadCommonFile(file, 'PROFILE_IMAGE')).resolves.toBe(uploadedFile);
 
-    const [url, body, config] = mockPost.mock.calls[0] ?? [];
-    expect(url).toBe('/api/v1/files');
-    expect(body).toBeInstanceOf(FormData);
-    expect((body as FormData).get('file')).toBe(file);
-    expect(config).toEqual({
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/files', expect.any(FormData), {
       params: { purpose: 'PROFILE_IMAGE' },
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+  });
+
+  it('파일 다운로드를 인증된 Blob 요청으로 처리한다', async () => {
+    const blob = new Blob(['file']);
+    mockGet.mockResolvedValue({ data: blob });
+
+    await expect(downloadCommonFile(7)).resolves.toBe(blob);
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/files/7/download', { responseType: 'blob' });
   });
 });
