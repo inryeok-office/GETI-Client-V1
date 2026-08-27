@@ -1,4 +1,5 @@
 import {
+  AdminDashboardLive,
   AdminDashboardPage,
   DASHBOARD_CONTENT,
   DASHBOARD_NAV_SECTIONS,
@@ -12,6 +13,10 @@ interface PageProps {
 export default async function Page({ searchParams }: PageProps) {
   const { variant } = await searchParams;
   const resolvedVariant = resolveAdminDashboardVariant(variant);
+
+  if (resolvedVariant === 'admin') {
+    return <AdminDashboardLive navSections={DASHBOARD_NAV_SECTIONS.admin} />;
+  }
 
   return (
     <AdminDashboardPage

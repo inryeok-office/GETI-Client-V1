@@ -1,3 +1,5 @@
+'use client';
+
 import { DASHBOARD_TONE_COLOR } from '../model/tone';
 import type { DashboardTable, DashboardTableCell } from '../model/types';
 
@@ -34,7 +36,7 @@ function TableCell({ cell }: { cell: DashboardTableCell }) {
 }
 
 /** 대시보드 하단 좌측 테이블 섹션. Figma(node 942:21818 등)의 Section 컴포넌트를 옮겼다. */
-export function DashboardTableSection({ title, columns, rows }: DashboardTable) {
+export function DashboardTableSection({ title, columns, rows, hasError, onRetry }: DashboardTable) {
   return (
     <div className="flex w-[1118px] flex-col rounded-[16px] border border-[#e5e5e5] bg-white p-[24px]">
       <div className="flex items-center justify-between">
@@ -57,13 +59,28 @@ export function DashboardTableSection({ title, columns, rows }: DashboardTable) 
           ))}
         </div>
 
-        {rows.map((row) => (
-          <div key={row.id} className="flex h-[60px] items-start border-t border-[#e5e5e5]">
-            {row.cells.map((cell, index) => (
-              <TableCell key={`${row.id}-${index}`} cell={cell} />
-            ))}
+        {hasError ? (
+          <div className="flex h-[180px] flex-col items-center justify-center gap-[12px] border-t border-[#e5e5e5]">
+            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+              처리 현황을 불러오지 못했습니다.
+            </p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-[8px] border border-[#e5e5e5] px-[16px] py-[8px] text-[14px] leading-[1.4] tracking-[-0.14px] text-[#404040]"
+            >
+              다시 시도
+            </button>
           </div>
-        ))}
+        ) : (
+          rows.map((row) => (
+            <div key={row.id} className="flex h-[60px] items-start border-t border-[#e5e5e5]">
+              {row.cells.map((cell, index) => (
+                <TableCell key={`${row.id}-${index}`} cell={cell} />
+              ))}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

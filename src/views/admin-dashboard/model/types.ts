@@ -8,6 +8,12 @@ export interface KpiCardData {
   tone: DashboardTone;
   count: string;
   description: string;
+  /** 실데이터 연동 카드의 조회 상태. 지정하지 않으면 정적(Mock) 카드다. */
+  loadState?: 'loading' | 'error';
+  /** `loadState`가 'error'일 때 재시도 콜백. */
+  onRetry?: () => void;
+  /** 서버에 대응 API가 없어 이번 연동에서 제외한 카드. `count` 대신 "미지원"을 표시한다. */
+  unsupported?: boolean;
 }
 
 export interface DashboardTableCell {
@@ -26,6 +32,10 @@ export interface DashboardTable {
   title: string;
   columns: string[];
   rows: DashboardTableRow[];
+  /** 실데이터 조회 실패 시 행 대신 재시도 UI를 보여준다. 지정하지 않으면 정적(Mock) 표다. */
+  hasError?: boolean;
+  /** `hasError`일 때 재시도 콜백. */
+  onRetry?: () => void;
 }
 
 export interface DashboardNotification {
