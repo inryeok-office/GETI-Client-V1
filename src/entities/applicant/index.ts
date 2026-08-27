@@ -4,6 +4,7 @@ export {
   useApplicantDetailQuery,
   useApplicantHistoryQuery,
   useApplicantListQuery,
+  useApplicationStatusCountsQuery,
   useExportJobApplicationsMutation,
   useJobApplicantOptionsQuery,
   useJobPostingOptionsQuery,
@@ -11,6 +12,7 @@ export {
 } from './api/useApplicantQueries';
 export type {
   ApplicantDepartment,
+  ApplicationStatusCounts,
   ExecuteApplicantActionParams,
   ExportedFile,
   ExportJobApplicationsParams,

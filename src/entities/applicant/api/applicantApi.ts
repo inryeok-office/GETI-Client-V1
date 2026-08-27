@@ -44,6 +44,26 @@ export async function fetchApplicantList(
   return data.data;
 }
 
+/** `GET /admin/job-applications/status-counts` 응답(GETI-Server-V1 #290). */
+export interface ApplicationStatusCounts {
+  /** DRAFT를 제외한 전체 지원서 수. */
+  totalCount: number;
+  /** 상태별 건수. DRAFT 키는 빠지고, 그 외 상태는 0이라도 포함된다. */
+  counts: Partial<Record<ApplicantStatus, number>>;
+}
+
+/**
+ * `GET /admin/job-applications/status-counts` — 지원서 상태별 건수. 관리자 대시보드 KPI ·
+ * 처리 현황 표에서 상태별 `size=1` 요청을 여러 번 보내는 대신 한 번에 받는다. 필터는 없고
+ * (mineOnly · jobId 불가) 전역 집계만 반환한다.
+ */
+export async function fetchApplicationStatusCounts(): Promise<ApplicationStatusCounts> {
+  const { data } = await api.get<ApiResponse<ApplicationStatusCounts>>(
+    `${BASE_PATH}/status-counts`,
+  );
+  return data.data;
+}
+
 /** `GET /admin/job-applications/{id}` — 지원서 상세 조회. */
 export async function fetchApplicantDetail(applicationId: number): Promise<ApplicantDetail> {
   const { data } = await api.get<ApiResponse<ApplicantDetail>>(`${BASE_PATH}/${applicationId}`);

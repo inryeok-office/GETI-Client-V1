@@ -4,6 +4,7 @@ export type { StaffApprovalAction, StaffApprovalStatus, StaffApprovalRequest } f
 export {
   staffApprovalKeys,
   useStaffApprovalActionMutation,
+  useStaffApprovalCountQuery,
   useStaffApprovalListQuery,
 } from './api/useStaffApprovalQueries';
 export type { ExecuteStaffApprovalActionParams } from './api/staffApprovalApi';

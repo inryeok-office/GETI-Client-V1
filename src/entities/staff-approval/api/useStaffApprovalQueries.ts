@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   executeStaffApprovalAction,
+  fetchStaffApprovalCount,
   fetchStaffApprovalRequests,
   type ExecuteStaffApprovalActionParams,
 } from './staffApprovalApi';
@@ -12,12 +13,21 @@ import type { StaffApprovalStatus } from '../model/types';
 export const staffApprovalKeys = {
   all: ['staff-approvals'] as const,
   list: (status?: StaffApprovalStatus) => [...staffApprovalKeys.all, 'list', status] as const,
+  count: (status: StaffApprovalStatus) => [...staffApprovalKeys.all, 'count', status] as const,
 };
 
 export function useStaffApprovalListQuery(status?: StaffApprovalStatus) {
   return useQuery({
     queryKey: staffApprovalKeys.list(status),
     queryFn: () => fetchStaffApprovalRequests(status),
+  });
+}
+
+/** 관리자 대시보드 "가입 승인 대기" KPI. 목록을 순회하지 않고 건수만 조회한다. */
+export function useStaffApprovalCountQuery(status: StaffApprovalStatus) {
+  return useQuery({
+    queryKey: staffApprovalKeys.count(status),
+    queryFn: () => fetchStaffApprovalCount(status),
   });
 }
 
