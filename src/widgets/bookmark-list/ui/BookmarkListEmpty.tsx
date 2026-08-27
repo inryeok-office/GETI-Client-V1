@@ -20,7 +20,7 @@ export function BookmarkListEmpty() {
             북마크한 공고가 없습니다.
           </h2>
           <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
-            관심 있는 공고를 북마크하여 한곳에서 확인해 보세요.
+            관심 있는 공고를 북마크하고 한곳에서 확인해 보세요.
           </p>
         </div>
         <Link

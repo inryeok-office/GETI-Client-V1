@@ -1,9 +1,13 @@
 import { BookmarkListPage } from '@/views/bookmark-list';
 
 interface BookmarksRouteProps {
-  searchParams: Promise<{ variant?: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
-export default function BookmarksRoute({ searchParams }: BookmarksRouteProps) {
-  return <BookmarkListPage searchParams={searchParams} />;
+export default async function BookmarksRoute({ searchParams }: BookmarksRouteProps) {
+  const { page } = await searchParams;
+  const parsedPage = Number(page);
+  const initialPage = Number.isInteger(parsedPage) && parsedPage > 1 ? parsedPage - 1 : 0;
+
+  return <BookmarkListPage initialPage={initialPage} />;
 }
