@@ -17,8 +17,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/entities/bookmark', async () => {
-  const actual =
-    await vi.importActual<typeof import('@/entities/bookmark')>('@/entities/bookmark');
+  const actual = await vi.importActual<typeof import('@/entities/bookmark')>('@/entities/bookmark');
 
   return {
     ...actual,
@@ -115,8 +114,6 @@ describe('BookmarkListPage', () => {
 
     render(<BookmarkListPage />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '북마크한 공고를 불러오지 못했습니다.',
-    );
+    expect(screen.getByRole('alert')).toHaveTextContent('북마크한 공고를 불러오지 못했습니다.');
   });
 });
