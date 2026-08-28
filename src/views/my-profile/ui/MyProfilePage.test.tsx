@@ -7,16 +7,20 @@ import { MyProfilePage } from './MyProfilePage';
 
 const {
   mockMutateAsync,
+  mockUploadMutateAsync,
   mockUseMajorMetadataQuery,
   mockUseMyProfileQuery,
   mockUseTechStackMetadataQuery,
   mockUseUpdateMyProfileMutation,
+  mockUseUploadMyProfileImageMutation,
 } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
+  mockUploadMutateAsync: vi.fn(),
   mockUseMajorMetadataQuery: vi.fn(),
   mockUseMyProfileQuery: vi.fn(),
   mockUseTechStackMetadataQuery: vi.fn(),
   mockUseUpdateMyProfileMutation: vi.fn(),
+  mockUseUploadMyProfileImageMutation: vi.fn(),
 }));
 
 vi.mock('@/entities/member', async () => {
@@ -29,9 +33,16 @@ vi.mock('@/entities/member', async () => {
   };
 });
 
-vi.mock('@/features/update-profile', () => ({
-  useUpdateMyProfileMutation: mockUseUpdateMyProfileMutation,
-}));
+vi.mock('@/features/update-profile', async () => {
+  const actual = await vi.importActual<typeof import('@/features/update-profile')>(
+    '@/features/update-profile',
+  );
+  return {
+    ...actual,
+    useUpdateMyProfileMutation: mockUseUpdateMyProfileMutation,
+    useUploadMyProfileImageMutation: mockUseUploadMyProfileImageMutation,
+  };
+});
 
 const MAJORS = [
   { active: true, majorId: 1, name: '백엔드' },
@@ -68,16 +79,31 @@ const mockRefetch = vi.fn();
 const mockMajorRefetch = vi.fn();
 const mockTechStackRefetch = vi.fn();
 
+function uploadProfileImage(
+  file = new File(['image'], 'new-profile.webp', { type: 'image/webp' }),
+) {
+  fireEvent.change(screen.getByLabelText('프로필 이미지 파일'), {
+    target: { files: [file] },
+  });
+}
+
 beforeEach(() => {
   mockRefetch.mockReset();
   mockMajorRefetch.mockReset();
   mockTechStackRefetch.mockReset();
   mockMutateAsync.mockReset();
+  mockUploadMutateAsync.mockReset();
   mockUseUpdateMyProfileMutation.mockReset();
+  mockUseUploadMyProfileImageMutation.mockReset();
   mockMutateAsync.mockResolvedValue(PROFILE);
+  mockUploadMutateAsync.mockResolvedValue({ fileId: 77, purpose: 'PROFILE_IMAGE' });
   mockUseUpdateMyProfileMutation.mockReturnValue({
     isPending: false,
     mutateAsync: mockMutateAsync,
+  });
+  mockUseUploadMyProfileImageMutation.mockReturnValue({
+    isPending: false,
+    mutateAsync: mockUploadMutateAsync,
   });
   mockUseMyProfileQuery.mockReturnValue({
     data: PROFILE,
@@ -96,6 +122,14 @@ beforeEach(() => {
     isError: false,
     isLoading: false,
     refetch: mockTechStackRefetch,
+  });
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    value: vi.fn(() => 'blob:new-profile-preview'),
+  });
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    value: vi.fn(),
   });
 });
 
@@ -210,6 +244,119 @@ describe('MyProfilePage', () => {
     expect(screen.getByText('등록된 URL이 없습니다.')).toBeInTheDocument();
   });
 
+  it('새 이미지를 업로드하고 저장 요청에 파일 ID를 포함한다', async () => {
+    const updatedProfile = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/new-profile.webp',
+    };
+    mockMutateAsync.mockResolvedValueOnce(updatedProfile);
+    render(<MyProfilePage />);
+
+    uploadProfileImage();
+
+    await waitFor(() => {
+      expect(mockUploadMutateAsync).toHaveBeenCalledWith(expect.any(File));
+    });
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      'blob:new-profile-preview',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    expect(screen.getByAltText('김게티 공개 프로필 이미지')).toHaveAttribute(
+      'src',
+      'blob:new-profile-preview',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        profile: {
+          bio: PROFILE.bio,
+          isPublic: true,
+          links: PROFILE.links,
+          phone: PROFILE.phone,
+          profileImageFileId: 77,
+        },
+      });
+    });
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/new-profile.webp',
+    );
+  });
+
+  it('기존 이미지를 삭제하면 null 파일 ID를 저장하고 삭제 취소 시 복구한다', async () => {
+    const profileWithImage = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/current-profile.png',
+    };
+    mockUseMyProfileQuery.mockReturnValue({
+      data: profileWithImage,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    mockMutateAsync.mockResolvedValueOnce({ ...profileWithImage, profileImageUrl: null });
+    render(<MyProfilePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이미지 삭제' }));
+    expect(screen.queryByRole('button', { name: '이미지 삭제' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    expect(screen.queryByAltText('김게티 공개 프로필 이미지')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '변경 취소' }));
+    expect(screen.getByRole('button', { name: '이미지 삭제' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '이미지 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        profile: {
+          bio: PROFILE.bio,
+          isPublic: true,
+          links: PROFILE.links,
+          phone: PROFILE.phone,
+          profileImageFileId: null,
+        },
+      });
+    });
+  });
+
+  it('이미지 정책에 맞지 않는 파일은 업로드 전에 거부한다', () => {
+    render(<MyProfilePage />);
+
+    uploadProfileImage(new File(['document'], 'profile.pdf', { type: 'application/pdf' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('지원하지 않는 이미지');
+    expect(mockUploadMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('이미지 업로드에 실패하면 기존 이미지를 유지하고 오류를 표시한다', async () => {
+    const profileWithImage = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/current-profile.png',
+    };
+    mockUseMyProfileQuery.mockReturnValue({
+      data: profileWithImage,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    mockUploadMutateAsync.mockRejectedValueOnce(new Error('failed'));
+    render(<MyProfilePage />);
+
+    uploadProfileImage();
+
+    expect(
+      await screen.findByText('이미지 업로드에 실패했습니다. 다시 시도해 주세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      profileWithImage.profileImageUrl,
+    );
+  });
+
   it('변경한 항목을 저장하고 재조회된 프로필로 폼과 캐시 상태를 맞춘다', async () => {
     const updatedProfile: MyProfile = {
       ...PROFILE,
@@ -305,6 +452,19 @@ describe('MyProfilePage', () => {
       'aria-busy',
       'true',
     );
+  });
+
+  it('이미지 업로드 중에는 다른 이미지 선택과 프로필 저장을 막는다', () => {
+    mockUseUploadMyProfileImageMutation.mockReturnValue({
+      isPending: true,
+      mutateAsync: mockUploadMutateAsync,
+    });
+    render(<MyProfilePage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('이미지를 업로드 중입니다.');
+    expect(screen.getByRole('button', { name: '이미지 변경' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '미리보기 새로고침' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장하기' })).toBeDisabled();
   });
 
   it('프로필 조회 중 로딩 상태를 표시한다', () => {

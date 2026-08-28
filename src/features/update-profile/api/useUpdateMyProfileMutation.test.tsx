@@ -6,11 +6,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { memberKeys, type MyProfile } from '@/entities/member';
 
 import type { SaveMyProfileRequest } from '../model/types';
-import { useUpdateMyProfileMutation } from './useUpdateMyProfileMutation';
+import {
+  useUpdateMyProfileMutation,
+  useUploadMyProfileImageMutation,
+} from './useUpdateMyProfileMutation';
 
-const { mockSaveMyProfile } = vi.hoisted(() => ({ mockSaveMyProfile: vi.fn() }));
+const { mockSaveMyProfile, mockUploadMyProfileImage } = vi.hoisted(() => ({
+  mockSaveMyProfile: vi.fn(),
+  mockUploadMyProfileImage: vi.fn(),
+}));
 
 vi.mock('./saveMyProfile', () => ({ saveMyProfile: mockSaveMyProfile }));
+vi.mock('./uploadMyProfileImage', () => ({ uploadMyProfileImage: mockUploadMyProfileImage }));
 
 const REQUEST: SaveMyProfileRequest = {
   profile: { bio: '수정된 소개', isPublic: false, links: [], phone: null },
@@ -27,6 +34,21 @@ beforeEach(() => {
 });
 
 describe('useUpdateMyProfileMutation', () => {
+  it('프로필 이미지 업로드 Mutation에 선택한 파일을 전달한다', async () => {
+    const queryClient = new QueryClient();
+    const file = new File(['image'], 'profile.png', { type: 'image/png' });
+    mockUploadMyProfileImage.mockResolvedValue({ fileId: 77 });
+    const { result } = renderHook(() => useUploadMyProfileImageMutation(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(file);
+    });
+
+    expect(mockUploadMyProfileImage).toHaveBeenCalledWith(file, expect.anything());
+  });
+
   it('저장 성공 시 재조회한 최신 프로필로 캐시를 교체한다', async () => {
     const queryClient = new QueryClient();
     const profile = { memberId: 1, name: '김게티' } as MyProfile;

@@ -20,7 +20,13 @@ import {
   type MyProfile,
   type TechStackMetadata,
 } from '@/entities/member';
-import { useUpdateMyProfileMutation, type SaveMyProfileRequest } from '@/features/update-profile';
+import {
+  getProfileImageValidationError,
+  PROFILE_IMAGE_ACCEPT,
+  useUpdateMyProfileMutation,
+  useUploadMyProfileImageMutation,
+  type SaveMyProfileRequest,
+} from '@/features/update-profile';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
@@ -41,6 +47,11 @@ const TOAST_CONTENT = {
   loading: '변경사항을 저장 중입니다.',
   success: '변경사항이 저장되었습니다.',
 };
+
+interface ProfileImageDraft {
+  fileId: number | null | undefined;
+  previewUrl: string | null;
+}
 
 export function MyProfilePage() {
   const profileQuery = useMyProfileQuery();
@@ -125,11 +136,21 @@ function MyProfileEditor({
     mapMyProfileToPreview(profile),
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [savedImageUrl, setSavedImageUrl] = useState(profile.profileImageUrl);
+  const [profileImageDraft, setProfileImageDraft] = useState<ProfileImageDraft>({
+    fileId: undefined,
+    previewUrl: profile.profileImageUrl,
+  });
   const [skillInput, setSkillInput] = useState('');
   const [isSkillMenuOpen, setIsSkillMenuOpen] = useState(false);
   const skillFieldRef = useRef<HTMLDivElement>(null);
   const isSubmitLockedRef = useRef(false);
+  const isImageUploadLockedRef = useRef(false);
+  const previewObjectUrlsRef = useRef(new Set<string>());
   const updateProfileMutation = useUpdateMyProfileMutation();
+  const uploadProfileImageMutation = useUploadMyProfileImageMutation();
+  const isBusy = updateProfileMutation.isPending || uploadProfileImageMutation.isPending;
   const sourceVersion = JSON.stringify({ majors, profile, techStacks });
   const sourceVersionRef = useRef(sourceVersion);
 
@@ -161,8 +182,17 @@ function MyProfileEditor({
     setSavedProfile(nextForm);
     setPreview(nextPreview);
     setSavedPreview(nextPreview);
+    revokeObjectUrls(previewObjectUrlsRef.current);
+    setSavedImageUrl(profile.profileImageUrl);
+    setProfileImageDraft({ fileId: undefined, previewUrl: profile.profileImageUrl });
     setFormError(null);
+    setImageError(null);
   }, [majors, profile, sourceVersion, techStacks]);
+
+  useEffect(() => {
+    const previewObjectUrls = previewObjectUrlsRef.current;
+    return () => revokeObjectUrls(previewObjectUrls);
+  }, []);
 
   useEffect(() => {
     if (!isSkillMenuOpen) return;
@@ -184,7 +214,14 @@ function MyProfileEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isSubmitLockedRef.current || updateProfileMutation.isPending) return;
+    if (
+      isSubmitLockedRef.current ||
+      isImageUploadLockedRef.current ||
+      updateProfileMutation.isPending ||
+      uploadProfileImageMutation.isPending
+    ) {
+      return;
+    }
 
     let links;
     try {
@@ -209,6 +246,9 @@ function MyProfileEditor({
     if (!areNumberSetsEqual(draft.techStackIds, savedProfile.techStackIds)) {
       request.techStackIds = draft.techStackIds;
     }
+    if (profileImageDraft.fileId !== undefined) {
+      request.profile.profileImageFileId = profileImageDraft.fileId;
+    }
 
     isSubmitLockedRef.current = true;
     setFormError(null);
@@ -227,6 +267,9 @@ function MyProfileEditor({
       setSavedProfile(nextForm);
       setPreview(nextPreview);
       setSavedPreview(nextPreview);
+      revokeObjectUrls(previewObjectUrlsRef.current);
+      setSavedImageUrl(updatedProfile.profileImageUrl);
+      setProfileImageDraft({ fileId: undefined, previewUrl: updatedProfile.profileImageUrl });
       setSkillInput('');
       setIsSkillMenuOpen(false);
       showToast({
@@ -238,6 +281,8 @@ function MyProfileEditor({
     } catch {
       setDraft(savedProfile);
       setPreview(savedPreview);
+      revokeObjectUrls(previewObjectUrlsRef.current);
+      setProfileImageDraft({ fileId: undefined, previewUrl: savedImageUrl });
       setSkillInput('');
       setIsSkillMenuOpen(false);
       setFormError('변경사항을 저장하지 못했습니다. 입력값을 이전 상태로 복구했습니다.');
@@ -255,9 +300,54 @@ function MyProfileEditor({
   const handleCancel = () => {
     setDraft(savedProfile);
     setPreview(savedPreview);
+    revokeObjectUrls(previewObjectUrlsRef.current);
+    setProfileImageDraft({ fileId: undefined, previewUrl: savedImageUrl });
     setSkillInput('');
     setIsSkillMenuOpen(false);
     setFormError(null);
+    setImageError(null);
+  };
+
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || isImageUploadLockedRef.current) return;
+
+    const validationError = getProfileImageValidationError(file);
+    if (validationError) {
+      setImageError(validationError);
+      return;
+    }
+
+    const previousImageDraft = profileImageDraft;
+    const nextPreviewUrl = URL.createObjectURL(file);
+    previewObjectUrlsRef.current.add(nextPreviewUrl);
+    isImageUploadLockedRef.current = true;
+    setImageError(null);
+    setProfileImageDraft({ fileId: undefined, previewUrl: nextPreviewUrl });
+
+    try {
+      const uploadedFile = await uploadProfileImageMutation.mutateAsync(file);
+      setProfileImageDraft({ fileId: uploadedFile.fileId, previewUrl: nextPreviewUrl });
+    } catch {
+      revokeObjectUrl(nextPreviewUrl, previewObjectUrlsRef.current);
+      setProfileImageDraft(previousImageDraft);
+      setPreview((current) =>
+        current.profileImageUrl === nextPreviewUrl
+          ? { ...current, profileImageUrl: previousImageDraft.previewUrl }
+          : current,
+      );
+      setImageError('이미지 업로드에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      isImageUploadLockedRef.current = false;
+    }
+  };
+
+  const handleDeleteImage = () => {
+    if (uploadProfileImageMutation.isPending || isImageUploadLockedRef.current) return;
+
+    setProfileImageDraft({ fileId: null, previewUrl: null });
+    setImageError(null);
   };
 
   const handleAddLink = () => {
@@ -307,6 +397,7 @@ function MyProfileEditor({
       introduction: draft.introduction,
       links: draft.links.map((link) => link.url.trim()).filter(Boolean),
       major: draft.majorName,
+      profileImageUrl: profileImageDraft.previewUrl,
       skills: selectedTechStacks.map((techStack) => techStack.name),
     }));
   };
@@ -324,11 +415,19 @@ function MyProfileEditor({
         </header>
 
         <form
-          aria-busy={updateProfileMutation.isPending}
+          aria-busy={isBusy}
           className="flex flex-col gap-8 rounded-2xl bg-white px-8 py-10"
           onSubmit={handleSubmit}
         >
-          <ProfileImageField imageUrl={profile.profileImageUrl} name={profile.name} />
+          <ProfileImageField
+            imageError={imageError}
+            imageUrl={profileImageDraft.previewUrl}
+            isDisabled={isBusy}
+            isUploading={uploadProfileImageMutation.isPending}
+            name={profile.name}
+            onDelete={handleDeleteImage}
+            onImageChange={handleImageChange}
+          />
 
           <FieldGroup label="자기소개" className="border-b border-neutral-200 pb-3">
             <TextareaField
@@ -506,19 +605,10 @@ function MyProfileEditor({
           ) : null}
 
           <div className="flex justify-end gap-4 pt-2">
-            <Button
-              type="button"
-              variant="neutral"
-              disabled={updateProfileMutation.isPending}
-              onClick={handleCancel}
-            >
+            <Button type="button" variant="neutral" disabled={isBusy} onClick={handleCancel}>
               변경 취소
             </Button>
-            <Button
-              type="submit"
-              disabled={updateProfileMutation.isPending}
-              isLoading={updateProfileMutation.isPending}
-            >
+            <Button type="submit" disabled={isBusy} isLoading={updateProfileMutation.isPending}>
               저장하기
             </Button>
           </div>
@@ -526,6 +616,7 @@ function MyProfileEditor({
 
         <ProfilePreview
           isPublic={draft.isProfilePublic}
+          isRefreshDisabled={isBusy}
           preview={preview}
           onRefresh={handleRefreshPreview}
         />
@@ -559,10 +650,32 @@ function MyProfileQueryState({
   );
 }
 
-function ProfileImageField({ imageUrl, name }: { imageUrl: string | null; name: string }) {
+function ProfileImageField({
+  imageError,
+  imageUrl,
+  isDisabled,
+  isUploading,
+  name,
+  onDelete,
+  onImageChange,
+}: {
+  imageError: string | null;
+  imageUrl: string | null;
+  isDisabled: boolean;
+  isUploading: boolean;
+  name: string;
+  onDelete: () => void;
+  onImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <section className="flex items-center gap-6 border-b border-neutral-200 pb-8">
-      <div className="relative flex size-[104px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100">
+      <div
+        className={`relative flex size-[104px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 ${
+          imageError ? 'border-status-error border' : ''
+        }`}
+      >
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -576,22 +689,54 @@ function ProfileImageField({ imageUrl, name }: { imageUrl: string | null; name: 
           <Image src="/icons/profile-default-user.svg" alt="" width={64} height={64} priority />
         )}
       </div>
-      <div className="flex h-[104px] w-[205px] flex-col justify-between">
+      <div className="flex min-h-[104px] flex-1 flex-col justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-sm leading-[1.5] font-semibold tracking-[-0.14px] text-neutral-900">
             프로필 이미지
           </h2>
           <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-            본인을 확인할 수 있는 사진을 등록해 주세요.
+            JPG, JPEG, PNG, WEBP / 5MB 이하
           </p>
+          {isUploading ? (
+            <p role="status" className="text-primary-700 text-xs">
+              이미지를 업로드 중입니다.
+            </p>
+          ) : imageError ? (
+            <p role="alert" className="text-status-error min-w-80 text-xs">
+              {imageError}
+            </p>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className="flex h-9 w-32 items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 text-sm leading-[1.4] font-medium tracking-[-0.14px] whitespace-nowrap text-neutral-900 hover:bg-neutral-50"
-        >
-          <Image src="/icons/profile-upload.svg" alt="" width={20} height={20} />
-          이미지 변경
-        </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept={PROFILE_IMAGE_ACCEPT}
+          aria-label="프로필 이미지 파일"
+          className="sr-only"
+          disabled={isDisabled}
+          onChange={onImageChange}
+        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={isDisabled}
+            className="flex h-9 w-32 items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 text-sm leading-[1.4] font-medium tracking-[-0.14px] whitespace-nowrap text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <Image src="/icons/profile-upload.svg" alt="" width={20} height={20} />
+            이미지 변경
+          </button>
+          {imageUrl ? (
+            <button
+              type="button"
+              disabled={isDisabled}
+              className="text-status-error h-9 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium whitespace-nowrap hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={onDelete}
+            >
+              이미지 삭제
+            </button>
+          ) : null}
+        </div>
       </div>
     </section>
   );
@@ -747,10 +892,12 @@ function ProfileToggle({
 
 function ProfilePreview({
   isPublic,
+  isRefreshDisabled,
   onRefresh,
   preview,
 }: {
   isPublic: boolean;
+  isRefreshDisabled: boolean;
   onRefresh: () => void;
   preview: MyProfilePreviewData;
 }) {
@@ -784,7 +931,8 @@ function ProfilePreview({
         </div>
         <button
           type="button"
-          className="flex h-12 items-center gap-2 rounded-[9px] border border-neutral-200 bg-white px-5 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900 hover:bg-neutral-50"
+          disabled={isRefreshDisabled}
+          className="flex h-12 items-center gap-2 rounded-[9px] border border-neutral-200 bg-white px-5 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
           onClick={onRefresh}
         >
           <Icon name="refresh" className="size-5" />
@@ -890,4 +1038,18 @@ function normalizeExternalUrl(url: string) {
 
 function areNumberSetsEqual(left: number[], right: number[]) {
   return left.length === right.length && left.every((value) => right.includes(value));
+}
+
+function revokeObjectUrl(url: string | null, objectUrls: Set<string>) {
+  if (!url || !objectUrls.has(url)) return;
+
+  URL.revokeObjectURL(url);
+  objectUrls.delete(url);
+}
+
+function revokeObjectUrls(objectUrls: Set<string>) {
+  for (const url of objectUrls) {
+    URL.revokeObjectURL(url);
+  }
+  objectUrls.clear();
 }
