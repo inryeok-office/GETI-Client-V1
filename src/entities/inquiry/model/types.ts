@@ -169,6 +169,8 @@ export interface FetchAdminInquiryListParams {
   query?: string;
   assigneeId?: number;
   mineOnly?: boolean;
+  /** 답변 여부 필터. `false`면 미답변(answeredAt이 null)만 조회한다. GETI-Server-V1 #284. */
+  answered?: boolean;
   page?: number;
   size?: number;
 }

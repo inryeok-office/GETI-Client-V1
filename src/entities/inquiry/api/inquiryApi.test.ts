@@ -95,6 +95,26 @@ describe('inquiryApi', () => {
     });
   });
 
+  it('미처리 오류 문의만 조회할 때 inquiryType=ERROR·answered=false를 전달한다', async () => {
+    const responseData = {
+      content: [],
+      page: 0,
+      size: 1,
+      totalElements: 5,
+      totalPages: 5,
+      first: true,
+      last: false,
+    };
+    mockGet.mockResolvedValue({ data: { success: true, data: responseData } });
+
+    await expect(
+      fetchAdminInquiryList({ inquiryType: 'ERROR', answered: false, size: 1 }),
+    ).resolves.toBe(responseData);
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/admin/inquiries', {
+      params: { page: 0, mineOnly: false, inquiryType: 'ERROR', answered: false, size: 1 },
+    });
+  });
+
   it('어드민 문의 상태 변경 Payload를 전달한다', async () => {
     const responseData = { inquiryId: 12, status: 'IN_PROGRESS', updatedAt: '2026-08-24' };
     mockPatch.mockResolvedValue({ data: { success: true, data: responseData } });

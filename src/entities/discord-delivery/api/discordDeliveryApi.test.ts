@@ -68,6 +68,25 @@ describe('fetchDiscordDeliveryList', () => {
     ]);
   });
 
+  it('startAt/endAt 기간 필터를 그대로 전달한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: LIST_RESPONSE }));
+    restore = stub.restore;
+
+    await fetchDiscordDeliveryList({
+      status: 'FAILED',
+      startAt: '2026-08-26T00:00:00',
+      size: 1,
+    });
+
+    expect(stub.requests).toEqual([
+      {
+        url: '/api/v1/admin/discord-deliveries',
+        method: 'get',
+        params: { page: 0, size: 1, status: 'FAILED', startAt: '2026-08-26T00:00:00' },
+      },
+    ]);
+  });
+
   it('응답의 data.data를 그대로 돌려준다', async () => {
     const stub = stubServer(() => ({ success: true, data: LIST_RESPONSE }));
     restore = stub.restore;
