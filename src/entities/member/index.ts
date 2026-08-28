@@ -7,7 +7,13 @@ export {
   type MemberAffiliationStatus,
   type MemberRole,
 } from './model/types';
-export type { MyProfile } from './model/myProfile';
+export type {
+  MyProfile,
+  MyProfileAcademicStatus,
+  MyProfileLink,
+  MyProfileMemberStatus,
+  MyProfileRole,
+} from './model/myProfile';
 export type {
   DepartmentCode,
   MajorMetadata,

@@ -11,19 +11,21 @@ import {
   type ReactNode,
 } from 'react';
 
+import { useMyProfileQuery, type MyProfile } from '@/entities/member';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
+import { PageState } from '@/shared/ui/page-state';
 import { TextareaField } from '@/shared/ui/textarea-field';
 import { TextField } from '@/shared/ui/text-field';
 import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import {
-  MOCK_MY_PROFILE_FORM,
-  MOCK_MY_PROFILE_PREVIEW,
   MY_PROFILE_MAJORS,
+  mapMyProfileToForm,
+  mapMyProfileToPreview,
   type MyProfileFormData,
   type MyProfilePreviewData,
-} from '../model/mock';
+} from '../model/profileForm';
 
 export type MyProfileSaveStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -38,9 +40,56 @@ const TOAST_CONTENT: Record<Exclude<MyProfileSaveStatus, 'idle'>, string> = {
 };
 
 export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps) {
-  const [draft, setDraft] = useState<MyProfileFormData>(MOCK_MY_PROFILE_FORM);
-  const [savedProfile, setSavedProfile] = useState<MyProfileFormData>(MOCK_MY_PROFILE_FORM);
-  const [preview, setPreview] = useState<MyProfilePreviewData>(MOCK_MY_PROFILE_PREVIEW);
+  const profileQuery = useMyProfileQuery();
+
+  if (profileQuery.isLoading) {
+    return (
+      <MyProfileQueryState
+        variant="loading"
+        title="내 프로필을 불러오는 중입니다."
+        description="잠시만 기다려 주세요."
+      />
+    );
+  }
+
+  if (profileQuery.isError) {
+    return (
+      <MyProfileQueryState
+        variant="error"
+        title="내 프로필을 불러올 수 없습니다."
+        description="잠시 후 다시 시도해 주세요."
+        onRetry={() => void profileQuery.refetch()}
+      />
+    );
+  }
+
+  if (!profileQuery.data) {
+    return (
+      <MyProfileQueryState
+        variant="empty"
+        title="등록된 프로필이 없습니다."
+        description="프로필 등록을 먼저 완료해 주세요."
+      />
+    );
+  }
+
+  return <MyProfileEditor initialSaveStatus={initialSaveStatus} profile={profileQuery.data} />;
+}
+
+function MyProfileEditor({
+  initialSaveStatus,
+  profile,
+}: {
+  initialSaveStatus: MyProfileSaveStatus;
+  profile: MyProfile;
+}) {
+  const [draft, setDraft] = useState<MyProfileFormData>(() => mapMyProfileToForm(profile));
+  const [savedProfile, setSavedProfile] = useState<MyProfileFormData>(() =>
+    mapMyProfileToForm(profile),
+  );
+  const [preview, setPreview] = useState<MyProfilePreviewData>(() =>
+    mapMyProfileToPreview(profile),
+  );
   const [saveStatus, setSaveStatus] = useState<MyProfileSaveStatus>(initialSaveStatus);
   const [skillInput, setSkillInput] = useState('');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,7 +191,7 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
           className="flex flex-col gap-8 rounded-2xl bg-white px-8 py-10"
           onSubmit={handleSubmit}
         >
-          <ProfileImageField />
+          <ProfileImageField imageUrl={profile.profileImageUrl} name={profile.name} />
 
           <FieldGroup label="자기소개" className="border-b border-neutral-200 pb-3">
             <TextareaField
@@ -287,11 +336,47 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
   );
 }
 
-function ProfileImageField() {
+function MyProfileQueryState({
+  description,
+  onRetry,
+  title,
+  variant,
+}: {
+  description: string;
+  onRetry?: () => void;
+  title: string;
+  variant: 'empty' | 'error' | 'loading';
+}) {
+  return (
+    <main className="min-h-[calc(100dvh-72px)] bg-[#f7f7f8] px-6 py-10">
+      <div className="mx-auto max-w-[1280px] rounded-2xl bg-white">
+        <PageState description={description} title={title} variant={variant} />
+        {onRetry ? (
+          <div className="flex justify-center pb-12">
+            <Button onClick={onRetry}>다시 시도</Button>
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
+function ProfileImageField({ imageUrl, name }: { imageUrl: string | null; name: string }) {
   return (
     <section className="flex items-center gap-6 border-b border-neutral-200 pb-8">
-      <div className="flex size-[104px] shrink-0 items-center justify-center rounded-full bg-neutral-100">
-        <Image src="/icons/profile-default-user.svg" alt="" width={64} height={64} priority />
+      <div className="relative flex size-[104px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={`${name} 프로필 이미지`}
+            fill
+            unoptimized
+            className="object-cover"
+            priority
+          />
+        ) : (
+          <Image src="/icons/profile-default-user.svg" alt="" width={64} height={64} priority />
+        )}
       </div>
       <div className="flex h-[104px] w-[205px] flex-col justify-between">
         <div className="flex flex-col gap-2">
@@ -484,10 +569,21 @@ function ProfilePreview({
 
       <article className="mt-4 rounded-xl border border-neutral-200 bg-white p-6">
         <header className="flex items-center gap-4">
-          <span className="size-[72px] rounded-full bg-neutral-100" aria-hidden="true" />
+          <span className="relative size-[72px] overflow-hidden rounded-full bg-neutral-100">
+            {preview.profileImageUrl ? (
+              <Image
+                src={preview.profileImageUrl}
+                alt={`${preview.name} 공개 프로필 이미지`}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            ) : null}
+          </span>
           <div>
             <h3 className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900">
-              {preview.name} ({preview.cohort}기)
+              {preview.name}
+              {preview.cohort ? ` (${preview.cohort}기)` : ''}
             </h3>
             <p className="text-primary-700 mt-3 text-xs leading-[1.5] tracking-[-0.12px]">
               {preview.department}

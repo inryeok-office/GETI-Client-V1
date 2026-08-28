@@ -1,7 +1,48 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { MyProfile } from '@/entities/member';
 
 import { MyProfilePage } from './MyProfilePage';
+
+const { mockUseMyProfileQuery } = vi.hoisted(() => ({ mockUseMyProfileQuery: vi.fn() }));
+
+vi.mock('@/entities/member', async () => {
+  const actual = await vi.importActual<typeof import('@/entities/member')>('@/entities/member');
+  return { ...actual, useMyProfileQuery: mockUseMyProfileQuery };
+});
+
+const PROFILE: MyProfile = {
+  academicStatus: 'ENROLLED',
+  bio: '사용자 경험을 고려하는 프론트엔드 개발자입니다.',
+  cohort: 9,
+  department: 'SW_DEVELOPMENT',
+  desiredJob: 'Frontend Developer',
+  email: 'student@example.com',
+  githubUrl: 'https://github.com/geti-student',
+  isPublic: true,
+  links: [{ label: '기술 블로그', url: 'https://blog.example.com' }],
+  majors: ['프론트엔드'],
+  memberId: 1,
+  name: '김게티',
+  phone: '010-1234-5678',
+  profileImageUrl: null,
+  roles: ['STUDENT'],
+  status: 'ACTIVE',
+  techStacks: ['React', 'TypeScript'],
+};
+
+const mockRefetch = vi.fn();
+
+beforeEach(() => {
+  mockRefetch.mockReset();
+  mockUseMyProfileQuery.mockReturnValue({
+    data: PROFILE,
+    isError: false,
+    isLoading: false,
+    refetch: mockRefetch,
+  });
+});
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,15 +54,15 @@ describe('MyProfilePage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: '내 프로필' })).toBeInTheDocument();
     expect(screen.getByLabelText('자기소개')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('디자인');
+    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('프론트엔드');
     expect(screen.getByRole('switch', { name: '프로필 공개' })).toBeChecked();
     expect(screen.getByRole('heading', { name: '공개 프로필 미리보기' })).toBeInTheDocument();
-    expect(screen.getByText('이름 (9기)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'github.com/test' })).toHaveAttribute(
+    expect(screen.getByText('김게티 (9기)')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
       'href',
-      'https://github.com/test',
+      'https://blog.example.com',
     );
-    expect(screen.getByRole('link', { name: 'github.com/test' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
       'target',
       '_blank',
     );
@@ -99,5 +140,45 @@ describe('MyProfilePage', () => {
     render(<MyProfilePage initialSaveStatus={initialSaveStatus} />);
 
     expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  it('프로필 조회 중 로딩 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: true,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('내 프로필을 불러오는 중입니다.')).toBeInTheDocument();
+  });
+
+  it('프로필 조회 실패 상태에서 다시 조회한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('조회 결과가 없으면 빈 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('등록된 프로필이 없습니다.')).toBeInTheDocument();
   });
 });
