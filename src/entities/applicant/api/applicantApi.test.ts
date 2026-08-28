@@ -6,6 +6,7 @@ import { api } from '@/shared/api';
 import {
   exportJobApplications,
   fetchAllJobApplicants,
+  fetchApplicantList,
   fetchApplicationStatusCounts,
   fetchTeacherOptions,
 } from './applicantApi';
@@ -63,6 +64,28 @@ function applicantListItem(overrides: Partial<ApplicantListItem> = {}): Applican
     ...overrides,
   };
 }
+
+describe('fetchApplicantList', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('createdFrom·mineOnly 등 필터를 그대로 전달한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: listResponse({ totalElements: 14 }) }));
+    restore = stub.restore;
+
+    await fetchApplicantList({
+      createdFrom: '2026-08-24T00:00:00',
+      mineOnly: true,
+      size: 1,
+    });
+
+    expect(stub.requests[0]).toMatchObject({
+      url: '/api/v1/admin/job-applications',
+      params: { page: 0, size: 1, createdFrom: '2026-08-24T00:00:00', mineOnly: true },
+    });
+  });
+});
 
 describe('fetchAllJobApplicants', () => {
   let restore: () => void;

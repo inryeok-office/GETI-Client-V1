@@ -30,6 +30,10 @@ export interface FetchApplicantListParams {
   companyId?: number;
   /** 담당 교사 memberId. `GET /api/v1/admin/members?role=TEACHER`로 채운 드롭다운 값. GETI-Server-V1 #181. */
   managerMemberId?: number;
+  /** 생성 시각 하한(포함). `LocalDateTime`이라 KST 로컬 문자열로 보낸다. GETI-Server-V1 #282. */
+  createdFrom?: string;
+  /** 생성 시각 상한(미포함). GETI-Server-V1 #282. */
+  createdTo?: string;
   page?: number;
   size?: number;
 }
