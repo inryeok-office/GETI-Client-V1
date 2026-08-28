@@ -5,8 +5,8 @@ import type { ApplicationStatusCounts } from '@/entities/applicant';
 import {
   buildAdminDashboardContent,
   type AdminDashboardMetrics,
-  type DashboardMetric,
 } from './buildAdminDashboardContent';
+import type { DashboardMetric } from './dashboardMetric';
 import { DASHBOARD_CONTENT } from './mock';
 import type { KpiCardData } from './types';
 
@@ -23,6 +23,7 @@ function metric<T>(overrides: Partial<DashboardMetric<T>> = {}): DashboardMetric
 function loadedMetrics(counts: ApplicationStatusCounts): AdminDashboardMetrics {
   return {
     pendingSignups: metric<number>({ data: 8 }),
+    unansweredInquiries: metric<number>({ data: 15 }),
     applicationStatusCounts: metric<ApplicationStatusCounts>({ data: counts }),
   };
 }
@@ -39,15 +40,17 @@ describe('buildAdminDashboardContent', () => {
   it('로딩 중이면 연동 카드는 loadState=loading, 표 값은 자리표시자다', () => {
     const content = buildAdminDashboardContent(BASE, {
       pendingSignups: metric<number>({ isLoading: true }),
+      unansweredInquiries: metric<number>({ isLoading: true }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isLoading: true }),
     });
 
     expect(card(content.kpiCards, 'signup').loadState).toBe('loading');
     expect(card(content.kpiCards, 'applications').loadState).toBe('loading');
+    expect(card(content.kpiCards, 'inquiries').loadState).toBe('loading');
     expect(content.table.rows.every((row) => row.cells[1].label === '—')).toBe(true);
   });
 
-  it('공고 · 프로그램 · 미답변 문의 KPI는 미지원으로 둔다', () => {
+  it('공고 · 프로그램 KPI는 미지원으로 둔다', () => {
     const content = buildAdminDashboardContent(
       BASE,
       loadedMetrics({ totalCount: 100, counts: {} }),
@@ -55,19 +58,10 @@ describe('buildAdminDashboardContent', () => {
 
     expect(card(content.kpiCards, 'jobs').unsupported).toBe(true);
     expect(card(content.kpiCards, 'programs').unsupported).toBe(true);
-    expect(card(content.kpiCards, 'inquiries').unsupported).toBe(true);
+    expect(card(content.kpiCards, 'inquiries').unsupported).toBeUndefined();
   });
 
-  it('알림 사이드바는 Mock 그대로 둔다', () => {
-    const content = buildAdminDashboardContent(
-      BASE,
-      loadedMetrics({ totalCount: 100, counts: {} }),
-    );
-
-    expect(content.notifications).toEqual(BASE.notifications);
-  });
-
-  it('조회 성공 시 가입 대기 · 전체 지원서 KPI와 처리 현황 표를 실데이터로 채운다', () => {
+  it('조회 성공 시 KPI · 처리 현황 표 · 알림 문구를 실데이터로 채운다', () => {
     const content = buildAdminDashboardContent(
       BASE,
       loadedMetrics({
@@ -78,6 +72,7 @@ describe('buildAdminDashboardContent', () => {
 
     expect(card(content.kpiCards, 'signup').count).toBe('8건');
     expect(card(content.kpiCards, 'applications').count).toBe('1,248건');
+    expect(card(content.kpiCards, 'inquiries').count).toBe('15건');
 
     // 42 / (42+14+28) = 50%, 14 → 17%, 28 → 33%
     expect(content.table.rows.map((row) => row.cells.map((cell) => cell.label))).toEqual([
@@ -85,12 +80,16 @@ describe('buildAdminDashboardContent', () => {
       ['수정 요청', '14건', '17%', '목록 보기'],
       ['승인 완료', '28건', '33%', '목록 보기'],
     ]);
+
+    const inquiryNotification = content.notifications.find((item) => item.id === 'inquiries');
+    expect(inquiryNotification?.subtitle).toBe('관리자 확인 필요 15건');
   });
 
   it('상태별 건수 조회가 실패하면 전체 지원서 카드와 표에 에러를 표시한다', () => {
     const onRetry = vi.fn();
     const content = buildAdminDashboardContent(BASE, {
       pendingSignups: metric<number>({ data: 8 }),
+      unansweredInquiries: metric<number>({ data: 15 }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isError: true, onRetry }),
     });
 
@@ -104,6 +103,7 @@ describe('buildAdminDashboardContent', () => {
     const onRetry = vi.fn();
     const content = buildAdminDashboardContent(BASE, {
       pendingSignups: metric<number>({ isError: true, onRetry }),
+      unansweredInquiries: metric<number>({ data: 15 }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({
         data: { totalCount: 10, counts: {} },
       }),

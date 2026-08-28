@@ -3,6 +3,8 @@ import {
   AdminDashboardPage,
   DASHBOARD_CONTENT,
   DASHBOARD_NAV_SECTIONS,
+  DeveloperDashboardLive,
+  recentFailureSince,
   resolveAdminDashboardVariant,
 } from '@/views/admin-dashboard';
 
@@ -16,6 +18,15 @@ export default async function Page({ searchParams }: PageProps) {
 
   if (resolvedVariant === 'admin') {
     return <AdminDashboardLive navSections={DASHBOARD_NAV_SECTIONS.admin} />;
+  }
+
+  if (resolvedVariant === 'developer') {
+    return (
+      <DeveloperDashboardLive
+        navSections={DASHBOARD_NAV_SECTIONS.developer}
+        recentFailureSince={recentFailureSince()}
+      />
+    );
   }
 
   return (
