@@ -16,7 +16,7 @@ import { Icon } from '@/shared/ui/icon';
 
 export type AdminPortfolioListStatus = 'loading' | 'error' | 'empty' | 'success';
 
-const PORTFOLIO_REQUEST_STATUS_LABEL: Record<PortfolioRequestStatus, string> = {
+const PORTFOLIO_REQUEST_STATUS_LABEL: Partial<Record<PortfolioRequestStatus, string>> = {
   DRAFT: '임시 저장',
   OPEN: '진행 중',
   CLOSED: '종료',

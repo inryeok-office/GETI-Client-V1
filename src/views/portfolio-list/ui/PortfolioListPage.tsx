@@ -1,3 +1,13 @@
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import {
+  mapPortfolioRequestSummaryToListItem,
+  usePortfolioRequestListQuery,
+  type PortfolioApiRequestStatus,
+} from '@/entities/portfolio-request';
 import {
   PortfolioRequestList,
   type PortfolioRequestListFilter,
@@ -5,29 +15,68 @@ import {
 } from '@/widgets/portfolio-request-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-import { MOCK_PORTFOLIO_REQUESTS } from '../model/mock';
-
 interface PortfolioListPageProps {
-  searchParams: Promise<{ filter?: string; variant?: string }>;
+  initialFilter?: string;
+  initialPage?: number;
 }
 
-const STATUS_BY_VARIANT: Record<string, PortfolioRequestListStatus> = {
-  empty: 'empty',
-  error: 'error',
-  loading: 'loading',
-};
+const PAGE_SIZE = 20;
 
 const FILTER_BY_QUERY: Record<string, PortfolioRequestListFilter> = {
   all: 'ALL',
   closed: 'CLOSED',
   required: 'REQUIRED',
-  submitted: 'SUBMITTED',
 };
 
-/** 학생 포트폴리오 요청 목록의 디자인 상태를 목업 데이터로 검토하는 정적 화면. */
-export async function PortfolioListPage({ searchParams }: PortfolioListPageProps) {
-  const { filter, variant } = await searchParams;
-  const status = STATUS_BY_VARIANT[variant ?? 'success'] ?? 'success';
+const API_STATUS_BY_FILTER: Partial<Record<PortfolioRequestListFilter, PortfolioApiRequestStatus>> =
+  {
+    CLOSED: 'CLOSED',
+    REQUIRED: 'PUBLISHED',
+  };
+
+export function PortfolioListPage({
+  initialFilter = 'all',
+  initialPage = 0,
+}: PortfolioListPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [filter, setFilter] = useState<PortfolioRequestListFilter>(
+    FILTER_BY_QUERY[initialFilter] ?? 'ALL',
+  );
+  const [page, setPage] = useState(initialPage);
+
+  const listQuery = usePortfolioRequestListQuery({
+    page,
+    size: PAGE_SIZE,
+    status: API_STATUS_BY_FILTER[filter],
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== 'ALL') params.set('filter', filter.toLowerCase());
+    if (page > 0) params.set('page', String(page + 1));
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [filter, page, pathname, router]);
+
+  const status: PortfolioRequestListStatus = listQuery.isLoading
+    ? 'loading'
+    : listQuery.isFetching && listQuery.isPlaceholderData
+      ? 'pageLoading'
+      : listQuery.isError
+        ? 'error'
+        : (listQuery.data?.content.length ?? 0) === 0
+          ? 'empty'
+          : 'success';
+
+  const requests = (listQuery.data?.content ?? []).map(mapPortfolioRequestSummaryToListItem);
+
+  const handleFilterChange = (nextFilter: PortfolioRequestListFilter) => {
+    setFilter(nextFilter);
+    setPage(0);
+  };
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -44,9 +93,15 @@ export async function PortfolioListPage({ searchParams }: PortfolioListPageProps
 
         <div className="mt-8">
           <PortfolioRequestList
-            initialFilter={FILTER_BY_QUERY[filter ?? 'all'] ?? 'ALL'}
-            initialStatus={status}
-            requests={status === 'empty' ? [] : MOCK_PORTFOLIO_REQUESTS}
+            currentFilter={filter}
+            currentPage={page + 1}
+            requests={requests}
+            status={status}
+            totalCount={listQuery.data?.totalElements ?? 0}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            onFilterChange={handleFilterChange}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            onRetry={() => listQuery.refetch()}
           />
         </div>
       </main>

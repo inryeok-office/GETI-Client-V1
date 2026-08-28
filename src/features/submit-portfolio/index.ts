@@ -1,4 +1,1 @@
-export {
-  PortfolioSubmissionForm,
-  type PortfolioSubmissionFormVariant,
-} from './ui/PortfolioSubmissionForm';
+export { PortfolioSubmissionForm } from './ui/PortfolioSubmissionForm';

@@ -6,6 +6,13 @@ const STATUS_STYLE: Record<
   PortfolioRequestSubmissionStatus,
   { action: string; badge: string; button: string; label: string; state: string }
 > = {
+  CLOSED: {
+    action: '제출 마감',
+    badge: 'bg-neutral-100 text-neutral-600',
+    button: 'pointer-events-none bg-neutral-100 text-neutral-400',
+    label: '제출 마감',
+    state: '제출 불가',
+  },
   REQUIRED: {
     action: '제출하기',
     badge: 'bg-primary-100 text-primary-700',
@@ -19,13 +26,6 @@ const STATUS_STYLE: Record<
     button: 'border border-neutral-200 bg-white text-neutral-600',
     label: '제출 완료',
     state: '제출 완료',
-  },
-  CLOSED: {
-    action: '제출 마감',
-    badge: 'bg-neutral-100 text-neutral-600',
-    button: 'pointer-events-none bg-neutral-100 text-neutral-400',
-    label: '제출 마감',
-    state: '제출 전',
   },
 };
 
@@ -62,7 +62,7 @@ export function PortfolioRequestCard({ request }: PortfolioRequestCardProps) {
       <div className="mt-6 border-t border-neutral-200 pt-5">
         <div className="grid max-w-[520px] grid-cols-2 gap-8 text-xs leading-[1.5] tracking-[-0.12px]">
           <div>
-            <p className="text-neutral-500">제출 기간</p>
+            <p className="text-neutral-500">제출 마감</p>
             <p className="mt-2 text-neutral-900">{request.duePeriod}</p>
           </div>
           <div>
@@ -74,10 +74,10 @@ export function PortfolioRequestCard({ request }: PortfolioRequestCardProps) {
 
       <div className="mt-auto flex items-end justify-between pt-3">
         <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-500">
-          등록일 {request.registeredAt}
+          제출 현황 {request.submittedCount}/{request.targetCount}
         </p>
         <Link
-          href={`/portfolios/${request.requestId}${request.status === 'SUBMITTED' ? '?variant=completed' : request.status === 'CLOSED' ? '?variant=unavailable' : ''}`}
+          href={`/portfolios/${request.requestId}`}
           aria-disabled={request.status === 'CLOSED'}
           tabIndex={request.status === 'CLOSED' ? -1 : undefined}
           className={`inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] ${style.button}`}
