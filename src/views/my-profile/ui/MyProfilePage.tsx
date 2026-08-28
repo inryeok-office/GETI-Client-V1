@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -11,7 +12,14 @@ import {
   type ReactNode,
 } from 'react';
 
-import { useMyProfileQuery, type MyProfile } from '@/entities/member';
+import {
+  useMajorMetadataQuery,
+  useMyProfileQuery,
+  useTechStackMetadataQuery,
+  type MajorMetadata,
+  type MyProfile,
+  type TechStackMetadata,
+} from '@/entities/member';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
@@ -20,7 +28,6 @@ import { TextField } from '@/shared/ui/text-field';
 import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import {
-  MY_PROFILE_MAJORS,
   mapMyProfileToForm,
   mapMyProfileToPreview,
   type MyProfileFormData,
@@ -41,8 +48,12 @@ const TOAST_CONTENT: Record<Exclude<MyProfileSaveStatus, 'idle'>, string> = {
 
 export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps) {
   const profileQuery = useMyProfileQuery();
+  const majorsQuery = useMajorMetadataQuery();
+  const techStacksQuery = useTechStackMetadataQuery();
+  const isLoading = profileQuery.isLoading || majorsQuery.isLoading || techStacksQuery.isLoading;
+  const isError = profileQuery.isError || majorsQuery.isError || techStacksQuery.isError;
 
-  if (profileQuery.isLoading) {
+  if (isLoading) {
     return (
       <MyProfileQueryState
         variant="loading"
@@ -52,13 +63,17 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
     );
   }
 
-  if (profileQuery.isError) {
+  if (isError) {
     return (
       <MyProfileQueryState
         variant="error"
         title="내 프로필을 불러올 수 없습니다."
         description="잠시 후 다시 시도해 주세요."
-        onRetry={() => void profileQuery.refetch()}
+        onRetry={() => {
+          if (profileQuery.isError) void profileQuery.refetch();
+          if (majorsQuery.isError) void majorsQuery.refetch();
+          if (techStacksQuery.isError) void techStacksQuery.refetch();
+        }}
       />
     );
   }
@@ -73,26 +88,69 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
     );
   }
 
-  return <MyProfileEditor initialSaveStatus={initialSaveStatus} profile={profileQuery.data} />;
+  if (!majorsQuery.data?.length || !techStacksQuery.data?.length) {
+    return (
+      <MyProfileQueryState
+        variant="empty"
+        title="선택 가능한 프로필 정보가 없습니다."
+        description="전공 또는 기술 스택 정보를 확인해 주세요."
+      />
+    );
+  }
+
+  return (
+    <MyProfileEditor
+      initialSaveStatus={initialSaveStatus}
+      majors={majorsQuery.data}
+      profile={profileQuery.data}
+      techStacks={techStacksQuery.data}
+    />
+  );
 }
 
 function MyProfileEditor({
   initialSaveStatus,
+  majors,
   profile,
+  techStacks,
 }: {
   initialSaveStatus: MyProfileSaveStatus;
+  majors: MajorMetadata[];
   profile: MyProfile;
+  techStacks: TechStackMetadata[];
 }) {
-  const [draft, setDraft] = useState<MyProfileFormData>(() => mapMyProfileToForm(profile));
+  const [draft, setDraft] = useState<MyProfileFormData>(() =>
+    mapMyProfileToForm(profile, majors, techStacks),
+  );
   const [savedProfile, setSavedProfile] = useState<MyProfileFormData>(() =>
-    mapMyProfileToForm(profile),
+    mapMyProfileToForm(profile, majors, techStacks),
   );
   const [preview, setPreview] = useState<MyProfilePreviewData>(() =>
     mapMyProfileToPreview(profile),
   );
   const [saveStatus, setSaveStatus] = useState<MyProfileSaveStatus>(initialSaveStatus);
   const [skillInput, setSkillInput] = useState('');
+  const [isSkillMenuOpen, setIsSkillMenuOpen] = useState(false);
+  const skillFieldRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const selectedTechStacks = useMemo(
+    () => techStacks.filter((techStack) => draft.techStackIds.includes(techStack.techStackId)),
+    [draft.techStackIds, techStacks],
+  );
+  const filteredTechStacks = useMemo(() => {
+    const query = skillInput.trim().toLocaleLowerCase('ko-KR');
+    if (!query) return [];
+
+    const selectedIds = new Set(draft.techStackIds);
+    return techStacks
+      .filter(
+        (techStack) =>
+          !selectedIds.has(techStack.techStackId) &&
+          techStack.name.toLocaleLowerCase('ko-KR').includes(query),
+      )
+      .slice(0, 8);
+  }, [draft.techStackIds, skillInput, techStacks]);
 
   useEffect(() => {
     if (saveStatus === 'idle') return;
@@ -113,6 +171,24 @@ function MyProfileEditor({
     [],
   );
 
+  useEffect(() => {
+    if (!isSkillMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!skillFieldRef.current?.contains(event.target as Node)) setIsSkillMenuOpen(false);
+    };
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setIsSkillMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isSkillMenuOpen]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaveStatus('loading');
@@ -130,6 +206,7 @@ function MyProfileEditor({
   const handleCancel = () => {
     setDraft(savedProfile);
     setSkillInput('');
+    setIsSkillMenuOpen(false);
     setSaveStatus('idle');
   };
 
@@ -151,19 +228,19 @@ function MyProfileEditor({
     });
   };
 
-  const handleSkillKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') {
-      return;
-    }
-
-    event.preventDefault();
-    const nextSkill = skillInput.trim();
-    if (!nextSkill || draft.skills.includes(nextSkill)) {
-      return;
-    }
-
-    setDraft((current) => ({ ...current, skills: [...current.skills, nextSkill] }));
+  const handleAddTechStack = (techStack: TechStackMetadata) => {
+    setDraft((current) => ({
+      ...current,
+      techStackIds: [...current.techStackIds, techStack.techStackId],
+    }));
     setSkillInput('');
+    setIsSkillMenuOpen(false);
+  };
+
+  const handleSkillKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || filteredTechStacks.length === 0) return;
+    event.preventDefault();
+    handleAddTechStack(filteredTechStacks[0]);
   };
 
   const handleRefreshPreview = () => {
@@ -171,7 +248,7 @@ function MyProfileEditor({
       ...current,
       introduction: draft.introduction,
       links: draft.links.filter(Boolean),
-      skills: draft.skills,
+      skills: selectedTechStacks.map((techStack) => techStack.name),
     }));
   };
 
@@ -209,8 +286,16 @@ function MyProfileEditor({
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[480px_minmax(0,1fr)]">
             <FieldGroup label="전공">
               <MajorSelect
-                value={draft.major}
-                onChange={(major) => setDraft((current) => ({ ...current, major }))}
+                majors={majors}
+                selectedId={draft.majorId}
+                selectedName={draft.majorName}
+                onChange={(major) =>
+                  setDraft((current) => ({
+                    ...current,
+                    majorId: major.majorId,
+                    majorName: major.name,
+                  }))
+                }
               />
             </FieldGroup>
 
@@ -233,37 +318,71 @@ function MyProfileEditor({
           </div>
 
           <FieldGroup label="기술 스택">
-            <div className="focus-within:border-primary-300 flex min-h-[58px] flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-[10px]">
-              {draft.skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="bg-primary-100 text-primary-700 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs leading-[1.5] font-semibold tracking-[-0.12px]"
-                >
-                  {skill}
-                  <button
-                    type="button"
-                    aria-label={`${skill} 기술 삭제`}
-                    onClick={() =>
-                      setDraft((current) => ({
-                        ...current,
-                        skills: current.skills.filter((item) => item !== skill),
-                      }))
-                    }
+            <div ref={skillFieldRef} className="relative">
+              <div className="focus-within:border-primary-300 flex min-h-[58px] flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-[10px]">
+                {selectedTechStacks.map((techStack) => (
+                  <span
+                    key={techStack.techStackId}
+                    className="bg-primary-100 text-primary-700 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs leading-[1.5] font-semibold tracking-[-0.12px]"
                   >
-                    <Icon name="close" className="size-3" />
-                  </button>
-                </span>
-              ))}
-              <input
-                aria-label="기술 스택 추가"
-                className="min-w-32 flex-1 bg-transparent text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none"
-                value={skillInput}
-                onChange={(event) => setSkillInput(event.target.value)}
-                onKeyDown={handleSkillKeyDown}
-              />
+                    {techStack.name}
+                    <button
+                      type="button"
+                      aria-label={`${techStack.name} 기술 삭제`}
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          techStackIds: current.techStackIds.filter(
+                            (techStackId) => techStackId !== techStack.techStackId,
+                          ),
+                        }))
+                      }
+                    >
+                      <Icon name="close" className="size-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  aria-label="기술 스택 추가"
+                  className="min-w-32 flex-1 bg-transparent text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none"
+                  value={skillInput}
+                  onFocus={() => setIsSkillMenuOpen(true)}
+                  onChange={(event) => {
+                    setSkillInput(event.target.value);
+                    setIsSkillMenuOpen(true);
+                  }}
+                  onKeyDown={handleSkillKeyDown}
+                />
+              </div>
+              {isSkillMenuOpen && skillInput.trim() ? (
+                <div
+                  role="listbox"
+                  aria-label="기술 스택 검색 결과"
+                  className="relative z-10 mt-2 flex max-h-64 flex-col gap-0.5 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                >
+                  {filteredTechStacks.length > 0 ? (
+                    filteredTechStacks.map((techStack) => (
+                      <button
+                        key={techStack.techStackId}
+                        type="button"
+                        role="option"
+                        aria-selected="false"
+                        onClick={() => handleAddTechStack(techStack)}
+                        className="h-11 rounded-lg px-4 text-left text-sm text-neutral-900 hover:bg-neutral-50"
+                      >
+                        {techStack.name}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-4 py-3 text-sm text-neutral-600">
+                      일치하는 기술 스택이 없습니다.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
             <p className="px-1 pt-1 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-              여러 개의 기술을 입력할 수 있습니다. Enter를 눌러 추가하세요.
+              서버에 등록된 기술 스택만 선택할 수 있습니다.
             </p>
           </FieldGroup>
 
@@ -313,12 +432,10 @@ function MyProfileEditor({
               }
             />
             <ProfileToggle
-              description="전공과 기술 스택을 맞춤 추천에 활용합니다."
-              isChecked={draft.isRecommendationEnabled}
-              label="추천 활용"
-              onChange={(isRecommendationEnabled) =>
-                setDraft((current) => ({ ...current, isRecommendationEnabled }))
-              }
+              disabled
+              description="현재 서버에서 변경을 지원하지 않는 설정입니다."
+              isChecked={false}
+              label="추천 활용 (변경 불가)"
             />
           </div>
 
@@ -399,9 +516,20 @@ function ProfileImageField({ imageUrl, name }: { imageUrl: string | null; name: 
   );
 }
 
-function MajorSelect({ value, onChange }: { value: string; onChange: (major: string) => void }) {
+function MajorSelect({
+  majors,
+  onChange,
+  selectedId,
+  selectedName,
+}: {
+  majors: MajorMetadata[];
+  onChange: (major: MajorMetadata) => void;
+  selectedId: number | null;
+  selectedName: string;
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const selectedMajor = majors.find((major) => major.majorId === selectedId);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -431,7 +559,7 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
         className="flex h-[58px] w-full items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
         onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
       >
-        <span>{value}</span>
+        <span>{(selectedMajor?.name ?? selectedName) || '전공을 선택해 주세요.'}</span>
         <Icon name="chevronDown" className="h-3 w-6 text-neutral-600" />
       </button>
       <div className="h-6" aria-hidden="true" />
@@ -442,12 +570,12 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
           aria-label="전공 목록"
           className="absolute top-[66px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
-          {MY_PROFILE_MAJORS.map((major) => {
-            const isSelected = value === major;
+          {majors.map((major) => {
+            const isSelected = selectedId === major.majorId;
 
             return (
               <button
-                key={major}
+                key={major.majorId}
                 type="button"
                 role="option"
                 aria-selected={isSelected}
@@ -461,7 +589,7 @@ function MajorSelect({ value, onChange }: { value: string; onChange: (major: str
                   setIsMenuOpen(false);
                 }}
               >
-                <span>{major}</span>
+                <span>{major.name}</span>
                 {isSelected ? (
                   <Image src="/icons/profile-option-check.svg" alt="" width={20} height={20} />
                 ) : null}
@@ -495,14 +623,16 @@ function FieldGroup({
 
 function ProfileToggle({
   description,
+  disabled = false,
   isChecked,
   label,
   onChange,
 }: {
   description: string;
+  disabled?: boolean;
   isChecked: boolean;
   label: string;
-  onChange: (isChecked: boolean) => void;
+  onChange?: (isChecked: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between pr-2">
@@ -521,10 +651,11 @@ function ProfileToggle({
           role="switch"
           aria-checked={isChecked}
           aria-label={label}
+          disabled={disabled}
           className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
             isChecked ? 'bg-primary-700 justify-end' : 'justify-start bg-neutral-300'
-          }`}
-          onClick={() => onChange(!isChecked)}
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+          onClick={() => onChange?.(!isChecked)}
         >
           <span className="size-5 rounded-full bg-white shadow-sm" />
         </button>

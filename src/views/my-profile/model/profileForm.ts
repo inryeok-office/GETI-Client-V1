@@ -1,13 +1,13 @@
-import type { MyProfile } from '@/entities/member';
+import type { MajorMetadata, MyProfile, TechStackMetadata } from '@/entities/member';
 
 export interface MyProfileFormData {
   introduction: string;
   isProfilePublic: boolean;
-  isRecommendationEnabled: boolean;
   links: string[];
-  major: string;
+  majorId: number | null;
+  majorName: string;
   phone: string;
-  skills: string[];
+  techStackIds: number[];
 }
 
 export interface MyProfilePreviewData {
@@ -26,15 +26,25 @@ const DEPARTMENT_LABEL: Record<NonNullable<MyProfile['department']>, string> = {
   SW_DEVELOPMENT: '소프트웨어개발과',
 };
 
-export function mapMyProfileToForm(profile: MyProfile): MyProfileFormData {
+export function mapMyProfileToForm(
+  profile: MyProfile,
+  majors: MajorMetadata[],
+  techStacks: TechStackMetadata[],
+): MyProfileFormData {
+  const majorName = profile.majors[0] ?? '';
+  const majorId = majors.find((major) => major.name === majorName)?.majorId ?? null;
+  const selectedTechStackNames = new Set(profile.techStacks);
+
   return {
     introduction: profile.bio ?? '',
     isProfilePublic: profile.isPublic,
-    isRecommendationEnabled: false,
     links: profile.links.length > 0 ? profile.links.map((link) => link.url) : [''],
-    major: profile.majors[0] ?? '',
+    majorId,
+    majorName,
     phone: profile.phone ?? '',
-    skills: profile.techStacks,
+    techStackIds: techStacks
+      .filter((techStack) => selectedTechStackNames.has(techStack.name))
+      .map((techStack) => techStack.techStackId),
   };
 }
 
@@ -49,16 +59,3 @@ export function mapMyProfileToPreview(profile: MyProfile): MyProfilePreviewData 
     skills: profile.techStacks,
   };
 }
-
-export const MY_PROFILE_MAJORS = [
-  '백엔드',
-  '프론트엔드',
-  '디자인',
-  '플러터',
-  'AI',
-  'IoT',
-  'DevOps',
-  'iOS',
-  '기능반',
-  '기타',
-] as const;

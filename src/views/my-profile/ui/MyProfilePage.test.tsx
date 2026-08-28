@@ -5,12 +5,33 @@ import type { MyProfile } from '@/entities/member';
 
 import { MyProfilePage } from './MyProfilePage';
 
-const { mockUseMyProfileQuery } = vi.hoisted(() => ({ mockUseMyProfileQuery: vi.fn() }));
+const { mockUseMajorMetadataQuery, mockUseMyProfileQuery, mockUseTechStackMetadataQuery } =
+  vi.hoisted(() => ({
+    mockUseMajorMetadataQuery: vi.fn(),
+    mockUseMyProfileQuery: vi.fn(),
+    mockUseTechStackMetadataQuery: vi.fn(),
+  }));
 
 vi.mock('@/entities/member', async () => {
   const actual = await vi.importActual<typeof import('@/entities/member')>('@/entities/member');
-  return { ...actual, useMyProfileQuery: mockUseMyProfileQuery };
+  return {
+    ...actual,
+    useMajorMetadataQuery: mockUseMajorMetadataQuery,
+    useMyProfileQuery: mockUseMyProfileQuery,
+    useTechStackMetadataQuery: mockUseTechStackMetadataQuery,
+  };
 });
+
+const MAJORS = [
+  { active: true, majorId: 1, name: '백엔드' },
+  { active: true, majorId: 2, name: '프론트엔드' },
+  { active: true, majorId: 3, name: '디자인' },
+];
+const TECH_STACKS = [
+  { category: 'FRONTEND' as const, name: 'React', techStackId: 10 },
+  { category: 'FRONTEND' as const, name: 'TypeScript', techStackId: 11 },
+  { category: 'FRONTEND' as const, name: 'Next.js', techStackId: 12 },
+];
 
 const PROFILE: MyProfile = {
   academicStatus: 'ENROLLED',
@@ -33,14 +54,30 @@ const PROFILE: MyProfile = {
 };
 
 const mockRefetch = vi.fn();
+const mockMajorRefetch = vi.fn();
+const mockTechStackRefetch = vi.fn();
 
 beforeEach(() => {
   mockRefetch.mockReset();
+  mockMajorRefetch.mockReset();
+  mockTechStackRefetch.mockReset();
   mockUseMyProfileQuery.mockReturnValue({
     data: PROFILE,
     isError: false,
     isLoading: false,
     refetch: mockRefetch,
+  });
+  mockUseMajorMetadataQuery.mockReturnValue({
+    data: MAJORS,
+    isError: false,
+    isLoading: false,
+    refetch: mockMajorRefetch,
+  });
+  mockUseTechStackMetadataQuery.mockReturnValue({
+    data: TECH_STACKS,
+    isError: false,
+    isLoading: false,
+    refetch: mockTechStackRefetch,
   });
 });
 
@@ -56,6 +93,7 @@ describe('MyProfilePage', () => {
     expect(screen.getByLabelText('자기소개')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('프론트엔드');
     expect(screen.getByRole('switch', { name: '프로필 공개' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: '추천 활용 (변경 불가)' })).toBeDisabled();
     expect(screen.getByRole('heading', { name: '공개 프로필 미리보기' })).toBeInTheDocument();
     expect(screen.getByText('김게티 (9기)')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
@@ -180,5 +218,33 @@ describe('MyProfilePage', () => {
     render(<MyProfilePage />);
 
     expect(screen.getByText('등록된 프로필이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('전공 메타데이터 조회에 실패하면 다시 조회한다', () => {
+    mockUseMajorMetadataQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch: mockMajorRefetch,
+    });
+
+    render(<MyProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(mockMajorRefetch).toHaveBeenCalled();
+    expect(mockRefetch).not.toHaveBeenCalled();
+  });
+
+  it('선택 가능한 기술 스택이 없으면 메타데이터 빈 상태를 표시한다', () => {
+    mockUseTechStackMetadataQuery.mockReturnValue({
+      data: [],
+      isError: false,
+      isLoading: false,
+      refetch: mockTechStackRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('선택 가능한 프로필 정보가 없습니다.')).toBeInTheDocument();
   });
 });

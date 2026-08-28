@@ -4,6 +4,15 @@ import type { MyProfile } from '@/entities/member';
 
 import { mapMyProfileToForm, mapMyProfileToPreview } from './profileForm';
 
+const MAJORS = [
+  { active: true, majorId: 1, name: '백엔드' },
+  { active: true, majorId: 2, name: '프론트엔드' },
+];
+const TECH_STACKS = [
+  { category: 'FRONTEND' as const, name: 'React', techStackId: 10 },
+  { category: 'FRONTEND' as const, name: 'TypeScript', techStackId: 11 },
+];
+
 const PROFILE: MyProfile = {
   academicStatus: 'ENROLLED',
   bio: '프론트엔드 개발자입니다.',
@@ -26,14 +35,14 @@ const PROFILE: MyProfile = {
 
 describe('profileForm', () => {
   it('조회한 프로필로 편집 폼을 초기화한다', () => {
-    expect(mapMyProfileToForm(PROFILE)).toEqual({
+    expect(mapMyProfileToForm(PROFILE, MAJORS, TECH_STACKS)).toEqual({
       introduction: '프론트엔드 개발자입니다.',
       isProfilePublic: true,
-      isRecommendationEnabled: false,
       links: ['https://blog.example.com'],
-      major: '프론트엔드',
+      majorId: 2,
+      majorName: '프론트엔드',
       phone: '010-1234-5678',
-      skills: ['React', 'TypeScript'],
+      techStackIds: [10, 11],
     });
   });
 
@@ -51,20 +60,34 @@ describe('profileForm', () => {
 
   it('선택 정보가 없으면 빈 입력값으로 초기화한다', () => {
     expect(
-      mapMyProfileToForm({
-        ...PROFILE,
-        bio: null,
-        links: [],
-        majors: [],
-        phone: null,
-        techStacks: [],
-      }),
+      mapMyProfileToForm(
+        {
+          ...PROFILE,
+          bio: null,
+          links: [],
+          majors: [],
+          phone: null,
+          techStacks: [],
+        },
+        MAJORS,
+        TECH_STACKS,
+      ),
     ).toMatchObject({
       introduction: '',
       links: [''],
-      major: '',
+      majorId: null,
+      majorName: '',
       phone: '',
-      skills: [],
+      techStackIds: [],
+    });
+  });
+
+  it('비활성 전공처럼 메타데이터에 없는 현재 전공 이름은 표시용으로 보존한다', () => {
+    expect(
+      mapMyProfileToForm({ ...PROFILE, majors: ['이전 전공'] }, MAJORS, TECH_STACKS),
+    ).toMatchObject({
+      majorId: null,
+      majorName: '이전 전공',
     });
   });
 });
