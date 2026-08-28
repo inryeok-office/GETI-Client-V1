@@ -1,11 +1,11 @@
 import {
   AdminDashboardLive,
-  AdminDashboardPage,
-  DASHBOARD_CONTENT,
   DASHBOARD_NAV_SECTIONS,
   DeveloperDashboardLive,
+  newApplicantSince,
   recentFailureSince,
   resolveAdminDashboardVariant,
+  StaffDashboardLive,
 } from '@/views/admin-dashboard';
 
 interface PageProps {
@@ -30,9 +30,9 @@ export default async function Page({ searchParams }: PageProps) {
   }
 
   return (
-    <AdminDashboardPage
-      content={DASHBOARD_CONTENT[resolvedVariant]}
-      navSections={DASHBOARD_NAV_SECTIONS[resolvedVariant]}
+    <StaffDashboardLive
+      navSections={DASHBOARD_NAV_SECTIONS.staff}
+      newApplicantSince={newApplicantSince()}
     />
   );
 }
