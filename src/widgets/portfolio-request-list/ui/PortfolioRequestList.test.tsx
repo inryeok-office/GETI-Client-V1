@@ -48,30 +48,30 @@ const REQUESTS: PortfolioRequestListItem[] = [
 
 function renderList({
   currentFilter = 'ALL',
+  hasRequests,
   onFilterChange = vi.fn(),
   onPageChange = vi.fn(),
   onRetry = vi.fn(),
   requests = REQUESTS,
   status = 'success',
-  totalCount = requests.length,
   totalPages = 1,
 }: {
   currentFilter?: PortfolioRequestListFilter;
+  hasRequests?: boolean;
   onFilterChange?: (filter: PortfolioRequestListFilter) => void;
   onPageChange?: (page: number) => void;
   onRetry?: () => void;
   requests?: PortfolioRequestListItem[];
   status?: PortfolioRequestListStatus;
-  totalCount?: number;
   totalPages?: number;
 } = {}) {
   render(
     <PortfolioRequestList
       currentFilter={currentFilter}
       currentPage={1}
+      hasRequests={hasRequests ?? requests.length > 0}
       requests={requests}
       status={status}
-      totalCount={totalCount}
       totalPages={totalPages}
       onFilterChange={onFilterChange}
       onPageChange={onPageChange}
@@ -84,7 +84,6 @@ describe('PortfolioRequestList', () => {
   it('요청 개수와 상태별 카드를 표시한다', () => {
     renderList();
 
-    expect(screen.getByText('1', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(3);
     expect(screen.getByRole('link', { name: '제출하기' })).toHaveAttribute('href', '/portfolios/1');
   });
@@ -94,7 +93,7 @@ describe('PortfolioRequestList', () => {
     const handleFilterChange = vi.fn();
     renderList({ onFilterChange: handleFilterChange });
 
-    await user.click(screen.getByRole('button', { name: '제출 마감 1' }));
+    await user.click(screen.getByRole('button', { name: '제출 마감' }));
 
     expect(handleFilterChange).toHaveBeenCalledWith('CLOSED');
   });
@@ -108,9 +107,16 @@ describe('PortfolioRequestList', () => {
   });
 
   it('빈 목록 상태를 표시한다', () => {
-    renderList({ requests: [], status: 'empty', totalCount: 0 });
+    renderList({ hasRequests: false, requests: [], status: 'empty' });
 
     expect(screen.getByText('요청 받은 포트폴리오가 없어요')).toBeInTheDocument();
+  });
+
+  it('현재 필터 결과만 비었을 때 필터와 필터 빈 상태를 유지한다', () => {
+    renderList({ currentFilter: 'CLOSED', hasRequests: true, requests: [], status: 'empty' });
+
+    expect(screen.getByRole('button', { name: '전체' })).toBeInTheDocument();
+    expect(screen.getByText('해당 상태의 포트폴리오가 없어요')).toBeInTheDocument();
   });
 
   it('오류 상태에서 다시 시도하면 onRetry를 호출한다', async () => {

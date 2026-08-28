@@ -18,12 +18,12 @@ export type PortfolioRequestListStatus = 'empty' | 'error' | 'loading' | 'pageLo
 interface PortfolioRequestListProps {
   currentFilter: PortfolioRequestListFilter;
   currentPage: number;
+  hasRequests: boolean;
   onFilterChange: (filter: PortfolioRequestListFilter) => void;
   onPageChange: (page: number) => void;
   onRetry: () => void;
   requests: PortfolioRequestListItem[];
   status: PortfolioRequestListStatus;
-  totalCount: number;
   totalPages: number;
 }
 
@@ -38,22 +38,14 @@ const FILTERS: PortfolioRequestListFilter[] = ['ALL', 'REQUIRED', 'CLOSED'];
 export function PortfolioRequestList({
   currentFilter,
   currentPage,
+  hasRequests,
   onFilterChange,
   onPageChange,
   onRetry,
   requests,
   status,
-  totalCount,
   totalPages,
 }: PortfolioRequestListProps) {
-  const counts = useMemo(
-    () => ({
-      ALL: totalCount,
-      CLOSED: requests.filter((request) => request.status === 'CLOSED').length,
-      REQUIRED: requests.filter((request) => request.status === 'REQUIRED').length,
-    }),
-    [requests, totalCount],
-  );
   const filteredRequests = useMemo(
     () =>
       currentFilter === 'ALL'
@@ -64,7 +56,7 @@ export function PortfolioRequestList({
 
   if (status === 'loading' || status === 'pageLoading') return <PortfolioRequestListSkeleton />;
   if (status === 'error') return <PortfolioRequestListError onRetry={onRetry} />;
-  if (status === 'empty' || requests.length === 0) return <PortfolioRequestListEmpty />;
+  if (status === 'empty' && !hasRequests) return <PortfolioRequestListEmpty />;
 
   return (
     <div className="flex flex-col gap-8">
@@ -78,10 +70,7 @@ export function PortfolioRequestList({
           </p>
         </div>
         <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-          <strong className="text-primary-700 mr-1 text-xl leading-[1.4] font-semibold tracking-[-0.2px]">
-            {counts.REQUIRED}
-          </strong>
-          건 제출 필요
+          마감 전 요청을 확인해 주세요.
         </p>
       </section>
 
@@ -102,7 +91,7 @@ export function PortfolioRequestList({
                     : 'border-neutral-200 bg-white text-neutral-600'
                 }`}
               >
-                {FILTER_LABEL[item]} {counts[item]}
+                {FILTER_LABEL[item]}
               </button>
             );
           })}

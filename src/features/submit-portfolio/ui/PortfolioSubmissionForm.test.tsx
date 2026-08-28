@@ -90,4 +90,15 @@ describe('PortfolioSubmissionForm', () => {
     expect(screen.getByText(/최대 20MB/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '제출하기' })).toBeDisabled();
   });
+  it('http/https URL이 아니면 제출하지 않고 오류를 보여준다', async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn().mockResolvedValue(SUBMISSION_RESPONSE);
+    render(<PortfolioSubmissionForm onSubmit={handleSubmit} />);
+
+    await user.type(screen.getByRole('textbox', { name: 'URL' }), 'ftp://example.com');
+    await user.click(screen.getByRole('button', { name: '제출하기' }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('http 또는 https URL만 입력해 주세요.')).toBeInTheDocument();
+  });
 });

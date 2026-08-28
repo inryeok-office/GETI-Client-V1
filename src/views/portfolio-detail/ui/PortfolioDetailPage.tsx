@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { downloadCommonFile } from '@/entities/common-file';
 import {
   formatDueAt,
   usePortfolioRequestDetailQuery,
@@ -15,6 +16,7 @@ import { PortfolioSubmissionForm } from '@/features/submit-portfolio';
 import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 import { SiteHeader } from '@/widgets/site-header';
 
 interface PortfolioDetailPageProps {
@@ -33,7 +35,9 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
     ['NOT_REQUEST_TARGET', 'PORTFOLIO_REQUEST_NOT_FOUND', 'SUBMISSION_CLOSED'].includes(
       detailQuery.error.code ?? '',
     );
-  const isClosed = detailQuery.data?.status === 'CLOSED';
+  const isClosed =
+    detailQuery.data !== undefined &&
+    (detailQuery.data.status !== 'PUBLISHED' || isPastDueAt(detailQuery.data.dueAt));
   const isSubmitted = submission?.status === 'SUBMITTED';
 
   const handleSubmit = async (request: PortfolioSubmissionUpsertRequest) => {
@@ -119,8 +123,24 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
           </div>
         ) : null}
       </main>
+      <AppToaster />
     </div>
   );
+}
+
+function isPastDueAt(dueAt: string): boolean {
+  return new Date(dueAt).getTime() < Date.now();
+}
+
+function savePortfolioFileBlob(blob: Blob, filename: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }
 
 function PortfolioRequestSummary({ request }: { request: PortfolioRequestDetailApiResponse }) {
@@ -202,17 +222,26 @@ function CompletedPortfolioMaterials({
 }: {
   submission: PortfolioSubmissionApiResponse | null;
 }) {
+  const handleDownload = async (file: PortfolioSubmissionApiResponse['files'][number]) => {
+    try {
+      const blob = await downloadCommonFile(file.fileId);
+      savePortfolioFileBlob(blob, file.originalName);
+    } catch {
+      showToast({ tone: 'error', message: `${file.originalName} 다운로드에 실패했습니다.` });
+    }
+  };
+
   return (
     <section className="min-h-[420px] rounded-lg bg-white p-8">
       <h2 className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
         제출 자료
       </h2>
       {submission?.files.map((file) => (
-        <a
+        <button
           key={file.fileId}
-          href={file.downloadUrl}
-          target="_blank"
-          rel="noreferrer"
+          type="button"
+          aria-label={`${file.originalName} 다운로드`}
+          onClick={() => void handleDownload(file)}
           className="mt-4 flex min-h-[61px] items-center gap-3 rounded-lg border border-neutral-200 p-3"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100">
@@ -226,7 +255,7 @@ function CompletedPortfolioMaterials({
               {formatFileSize(file.size)}
             </p>
           </div>
-        </a>
+        </button>
       ))}
 
       {submission?.portfolioUrl ? (

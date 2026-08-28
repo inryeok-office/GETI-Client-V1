@@ -34,6 +34,7 @@ export function PortfolioSubmissionForm({
   const fileInputId = useId();
   const [file, setFile] = useState<PortfolioUploadFile | null>(null);
   const [url, setUrl] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -81,6 +82,10 @@ export function PortfolioSubmissionForm({
 
   const handleSubmit = async (status: PortfolioSubmissionUpsertStatus) => {
     setSubmitError(null);
+
+    const nextUrlError = validatePortfolioUrl(url);
+    setUrlError(nextUrlError);
+    if (nextUrlError) return;
 
     try {
       await onSubmit({
@@ -150,10 +155,24 @@ export function PortfolioSubmissionForm({
           type="url"
           value={url}
           disabled={isDisabled}
-          onChange={(event) => setUrl(event.target.value)}
+          aria-invalid={Boolean(urlError)}
+          aria-describedby={urlError ? 'portfolio-url-error' : undefined}
+          onChange={(event) => {
+            setUrl(event.target.value);
+            setUrlError(null);
+          }}
           placeholder="URL을 입력해 주세요."
           className="focus:border-primary-300 mt-2 h-14 w-full rounded-lg border border-neutral-200 px-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-400 disabled:bg-neutral-100"
         />
+        {urlError ? (
+          <p
+            id="portfolio-url-error"
+            className="text-status-error mt-2 flex items-center gap-2 text-xs leading-[1.5] tracking-[-0.12px]"
+          >
+            <Icon name="alertCircleFilled" className="size-4" />
+            {urlError}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-4">
@@ -290,4 +309,18 @@ function formatFileSize(size: number): string {
 function normalizeOptionalValue(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function validatePortfolioUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsedUrl = new URL(trimmed);
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+      ? null
+      : 'http 또는 https URL만 입력해 주세요.';
+  } catch {
+    return '올바른 URL을 입력해 주세요.';
+  }
 }

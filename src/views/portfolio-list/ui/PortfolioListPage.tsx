@@ -51,6 +51,10 @@ export function PortfolioListPage({
     size: PAGE_SIZE,
     status: API_STATUS_BY_FILTER[filter],
   });
+  const allListQuery = usePortfolioRequestListQuery({
+    page: 0,
+    size: 1,
+  });
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -72,6 +76,10 @@ export function PortfolioListPage({
           : 'success';
 
   const requests = (listQuery.data?.content ?? []).map(mapPortfolioRequestSummaryToListItem);
+  const hasRequests =
+    filter === 'ALL'
+      ? (listQuery.data?.totalElements ?? 0) > 0
+      : allListQuery.isLoading || (allListQuery.data?.totalElements ?? 0) > 0;
 
   const handleFilterChange = (nextFilter: PortfolioRequestListFilter) => {
     setFilter(nextFilter);
@@ -95,9 +103,9 @@ export function PortfolioListPage({
           <PortfolioRequestList
             currentFilter={filter}
             currentPage={page + 1}
+            hasRequests={hasRequests}
             requests={requests}
             status={status}
-            totalCount={listQuery.data?.totalElements ?? 0}
             totalPages={listQuery.data?.totalPages ?? 0}
             onFilterChange={handleFilterChange}
             onPageChange={(nextPage) => setPage(nextPage - 1)}
