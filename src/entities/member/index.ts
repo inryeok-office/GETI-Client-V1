@@ -19,8 +19,10 @@ export type {
   MajorMetadata,
   TechStackCategory,
   TechStackMetadata,
+  UpdateMyProfileLinkRequest,
   UpdateMyProfileRequest,
 } from './model/profileSetup';
+export { fetchMyProfile } from './api/meApi';
 export {
   fetchMajorMetadata,
   fetchTechStackMetadata,

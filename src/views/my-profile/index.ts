@@ -1,1 +1,1 @@
-export { MyProfilePage, type MyProfileSaveStatus } from './ui/MyProfilePage';
+export { MyProfilePage } from './ui/MyProfilePage';

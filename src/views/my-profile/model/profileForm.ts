@@ -1,9 +1,19 @@
-import type { MajorMetadata, MyProfile, TechStackMetadata } from '@/entities/member';
+import type {
+  MajorMetadata,
+  MyProfile,
+  TechStackMetadata,
+  UpdateMyProfileLinkRequest,
+} from '@/entities/member';
+
+export interface MyProfileFormLink {
+  label: string;
+  url: string;
+}
 
 export interface MyProfileFormData {
   introduction: string;
   isProfilePublic: boolean;
-  links: string[];
+  links: MyProfileFormLink[];
   majorId: number | null;
   majorName: string;
   phone: string;
@@ -39,7 +49,7 @@ export function mapMyProfileToForm(
   return {
     introduction: profile.bio ?? '',
     isProfilePublic: profile.isPublic,
-    links: profile.links.length > 0 ? profile.links.map((link) => link.url) : [''],
+    links: profile.links.length > 0 ? profile.links : [{ label: '', url: '' }],
     majorId,
     majorName,
     phone: profile.phone ?? '',
@@ -47,6 +57,30 @@ export function mapMyProfileToForm(
       .filter((techStack) => selectedTechStackNames.has(techStack.name))
       .map((techStack) => techStack.techStackId),
   };
+}
+
+export function buildProfileLinkRequests(links: MyProfileFormLink[]): UpdateMyProfileLinkRequest[] {
+  return links
+    .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
+    .filter((link) => link.url)
+    .map((link, index) => {
+      let parsedUrl: URL;
+
+      try {
+        parsedUrl = new URL(link.url);
+      } catch {
+        throw new Error(`${index + 1}번째 URL 형식을 확인해 주세요.`);
+      }
+
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        throw new Error(`${index + 1}번째 URL은 http 또는 https 주소만 사용할 수 있습니다.`);
+      }
+
+      return {
+        label: (link.label || parsedUrl.hostname || `링크 ${index + 1}`).slice(0, 100),
+        url: link.url,
+      };
+    });
 }
 
 export function mapMyProfileToPreview(profile: MyProfile): MyProfilePreviewData {

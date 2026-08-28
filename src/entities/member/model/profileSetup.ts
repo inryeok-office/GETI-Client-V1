@@ -15,10 +15,19 @@ export interface TechStackMetadata {
   category: TechStackCategory;
 }
 
+export interface UpdateMyProfileLinkRequest {
+  label: string;
+  url: string;
+}
+
 export interface UpdateMyProfileRequest {
-  cohort: number;
-  department: DepartmentCode;
-  desiredJob: string;
-  phone: string | null;
-  profileImageFileId: number;
+  bio?: string | null;
+  cohort?: number | null;
+  department?: DepartmentCode | null;
+  desiredJob?: string | null;
+  githubUrl?: string | null;
+  isPublic?: boolean;
+  links?: UpdateMyProfileLinkRequest[];
+  phone?: string | null;
+  profileImageFileId?: number | null;
 }

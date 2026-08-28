@@ -1,16 +1,23 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { MyProfile } from '@/entities/member';
 
 import { MyProfilePage } from './MyProfilePage';
 
-const { mockUseMajorMetadataQuery, mockUseMyProfileQuery, mockUseTechStackMetadataQuery } =
-  vi.hoisted(() => ({
-    mockUseMajorMetadataQuery: vi.fn(),
-    mockUseMyProfileQuery: vi.fn(),
-    mockUseTechStackMetadataQuery: vi.fn(),
-  }));
+const {
+  mockMutateAsync,
+  mockUseMajorMetadataQuery,
+  mockUseMyProfileQuery,
+  mockUseTechStackMetadataQuery,
+  mockUseUpdateMyProfileMutation,
+} = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+  mockUseMajorMetadataQuery: vi.fn(),
+  mockUseMyProfileQuery: vi.fn(),
+  mockUseTechStackMetadataQuery: vi.fn(),
+  mockUseUpdateMyProfileMutation: vi.fn(),
+}));
 
 vi.mock('@/entities/member', async () => {
   const actual = await vi.importActual<typeof import('@/entities/member')>('@/entities/member');
@@ -21,6 +28,10 @@ vi.mock('@/entities/member', async () => {
     useTechStackMetadataQuery: mockUseTechStackMetadataQuery,
   };
 });
+
+vi.mock('@/features/update-profile', () => ({
+  useUpdateMyProfileMutation: mockUseUpdateMyProfileMutation,
+}));
 
 const MAJORS = [
   { active: true, majorId: 1, name: '백엔드' },
@@ -61,6 +72,13 @@ beforeEach(() => {
   mockRefetch.mockReset();
   mockMajorRefetch.mockReset();
   mockTechStackRefetch.mockReset();
+  mockMutateAsync.mockReset();
+  mockUseUpdateMyProfileMutation.mockReset();
+  mockMutateAsync.mockResolvedValue(PROFILE);
+  mockUseUpdateMyProfileMutation.mockReturnValue({
+    isPending: false,
+    mutateAsync: mockMutateAsync,
+  });
   mockUseMyProfileQuery.mockReturnValue({
     data: PROFILE,
     isError: false,
@@ -79,10 +97,6 @@ beforeEach(() => {
     isLoading: false,
     refetch: mockTechStackRefetch,
   });
-});
-
-afterEach(() => {
-  vi.useRealTimers();
 });
 
 describe('MyProfilePage', () => {
@@ -196,28 +210,101 @@ describe('MyProfilePage', () => {
     expect(screen.getByText('등록된 URL이 없습니다.')).toBeInTheDocument();
   });
 
-  it('저장 중 상태를 거쳐 저장 완료 토스트를 보여준다', () => {
-    vi.useFakeTimers();
+  it('변경한 항목을 저장하고 재조회된 프로필로 폼과 캐시 상태를 맞춘다', async () => {
+    const updatedProfile: MyProfile = {
+      ...PROFILE,
+      bio: '수정된 자기소개입니다.',
+      isPublic: false,
+      links: [{ label: '기술 블로그', url: 'https://new.example.com' }],
+      majors: ['백엔드'],
+      techStacks: ['TypeScript'],
+    };
+    mockMutateAsync.mockResolvedValueOnce(updatedProfile);
     render(<MyProfilePage />);
 
+    fireEvent.change(screen.getByLabelText('자기소개'), {
+      target: { value: '수정된 자기소개입니다.' },
+    });
+    fireEvent.click(screen.getByRole('switch', { name: '프로필 공개' }));
+    fireEvent.click(screen.getByRole('button', { name: '전공' }));
+    fireEvent.click(screen.getByRole('option', { name: '백엔드' }));
+    fireEvent.click(screen.getByRole('button', { name: 'React 기술 삭제' }));
+    fireEvent.change(screen.getByLabelText('URL 1'), {
+      target: { value: 'https://new.example.com' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(screen.getByText('변경사항을 저장 중입니다.')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(700);
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        majorIds: [1],
+        profile: {
+          bio: '수정된 자기소개입니다.',
+          isPublic: false,
+          links: [{ label: '기술 블로그', url: 'https://new.example.com' }],
+          phone: '010-1234-5678',
+        },
+        techStackIds: [11],
+      });
     });
 
     expect(screen.getByText('변경사항이 저장되었습니다.')).toBeInTheDocument();
+    expect(screen.getByLabelText('자기소개')).toHaveValue('수정된 자기소개입니다.');
+    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('백엔드');
   });
 
-  it.each([
-    ['loading', '변경사항을 저장 중입니다.'],
-    ['success', '변경사항이 저장되었습니다.'],
-    ['error', '변경사항 저장에 실패했습니다.'],
-  ] as const)('%s 정적 상태를 확인할 수 있다', (initialSaveStatus, message) => {
-    render(<MyProfilePage initialSaveStatus={initialSaveStatus} />);
+  it('저장에 실패하면 편집값과 미리보기를 마지막 저장 상태로 복구한다', async () => {
+    mockMutateAsync.mockRejectedValueOnce(new Error('failed'));
+    render(<MyProfilePage />);
 
-    expect(screen.getByText(message)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('자기소개'), {
+      target: { value: '저장되지 않을 소개입니다.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    expect(
+      await screen.findByText('변경사항을 저장하지 못했습니다. 입력값을 이전 상태로 복구했습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('자기소개')).toHaveValue(PROFILE.bio);
+    expect(screen.queryByText('저장되지 않을 소개입니다.')).not.toBeInTheDocument();
+    expect(screen.getByText('변경사항 저장에 실패했습니다.')).toBeInTheDocument();
+  });
+
+  it('같은 폼이 연속 제출되어도 저장 요청은 한 번만 보낸다', async () => {
+    let resolveSave!: (profile: MyProfile) => void;
+    mockMutateAsync.mockReturnValueOnce(
+      new Promise<MyProfile>((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    render(<MyProfilePage />);
+
+    const form = screen.getByRole('button', { name: '저장하기' }).closest('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+    fireEvent.submit(form as HTMLFormElement);
+
+    expect(mockMutateAsync).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      resolveSave(PROFILE);
+    });
+  });
+
+  it('저장 중에는 저장과 취소 버튼을 비활성화한다', () => {
+    mockUseUpdateMyProfileMutation.mockReturnValue({
+      isPending: true,
+      mutateAsync: mockMutateAsync,
+    });
+    render(<MyProfilePage />);
+
+    expect(screen.getByRole('button', { name: '저장하기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '변경 취소' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장하기' }).closest('form')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
   });
 
   it('프로필 조회 중 로딩 상태를 표시한다', () => {

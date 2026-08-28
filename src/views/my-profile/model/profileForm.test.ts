@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { MyProfile } from '@/entities/member';
 
-import { mapMyProfileToForm, mapMyProfileToPreview } from './profileForm';
+import { buildProfileLinkRequests, mapMyProfileToForm, mapMyProfileToPreview } from './profileForm';
 
 const MAJORS = [
   { active: true, majorId: 1, name: '백엔드' },
@@ -38,7 +38,7 @@ describe('profileForm', () => {
     expect(mapMyProfileToForm(PROFILE, MAJORS, TECH_STACKS)).toEqual({
       introduction: '프론트엔드 개발자입니다.',
       isProfilePublic: true,
-      links: ['https://blog.example.com'],
+      links: [{ label: '블로그', url: 'https://blog.example.com' }],
       majorId: 2,
       majorName: '프론트엔드',
       phone: '010-1234-5678',
@@ -75,7 +75,7 @@ describe('profileForm', () => {
       ),
     ).toMatchObject({
       introduction: '',
-      links: [''],
+      links: [{ label: '', url: '' }],
       majorId: null,
       majorName: '',
       phone: '',
@@ -107,5 +107,25 @@ describe('profileForm', () => {
       majorId: null,
       majorName: '이전 전공',
     });
+  });
+
+  it('입력한 링크 라벨을 보존하고 새 링크는 호스트 이름으로 라벨을 만든다', () => {
+    expect(
+      buildProfileLinkRequests([
+        { label: '기술 블로그', url: ' https://blog.example.com/posts ' },
+        { label: '', url: 'https://github.com/geti-student' },
+        { label: '', url: ' ' },
+      ]),
+    ).toEqual([
+      { label: '기술 블로그', url: 'https://blog.example.com/posts' },
+      { label: 'github.com', url: 'https://github.com/geti-student' },
+    ]);
+  });
+
+  it('http 또는 https가 아닌 링크는 저장 요청으로 변환하지 않는다', () => {
+    expect(() => buildProfileLinkRequests([{ label: '', url: 'javascript:alert(1)' }])).toThrow(
+      'http 또는 https',
+    );
+    expect(() => buildProfileLinkRequests([{ label: '', url: 'example.com' }])).toThrow('URL 형식');
   });
 });

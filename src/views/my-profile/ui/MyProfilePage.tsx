@@ -20,6 +20,7 @@ import {
   type MyProfile,
   type TechStackMetadata,
 } from '@/entities/member';
+import { useUpdateMyProfileMutation, type SaveMyProfileRequest } from '@/features/update-profile';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
@@ -28,25 +29,20 @@ import { TextField } from '@/shared/ui/text-field';
 import { AppToaster, showToast } from '@/shared/ui/toast';
 
 import {
+  buildProfileLinkRequests,
   mapMyProfileToForm,
   mapMyProfileToPreview,
   type MyProfileFormData,
   type MyProfilePreviewData,
 } from '../model/profileForm';
 
-export type MyProfileSaveStatus = 'idle' | 'loading' | 'success' | 'error';
-
-interface MyProfilePageProps {
-  initialSaveStatus?: MyProfileSaveStatus;
-}
-
-const TOAST_CONTENT: Record<Exclude<MyProfileSaveStatus, 'idle'>, string> = {
+const TOAST_CONTENT = {
   error: '변경사항 저장에 실패했습니다.',
   loading: '변경사항을 저장 중입니다.',
   success: '변경사항이 저장되었습니다.',
 };
 
-export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps) {
+export function MyProfilePage() {
   const profileQuery = useMyProfileQuery();
   const majorsQuery = useMajorMetadataQuery();
   const techStacksQuery = useTechStackMetadataQuery();
@@ -100,7 +96,6 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
 
   return (
     <MyProfileEditor
-      initialSaveStatus={initialSaveStatus}
       majors={majorsQuery.data}
       profile={profileQuery.data}
       techStacks={techStacksQuery.data}
@@ -109,12 +104,10 @@ export function MyProfilePage({ initialSaveStatus = 'idle' }: MyProfilePageProps
 }
 
 function MyProfileEditor({
-  initialSaveStatus,
   majors,
   profile,
   techStacks,
 }: {
-  initialSaveStatus: MyProfileSaveStatus;
   majors: MajorMetadata[];
   profile: MyProfile;
   techStacks: TechStackMetadata[];
@@ -128,11 +121,17 @@ function MyProfileEditor({
   const [preview, setPreview] = useState<MyProfilePreviewData>(() =>
     mapMyProfileToPreview(profile),
   );
-  const [saveStatus, setSaveStatus] = useState<MyProfileSaveStatus>(initialSaveStatus);
+  const [savedPreview, setSavedPreview] = useState<MyProfilePreviewData>(() =>
+    mapMyProfileToPreview(profile),
+  );
+  const [formError, setFormError] = useState<string | null>(null);
   const [skillInput, setSkillInput] = useState('');
   const [isSkillMenuOpen, setIsSkillMenuOpen] = useState(false);
   const skillFieldRef = useRef<HTMLDivElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSubmitLockedRef = useRef(false);
+  const updateProfileMutation = useUpdateMyProfileMutation();
+  const sourceVersion = JSON.stringify({ majors, profile, techStacks });
+  const sourceVersionRef = useRef(sourceVersion);
 
   const selectedTechStacks = useMemo(
     () => techStacks.filter((techStack) => draft.techStackIds.includes(techStack.techStackId)),
@@ -153,23 +152,17 @@ function MyProfileEditor({
   }, [draft.techStackIds, skillInput, techStacks]);
 
   useEffect(() => {
-    if (saveStatus === 'idle') return;
-    showToast({
-      tone: saveStatus,
-      message: TOAST_CONTENT[saveStatus],
-      top: 70,
-      id: 'my-profile-save',
-    });
-  }, [saveStatus]);
+    if (sourceVersionRef.current === sourceVersion) return;
 
-  useEffect(
-    () => () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-    },
-    [],
-  );
+    sourceVersionRef.current = sourceVersion;
+    const nextForm = mapMyProfileToForm(profile, majors, techStacks);
+    const nextPreview = mapMyProfileToPreview(profile);
+    setDraft(nextForm);
+    setSavedProfile(nextForm);
+    setPreview(nextPreview);
+    setSavedPreview(nextPreview);
+    setFormError(null);
+  }, [majors, profile, sourceVersion, techStacks]);
 
   useEffect(() => {
     if (!isSkillMenuOpen) return;
@@ -189,42 +182,107 @@ function MyProfileEditor({
     };
   }, [isSkillMenuOpen]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaveStatus('loading');
+    if (isSubmitLockedRef.current || updateProfileMutation.isPending) return;
 
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
+    let links;
+    try {
+      links = buildProfileLinkRequests(draft.links);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'URL 형식을 확인해 주세요.');
+      return;
     }
 
-    saveTimerRef.current = setTimeout(() => {
-      setSavedProfile(draft);
-      setSaveStatus('success');
-    }, 700);
+    const request: SaveMyProfileRequest = {
+      profile: {
+        bio: draft.introduction.trim() || null,
+        isPublic: draft.isProfilePublic,
+        links,
+        phone: draft.phone.trim() || null,
+      },
+    };
+
+    if (draft.majorId !== savedProfile.majorId && draft.majorId !== null) {
+      request.majorIds = [draft.majorId];
+    }
+    if (!areNumberSetsEqual(draft.techStackIds, savedProfile.techStackIds)) {
+      request.techStackIds = draft.techStackIds;
+    }
+
+    isSubmitLockedRef.current = true;
+    setFormError(null);
+    showToast({
+      tone: 'loading',
+      message: TOAST_CONTENT.loading,
+      top: 70,
+      id: 'my-profile-save',
+    });
+
+    try {
+      const updatedProfile = await updateProfileMutation.mutateAsync(request);
+      const nextForm = mapMyProfileToForm(updatedProfile, majors, techStacks);
+      const nextPreview = mapMyProfileToPreview(updatedProfile);
+      setDraft(nextForm);
+      setSavedProfile(nextForm);
+      setPreview(nextPreview);
+      setSavedPreview(nextPreview);
+      setSkillInput('');
+      setIsSkillMenuOpen(false);
+      showToast({
+        tone: 'success',
+        message: TOAST_CONTENT.success,
+        top: 70,
+        id: 'my-profile-save',
+      });
+    } catch {
+      setDraft(savedProfile);
+      setPreview(savedPreview);
+      setSkillInput('');
+      setIsSkillMenuOpen(false);
+      setFormError('변경사항을 저장하지 못했습니다. 입력값을 이전 상태로 복구했습니다.');
+      showToast({
+        tone: 'error',
+        message: TOAST_CONTENT.error,
+        top: 70,
+        id: 'my-profile-save',
+      });
+    } finally {
+      isSubmitLockedRef.current = false;
+    }
   };
 
   const handleCancel = () => {
     setDraft(savedProfile);
+    setPreview(savedPreview);
     setSkillInput('');
     setIsSkillMenuOpen(false);
-    setSaveStatus('idle');
+    setFormError(null);
   };
 
   const handleAddLink = () => {
-    setDraft((current) => ({ ...current, links: [...current.links, ''] }));
+    setDraft((current) => ({
+      ...current,
+      links: [...current.links, { label: '', url: '' }],
+    }));
   };
 
   const handleLinkChange = (index: number, value: string) => {
     setDraft((current) => ({
       ...current,
-      links: current.links.map((link, linkIndex) => (linkIndex === index ? value : link)),
+      links: current.links.map((link, linkIndex) =>
+        linkIndex === index ? { ...link, url: value } : link,
+      ),
     }));
   };
 
   const handleDeleteLink = (index: number) => {
     setDraft((current) => {
       const nextLinks = current.links.filter((_, linkIndex) => linkIndex !== index);
-      return { ...current, links: nextLinks.length > 0 ? nextLinks : [''] };
+      return {
+        ...current,
+        links: nextLinks.length > 0 ? nextLinks : [{ label: '', url: '' }],
+      };
     });
   };
 
@@ -247,7 +305,7 @@ function MyProfileEditor({
     setPreview((current) => ({
       ...current,
       introduction: draft.introduction,
-      links: draft.links.filter(Boolean),
+      links: draft.links.map((link) => link.url.trim()).filter(Boolean),
       major: draft.majorName,
       skills: selectedTechStacks.map((techStack) => techStack.name),
     }));
@@ -266,6 +324,7 @@ function MyProfileEditor({
         </header>
 
         <form
+          aria-busy={updateProfileMutation.isPending}
           className="flex flex-col gap-8 rounded-2xl bg-white px-8 py-10"
           onSubmit={handleSubmit}
         >
@@ -395,12 +454,12 @@ function MyProfileEditor({
                     aria-label={`URL ${index + 1}`}
                     className="h-[58px] px-4 pr-12 text-base leading-[1.6] tracking-[-0.16px] placeholder:text-neutral-400"
                     placeholder="URL을 입력하세요."
-                    value={link}
+                    value={link.url}
                     onChange={(event: ChangeEvent<HTMLInputElement>) =>
                       handleLinkChange(index, event.target.value)
                     }
                   />
-                  {link ? (
+                  {link.url ? (
                     <button
                       type="button"
                       aria-label={`URL ${index + 1} 삭제`}
@@ -440,11 +499,28 @@ function MyProfileEditor({
             />
           </div>
 
+          {formError ? (
+            <p role="alert" className="text-status-error text-sm">
+              {formError}
+            </p>
+          ) : null}
+
           <div className="flex justify-end gap-4 pt-2">
-            <Button type="button" variant="neutral" onClick={handleCancel}>
+            <Button
+              type="button"
+              variant="neutral"
+              disabled={updateProfileMutation.isPending}
+              onClick={handleCancel}
+            >
               변경 취소
             </Button>
-            <Button type="submit">저장하기</Button>
+            <Button
+              type="submit"
+              disabled={updateProfileMutation.isPending}
+              isLoading={updateProfileMutation.isPending}
+            >
+              저장하기
+            </Button>
           </div>
         </form>
 
@@ -810,4 +886,8 @@ function PreviewSection({ children, title }: { children: ReactNode; title: strin
 
 function normalizeExternalUrl(url: string) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function areNumberSetsEqual(left: number[], right: number[]) {
+  return left.length === right.length && left.every((value) => right.includes(value));
 }
