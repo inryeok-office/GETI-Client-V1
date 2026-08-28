@@ -95,6 +95,12 @@ describe('MyProfilePage', () => {
     expect(screen.getByRole('switch', { name: '프로필 공개' })).toBeChecked();
     expect(screen.getByRole('switch', { name: '추천 활용 (변경 불가)' })).toBeDisabled();
     expect(screen.getByRole('heading', { name: '공개 프로필 미리보기' })).toBeInTheDocument();
+    const preview = screen
+      .getByRole('heading', { name: '공개 프로필 미리보기' })
+      .closest('section');
+    expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('공개')).toBeInTheDocument();
+    expect(within(preview as HTMLElement).getByText('프론트엔드')).toBeInTheDocument();
     expect(screen.getByText('김게티 (9기)')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
       'href',
@@ -153,7 +159,41 @@ describe('MyProfilePage', () => {
       .getByRole('heading', { name: '공개 프로필 미리보기' })
       .closest('section');
     expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('비공개')).toBeInTheDocument();
     expect(within(preview as HTMLElement).getByText('새로운 자기소개입니다.')).toBeInTheDocument();
+  });
+
+  it('변경한 전공과 기술 스택을 공개 프로필 미리보기에 반영한다', () => {
+    render(<MyProfilePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '전공' }));
+    fireEvent.click(screen.getByRole('option', { name: '백엔드' }));
+    fireEvent.click(screen.getByRole('button', { name: 'React 기술 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+
+    const preview = screen
+      .getByRole('heading', { name: '공개 프로필 미리보기' })
+      .closest('section');
+    expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('백엔드')).toBeInTheDocument();
+    expect(within(preview as HTMLElement).queryByText('React')).not.toBeInTheDocument();
+    expect(within(preview as HTMLElement).getByText('TypeScript')).toBeInTheDocument();
+  });
+
+  it('공개 항목이 없으면 미리보기에서 항목별 빈 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: { ...PROFILE, bio: null, links: [], majors: [], techStacks: [] },
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('등록된 전공이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 자기소개가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 기술 스택이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 URL이 없습니다.')).toBeInTheDocument();
   });
 
   it('저장 중 상태를 거쳐 저장 완료 토스트를 보여준다', () => {

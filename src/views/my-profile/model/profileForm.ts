@@ -15,6 +15,7 @@ export interface MyProfilePreviewData {
   department: string;
   introduction: string;
   links: string[];
+  major: string;
   name: string;
   profileImageUrl: string | null;
   skills: string[];
@@ -54,6 +55,7 @@ export function mapMyProfileToPreview(profile: MyProfile): MyProfilePreviewData 
     department: profile.department ? DEPARTMENT_LABEL[profile.department] : '학과 미등록',
     introduction: profile.bio ?? '',
     links: profile.links.map((link) => link.url),
+    major: profile.majors[0] ?? '',
     name: profile.name,
     profileImageUrl: profile.profileImageUrl,
     skills: profile.techStacks,

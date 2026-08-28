@@ -52,6 +52,7 @@ describe('profileForm', () => {
       department: '소프트웨어개발과',
       introduction: '프론트엔드 개발자입니다.',
       links: ['https://blog.example.com'],
+      major: '프론트엔드',
       name: '김게티',
       profileImageUrl: 'https://cdn.example.com/profile.png',
       skills: ['React', 'TypeScript'],
@@ -79,6 +80,23 @@ describe('profileForm', () => {
       majorName: '',
       phone: '',
       techStackIds: [],
+    });
+  });
+
+  it('공개 항목이 없으면 빈 미리보기 값으로 변환한다', () => {
+    expect(
+      mapMyProfileToPreview({
+        ...PROFILE,
+        bio: null,
+        links: [],
+        majors: [],
+        techStacks: [],
+      }),
+    ).toMatchObject({
+      introduction: '',
+      links: [],
+      major: '',
+      skills: [],
     });
   });
 

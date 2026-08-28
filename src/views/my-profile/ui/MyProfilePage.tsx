@@ -248,6 +248,7 @@ function MyProfileEditor({
       ...current,
       introduction: draft.introduction,
       links: draft.links.filter(Boolean),
+      major: draft.majorName,
       skills: selectedTechStacks.map((techStack) => techStack.name),
     }));
   };
@@ -447,7 +448,11 @@ function MyProfileEditor({
           </div>
         </form>
 
-        <ProfilePreview preview={preview} onRefresh={handleRefreshPreview} />
+        <ProfilePreview
+          isPublic={draft.isProfilePublic}
+          preview={preview}
+          onRefresh={handleRefreshPreview}
+        />
       </div>
     </main>
   );
@@ -665,9 +670,11 @@ function ProfileToggle({
 }
 
 function ProfilePreview({
+  isPublic,
   onRefresh,
   preview,
 }: {
+  isPublic: boolean;
   onRefresh: () => void;
   preview: MyProfilePreviewData;
 }) {
@@ -678,14 +685,25 @@ function ProfilePreview({
     >
       <header className="flex items-start justify-between">
         <div className="px-1">
-          <h2
-            id="profile-preview-title"
-            className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900"
-          >
-            공개 프로필 미리보기
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2
+              id="profile-preview-title"
+              className="text-base leading-[1.6] font-semibold tracking-[-0.16px] text-neutral-900"
+            >
+              공개 프로필 미리보기
+            </h2>
+            <span
+              className={`rounded-2xl px-3 py-1 text-xs font-semibold ${
+                isPublic ? 'bg-primary-100 text-primary-700' : 'bg-neutral-100 text-neutral-600'
+              }`}
+            >
+              {isPublic ? '공개' : '비공개'}
+            </span>
+          </div>
           <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
-            프로필 공개를 켜기 전에 다른 학생에게 보이는 항목을 미리 확인할 수 있습니다.
+            {isPublic
+              ? '저장 후 다른 학생에게 공개될 항목을 확인할 수 있습니다.'
+              : '저장 후 비공개될 프로필의 공개 항목을 미리 확인할 수 있습니다.'}
           </p>
         </div>
         <button
@@ -722,6 +740,12 @@ function ProfilePreview({
           </div>
         </header>
 
+        <PreviewSection title="전공">
+          <p className="pt-2 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
+            {preview.major || '등록된 전공이 없습니다.'}
+          </p>
+        </PreviewSection>
+
         <PreviewSection title="자기소개">
           <p className="pt-2 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
             {preview.introduction || '등록된 자기소개가 없습니다.'}
@@ -729,16 +753,22 @@ function ProfilePreview({
         </PreviewSection>
 
         <PreviewSection title="기술 스택">
-          <ul className="flex flex-wrap gap-2 pt-2" aria-label="공개 기술 스택">
-            {preview.skills.map((skill) => (
-              <li
-                key={skill}
-                className="bg-primary-100 text-primary-700 rounded-2xl px-3 py-1.5 text-xs leading-[1.5] font-semibold tracking-[-0.12px]"
-              >
-                {skill}
-              </li>
-            ))}
-          </ul>
+          {preview.skills.length > 0 ? (
+            <ul className="flex flex-wrap gap-2 pt-2" aria-label="공개 기술 스택">
+              {preview.skills.map((skill) => (
+                <li
+                  key={skill}
+                  className="bg-primary-100 text-primary-700 rounded-2xl px-3 py-1.5 text-xs leading-[1.5] font-semibold tracking-[-0.12px]"
+                >
+                  {skill}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pt-2 text-sm leading-[1.5] text-neutral-500">
+              등록된 기술 스택이 없습니다.
+            </p>
+          )}
         </PreviewSection>
 
         <PreviewSection title="URL">
