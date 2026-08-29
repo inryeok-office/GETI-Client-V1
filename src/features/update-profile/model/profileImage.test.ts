@@ -16,6 +16,12 @@ describe('profileImage', () => {
     ).toContain('지원하지 않는 이미지');
   });
 
+  it('브라우저가 MIME 형식을 제공하지 않으면 허용 확장자로 검증한다', () => {
+    expect(
+      getProfileImageValidationError(new File(['image'], 'profile.webp', { type: '' })),
+    ).toBeNull();
+  });
+
   it('5MB를 초과한 이미지를 거부한다', () => {
     const file = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'profile.png', {
       type: 'image/png',

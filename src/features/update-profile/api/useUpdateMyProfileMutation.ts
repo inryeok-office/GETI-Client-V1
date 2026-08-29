@@ -2,13 +2,13 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { uploadCommonFile } from '@/entities/common-file';
 import { memberKeys } from '@/entities/member';
 
 import { saveMyProfile } from './saveMyProfile';
-import { uploadMyProfileImage } from './uploadMyProfileImage';
 
 export function useUploadMyProfileImageMutation() {
-  return useMutation({ mutationFn: uploadMyProfileImage });
+  return useMutation({ mutationFn: (file: File) => uploadCommonFile(file, 'PROFILE_IMAGE') });
 }
 
 export function useUpdateMyProfileMutation() {

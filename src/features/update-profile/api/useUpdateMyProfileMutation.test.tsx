@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { uploadCommonFile } from '@/entities/common-file';
 import { memberKeys, type MyProfile } from '@/entities/member';
 
 import type { SaveMyProfileRequest } from '../model/types';
@@ -11,13 +12,12 @@ import {
   useUploadMyProfileImageMutation,
 } from './useUpdateMyProfileMutation';
 
-const { mockSaveMyProfile, mockUploadMyProfileImage } = vi.hoisted(() => ({
+const { mockSaveMyProfile } = vi.hoisted(() => ({
   mockSaveMyProfile: vi.fn(),
-  mockUploadMyProfileImage: vi.fn(),
 }));
 
+vi.mock('@/entities/common-file', () => ({ uploadCommonFile: vi.fn() }));
 vi.mock('./saveMyProfile', () => ({ saveMyProfile: mockSaveMyProfile }));
-vi.mock('./uploadMyProfileImage', () => ({ uploadMyProfileImage: mockUploadMyProfileImage }));
 
 const REQUEST: SaveMyProfileRequest = {
   profile: { bio: '수정된 소개', isPublic: false, links: [], phone: null },
@@ -37,7 +37,14 @@ describe('useUpdateMyProfileMutation', () => {
   it('프로필 이미지 업로드 Mutation에 선택한 파일을 전달한다', async () => {
     const queryClient = new QueryClient();
     const file = new File(['image'], 'profile.png', { type: 'image/png' });
-    mockUploadMyProfileImage.mockResolvedValue({ fileId: 77 });
+    vi.mocked(uploadCommonFile).mockResolvedValue({
+      contentType: 'image/png',
+      createdAt: '2026-08-29T10:00:00',
+      fileId: 77,
+      originalName: 'profile.png',
+      purpose: 'PROFILE_IMAGE',
+      size: 5,
+    });
     const { result } = renderHook(() => useUploadMyProfileImageMutation(), {
       wrapper: createWrapper(queryClient),
     });
@@ -46,7 +53,7 @@ describe('useUpdateMyProfileMutation', () => {
       await result.current.mutateAsync(file);
     });
 
-    expect(mockUploadMyProfileImage).toHaveBeenCalledWith(file, expect.anything());
+    expect(uploadCommonFile).toHaveBeenCalledWith(file, 'PROFILE_IMAGE');
   });
 
   it('저장 성공 시 재조회한 최신 프로필로 캐시를 교체한다', async () => {

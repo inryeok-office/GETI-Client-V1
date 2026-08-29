@@ -107,6 +107,7 @@ export function MyProfilePage() {
 
   return (
     <MyProfileEditor
+      key={`${profileQuery.dataUpdatedAt}:${majorsQuery.dataUpdatedAt}:${techStacksQuery.dataUpdatedAt}`}
       majors={majorsQuery.data}
       profile={profileQuery.data}
       techStacks={techStacksQuery.data}
@@ -123,21 +124,20 @@ function MyProfileEditor({
   profile: MyProfile;
   techStacks: TechStackMetadata[];
 }) {
-  const [draft, setDraft] = useState<MyProfileFormData>(() =>
-    mapMyProfileToForm(profile, majors, techStacks),
+  const savedProfile = useMemo(
+    () => mapMyProfileToForm(profile, majors, techStacks),
+    [majors, profile, techStacks],
   );
-  const [savedProfile, setSavedProfile] = useState<MyProfileFormData>(() =>
+  const savedPreview = useMemo(() => mapMyProfileToPreview(profile), [profile]);
+  const savedImageUrl = profile.profileImageUrl;
+  const [draft, setDraft] = useState<MyProfileFormData>(() =>
     mapMyProfileToForm(profile, majors, techStacks),
   );
   const [preview, setPreview] = useState<MyProfilePreviewData>(() =>
     mapMyProfileToPreview(profile),
   );
-  const [savedPreview, setSavedPreview] = useState<MyProfilePreviewData>(() =>
-    mapMyProfileToPreview(profile),
-  );
   const [formError, setFormError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [savedImageUrl, setSavedImageUrl] = useState(profile.profileImageUrl);
   const [profileImageDraft, setProfileImageDraft] = useState<ProfileImageDraft>({
     fileId: undefined,
     previewUrl: profile.profileImageUrl,
@@ -151,8 +151,6 @@ function MyProfileEditor({
   const updateProfileMutation = useUpdateMyProfileMutation();
   const uploadProfileImageMutation = useUploadMyProfileImageMutation();
   const isBusy = updateProfileMutation.isPending || uploadProfileImageMutation.isPending;
-  const sourceVersion = JSON.stringify({ majors, profile, techStacks });
-  const sourceVersionRef = useRef(sourceVersion);
 
   const selectedTechStacks = useMemo(
     () => techStacks.filter((techStack) => draft.techStackIds.includes(techStack.techStackId)),
@@ -171,23 +169,6 @@ function MyProfileEditor({
       )
       .slice(0, 8);
   }, [draft.techStackIds, skillInput, techStacks]);
-
-  useEffect(() => {
-    if (sourceVersionRef.current === sourceVersion) return;
-
-    sourceVersionRef.current = sourceVersion;
-    const nextForm = mapMyProfileToForm(profile, majors, techStacks);
-    const nextPreview = mapMyProfileToPreview(profile);
-    setDraft(nextForm);
-    setSavedProfile(nextForm);
-    setPreview(nextPreview);
-    setSavedPreview(nextPreview);
-    revokeObjectUrls(previewObjectUrlsRef.current);
-    setSavedImageUrl(profile.profileImageUrl);
-    setProfileImageDraft({ fileId: undefined, previewUrl: profile.profileImageUrl });
-    setFormError(null);
-    setImageError(null);
-  }, [majors, profile, sourceVersion, techStacks]);
 
   useEffect(() => {
     const previewObjectUrls = previewObjectUrlsRef.current;
@@ -240,8 +221,8 @@ function MyProfileEditor({
       },
     };
 
-    if (draft.majorId !== savedProfile.majorId && draft.majorId !== null) {
-      request.majorIds = [draft.majorId];
+    if (draft.majorId !== savedProfile.majorId || draft.majorName !== savedProfile.majorName) {
+      request.majorIds = draft.majorId === null ? [] : [draft.majorId];
     }
     if (!areNumberSetsEqual(draft.techStackIds, savedProfile.techStackIds)) {
       request.techStackIds = draft.techStackIds;
@@ -260,18 +241,7 @@ function MyProfileEditor({
     });
 
     try {
-      const updatedProfile = await updateProfileMutation.mutateAsync(request);
-      const nextForm = mapMyProfileToForm(updatedProfile, majors, techStacks);
-      const nextPreview = mapMyProfileToPreview(updatedProfile);
-      setDraft(nextForm);
-      setSavedProfile(nextForm);
-      setPreview(nextPreview);
-      setSavedPreview(nextPreview);
-      revokeObjectUrls(previewObjectUrlsRef.current);
-      setSavedImageUrl(updatedProfile.profileImageUrl);
-      setProfileImageDraft({ fileId: undefined, previewUrl: updatedProfile.profileImageUrl });
-      setSkillInput('');
-      setIsSkillMenuOpen(false);
+      await updateProfileMutation.mutateAsync(request);
       showToast({
         tone: 'success',
         message: TOAST_CONTENT.success,
@@ -285,7 +255,7 @@ function MyProfileEditor({
       setProfileImageDraft({ fileId: undefined, previewUrl: savedImageUrl });
       setSkillInput('');
       setIsSkillMenuOpen(false);
-      setFormError('변경사항을 저장하지 못했습니다. 입력값을 이전 상태로 복구했습니다.');
+      setFormError('저장 중 문제가 발생해 최신 상태를 다시 불러옵니다.');
       showToast({
         tone: 'error',
         message: TOAST_CONTENT.error,
@@ -329,6 +299,17 @@ function MyProfileEditor({
     try {
       const uploadedFile = await uploadProfileImageMutation.mutateAsync(file);
       setProfileImageDraft({ fileId: uploadedFile.fileId, previewUrl: nextPreviewUrl });
+      if (
+        previousImageDraft.previewUrl &&
+        previewObjectUrlsRef.current.has(previousImageDraft.previewUrl)
+      ) {
+        setPreview((current) =>
+          current.profileImageUrl === previousImageDraft.previewUrl
+            ? { ...current, profileImageUrl: savedImageUrl }
+            : current,
+        );
+        revokeObjectUrl(previousImageDraft.previewUrl, previewObjectUrlsRef.current);
+      }
     } catch {
       revokeObjectUrl(nextPreviewUrl, previewObjectUrlsRef.current);
       setProfileImageDraft(previousImageDraft);
@@ -392,10 +373,19 @@ function MyProfileEditor({
   };
 
   const handleRefreshPreview = () => {
+    let links;
+    try {
+      links = buildProfileLinkRequests(draft.links);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'URL 형식을 확인해 주세요.');
+      return;
+    }
+
+    setFormError(null);
     setPreview((current) => ({
       ...current,
       introduction: draft.introduction,
-      links: draft.links.map((link) => link.url.trim()).filter(Boolean),
+      links: links.map((link) => link.url),
       major: draft.majorName,
       profileImageUrl: profileImageDraft.previewUrl,
       skills: selectedTechStacks.map((techStack) => techStack.name),
@@ -451,8 +441,8 @@ function MyProfileEditor({
                 onChange={(major) =>
                   setDraft((current) => ({
                     ...current,
-                    majorId: major.majorId,
-                    majorName: major.name,
+                    majorId: major?.majorId ?? null,
+                    majorName: major?.name ?? '',
                   }))
                 }
               />
@@ -749,13 +739,14 @@ function MajorSelect({
   selectedName,
 }: {
   majors: MajorMetadata[];
-  onChange: (major: MajorMetadata) => void;
+  onChange: (major: MajorMetadata | null) => void;
   selectedId: number | null;
   selectedName: string;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedMajor = majors.find((major) => major.majorId === selectedId);
+  const isNoMajorSelected = selectedId === null && !selectedName;
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -796,6 +787,25 @@ function MajorSelect({
           aria-label="전공 목록"
           className="absolute top-[66px] left-0 z-20 flex w-full flex-col gap-[2px] rounded-lg border border-neutral-200 bg-white p-2 shadow-[0_8px_24px_-4px_rgba(23,37,45,0.1)]"
         >
+          <button
+            type="button"
+            role="option"
+            aria-selected={isNoMajorSelected}
+            className={`flex h-11 w-full items-center justify-between px-4 text-left text-sm leading-[21px] tracking-[-0.14px] ${
+              isNoMajorSelected
+                ? 'bg-primary-50 text-primary-700 rounded-lg'
+                : 'bg-white text-neutral-900 hover:bg-neutral-50'
+            }`}
+            onClick={() => {
+              onChange(null);
+              setIsMenuOpen(false);
+            }}
+          >
+            <span>선택 안 함</span>
+            {isNoMajorSelected ? (
+              <Image src="/icons/profile-option-check.svg" alt="" width={20} height={20} />
+            ) : null}
+          </button>
           {majors.map((major) => {
             const isSelected = selectedId === major.majorId;
 

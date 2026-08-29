@@ -16,8 +16,9 @@ export function getProfileImageValidationError(file: File): string | null {
   const extension = file.name.split('.').pop()?.toLocaleLowerCase('en-US') ?? '';
   const expectedContentType = CONTENT_TYPE_BY_EXTENSION[extension];
   const isAllowedExtension = PROFILE_IMAGE_POLICY.acceptedExtensions.includes(extension);
+  const hasMismatchedContentType = Boolean(file.type) && file.type !== expectedContentType;
 
-  if (!isAllowedExtension || !expectedContentType || file.type !== expectedContentType) {
+  if (!isAllowedExtension || !expectedContentType || hasMismatchedContentType) {
     return '지원하지 않는 이미지입니다. JPG, JPEG, PNG, WEBP 파일만 사용할 수 있습니다.';
   }
 
