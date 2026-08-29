@@ -1,14 +1,31 @@
-/** `GET /me/profile` 응답. 다른 회원의 프로필 조회와 같은 스키마를 쓰지만, 현재 로그인한 사용자 조회용이다. */
+import type { DepartmentCode } from './profileSetup';
+
+export type MyProfileRole = 'DEVELOPER' | 'STUDENT' | 'TEACHER';
+export type MyProfileMemberStatus = 'ACTIVE' | 'PENDING' | 'REJECTED' | 'SUSPENDED' | 'WITHDRAWN';
+export type MyProfileAcademicStatus = 'ENROLLED' | 'GRADUATED' | 'WITHDRAWN';
+
+export interface MyProfileLink {
+  label: string;
+  url: string;
+}
+
+/** `GET /api/v1/me/profile` 응답. 로그인한 본인의 전체 프로필 계약을 그대로 표현한다. */
 export interface MyProfile {
+  academicStatus: MyProfileAcademicStatus | null;
+  bio: string | null;
+  cohort: number | null;
+  department: DepartmentCode | null;
+  desiredJob: string | null;
+  email: string;
+  githubUrl: string | null;
+  isPublic: boolean;
+  links: MyProfileLink[];
+  majors: string[];
   memberId: number;
   name: string;
+  phone: string | null;
   profileImageUrl: string | null;
-  cohort: number | null;
-  department: 'SW_DEVELOPMENT' | 'SMART_IOT' | 'AI' | null;
-  majors: string[];
+  roles: MyProfileRole[];
+  status: MyProfileMemberStatus;
   techStacks: string[];
-  desiredJob: string | null;
-  bio: string | null;
-  profileRestricted: boolean;
-  public: boolean;
 }

@@ -1,10 +1,139 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { MyProfile } from '@/entities/member';
 
 import { MyProfilePage } from './MyProfilePage';
 
-afterEach(() => {
-  vi.useRealTimers();
+const {
+  mockMutateAsync,
+  mockUploadMutateAsync,
+  mockUseMajorMetadataQuery,
+  mockUseMyProfileQuery,
+  mockUseTechStackMetadataQuery,
+  mockUseUpdateMyProfileMutation,
+  mockUseUploadMyProfileImageMutation,
+} = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+  mockUploadMutateAsync: vi.fn(),
+  mockUseMajorMetadataQuery: vi.fn(),
+  mockUseMyProfileQuery: vi.fn(),
+  mockUseTechStackMetadataQuery: vi.fn(),
+  mockUseUpdateMyProfileMutation: vi.fn(),
+  mockUseUploadMyProfileImageMutation: vi.fn(),
+}));
+
+vi.mock('@/entities/member', async () => {
+  const actual = await vi.importActual<typeof import('@/entities/member')>('@/entities/member');
+  return {
+    ...actual,
+    useMajorMetadataQuery: mockUseMajorMetadataQuery,
+    useMyProfileQuery: mockUseMyProfileQuery,
+    useTechStackMetadataQuery: mockUseTechStackMetadataQuery,
+  };
+});
+
+vi.mock('@/features/update-profile', async () => {
+  const actual = await vi.importActual<typeof import('@/features/update-profile')>(
+    '@/features/update-profile',
+  );
+  return {
+    ...actual,
+    useUpdateMyProfileMutation: mockUseUpdateMyProfileMutation,
+    useUploadMyProfileImageMutation: mockUseUploadMyProfileImageMutation,
+  };
+});
+
+const MAJORS = [
+  { active: true, majorId: 1, name: '백엔드' },
+  { active: true, majorId: 2, name: '프론트엔드' },
+  { active: true, majorId: 3, name: '디자인' },
+];
+const TECH_STACKS = [
+  { category: 'FRONTEND' as const, name: 'React', techStackId: 10 },
+  { category: 'FRONTEND' as const, name: 'TypeScript', techStackId: 11 },
+  { category: 'FRONTEND' as const, name: 'Next.js', techStackId: 12 },
+];
+
+const PROFILE: MyProfile = {
+  academicStatus: 'ENROLLED',
+  bio: '사용자 경험을 고려하는 프론트엔드 개발자입니다.',
+  cohort: 9,
+  department: 'SW_DEVELOPMENT',
+  desiredJob: 'Frontend Developer',
+  email: 'student@example.com',
+  githubUrl: 'https://github.com/geti-student',
+  isPublic: true,
+  links: [{ label: '기술 블로그', url: 'https://blog.example.com' }],
+  majors: ['프론트엔드'],
+  memberId: 1,
+  name: '김게티',
+  phone: '010-1234-5678',
+  profileImageUrl: null,
+  roles: ['STUDENT'],
+  status: 'ACTIVE',
+  techStacks: ['React', 'TypeScript'],
+};
+
+const mockRefetch = vi.fn();
+const mockMajorRefetch = vi.fn();
+const mockTechStackRefetch = vi.fn();
+
+function uploadProfileImage(
+  file = new File(['image'], 'new-profile.webp', { type: 'image/webp' }),
+) {
+  fireEvent.change(screen.getByLabelText('프로필 이미지 파일'), {
+    target: { files: [file] },
+  });
+}
+
+beforeEach(() => {
+  mockRefetch.mockReset();
+  mockMajorRefetch.mockReset();
+  mockTechStackRefetch.mockReset();
+  mockMutateAsync.mockReset();
+  mockUploadMutateAsync.mockReset();
+  mockUseUpdateMyProfileMutation.mockReset();
+  mockUseUploadMyProfileImageMutation.mockReset();
+  mockMutateAsync.mockResolvedValue(PROFILE);
+  mockUploadMutateAsync.mockResolvedValue({ fileId: 77, purpose: 'PROFILE_IMAGE' });
+  mockUseUpdateMyProfileMutation.mockReturnValue({
+    isPending: false,
+    mutateAsync: mockMutateAsync,
+  });
+  mockUseUploadMyProfileImageMutation.mockReturnValue({
+    isPending: false,
+    mutateAsync: mockUploadMutateAsync,
+  });
+  mockUseMyProfileQuery.mockReturnValue({
+    data: PROFILE,
+    dataUpdatedAt: 1,
+    isError: false,
+    isLoading: false,
+    refetch: mockRefetch,
+  });
+  mockUseMajorMetadataQuery.mockReturnValue({
+    data: MAJORS,
+    dataUpdatedAt: 1,
+    isError: false,
+    isLoading: false,
+    refetch: mockMajorRefetch,
+  });
+  mockUseTechStackMetadataQuery.mockReturnValue({
+    data: TECH_STACKS,
+    dataUpdatedAt: 1,
+    isError: false,
+    isLoading: false,
+    refetch: mockTechStackRefetch,
+  });
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    value: vi.fn(() => 'blob:new-profile-preview'),
+  });
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    value: vi.fn(),
+  });
 });
 
 describe('MyProfilePage', () => {
@@ -13,15 +142,22 @@ describe('MyProfilePage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: '내 프로필' })).toBeInTheDocument();
     expect(screen.getByLabelText('자기소개')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('디자인');
+    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('프론트엔드');
     expect(screen.getByRole('switch', { name: '프로필 공개' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: '추천 활용 (변경 불가)' })).toBeDisabled();
     expect(screen.getByRole('heading', { name: '공개 프로필 미리보기' })).toBeInTheDocument();
-    expect(screen.getByText('이름 (9기)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'github.com/test' })).toHaveAttribute(
+    const preview = screen
+      .getByRole('heading', { name: '공개 프로필 미리보기' })
+      .closest('section');
+    expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('공개')).toBeInTheDocument();
+    expect(within(preview as HTMLElement).getByText('프론트엔드')).toBeInTheDocument();
+    expect(screen.getByText('김게티 (9기)')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
       'href',
-      'https://github.com/test',
+      'https://blog.example.com',
     );
-    expect(screen.getByRole('link', { name: 'github.com/test' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'https://blog.example.com' })).toHaveAttribute(
       'target',
       '_blank',
     );
@@ -58,6 +194,18 @@ describe('MyProfilePage', () => {
     expect(screen.queryByRole('listbox', { name: '전공 목록' })).not.toBeInTheDocument();
   });
 
+  it('전공 선택을 해제하면 빈 전공 목록으로 저장한다', async () => {
+    render(<MyProfilePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '전공' }));
+    fireEvent.click(screen.getByRole('option', { name: '선택 안 함' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ majorIds: [] }));
+    });
+  });
+
   it('토글을 조작하고 미리보기를 현재 입력값으로 새로고침한다', () => {
     render(<MyProfilePage />);
 
@@ -74,30 +222,403 @@ describe('MyProfilePage', () => {
       .getByRole('heading', { name: '공개 프로필 미리보기' })
       .closest('section');
     expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('비공개')).toBeInTheDocument();
     expect(within(preview as HTMLElement).getByText('새로운 자기소개입니다.')).toBeInTheDocument();
   });
 
-  it('저장 중 상태를 거쳐 저장 완료 토스트를 보여준다', () => {
-    vi.useFakeTimers();
+  it('저장할 수 없는 URL은 공개 프로필 미리보기에도 반영하지 않는다', () => {
     render(<MyProfilePage />);
 
+    fireEvent.change(screen.getByLabelText('URL 1'), {
+      target: { value: 'javascript:alert(1)' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('http 또는 https');
+    expect(screen.queryByRole('link', { name: 'javascript:alert(1)' })).not.toBeInTheDocument();
+  });
+
+  it('변경한 전공과 기술 스택을 공개 프로필 미리보기에 반영한다', () => {
+    render(<MyProfilePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '전공' }));
+    fireEvent.click(screen.getByRole('option', { name: '백엔드' }));
+    fireEvent.click(screen.getByRole('button', { name: 'React 기술 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+
+    const preview = screen
+      .getByRole('heading', { name: '공개 프로필 미리보기' })
+      .closest('section');
+    expect(preview).not.toBeNull();
+    expect(within(preview as HTMLElement).getByText('백엔드')).toBeInTheDocument();
+    expect(within(preview as HTMLElement).queryByText('React')).not.toBeInTheDocument();
+    expect(within(preview as HTMLElement).getByText('TypeScript')).toBeInTheDocument();
+  });
+
+  it('공개 항목이 없으면 미리보기에서 항목별 빈 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: { ...PROFILE, bio: null, links: [], majors: [], techStacks: [] },
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('등록된 전공이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 자기소개가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 기술 스택이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 URL이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('새 이미지를 업로드하고 저장 요청에 파일 ID를 포함한다', async () => {
+    const updatedProfile = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/new-profile.webp',
+    };
+    mockMutateAsync.mockResolvedValueOnce(updatedProfile);
+    const { rerender } = render(<MyProfilePage />);
+
+    uploadProfileImage();
+
+    await waitFor(() => {
+      expect(mockUploadMutateAsync).toHaveBeenCalledWith(expect.any(File));
+    });
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      'blob:new-profile-preview',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    expect(screen.getByAltText('김게티 공개 프로필 이미지')).toHaveAttribute(
+      'src',
+      'blob:new-profile-preview',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        profile: {
+          bio: PROFILE.bio,
+          isPublic: true,
+          links: PROFILE.links,
+          phone: PROFILE.phone,
+          profileImageFileId: 77,
+        },
+      });
+    });
+    mockUseMyProfileQuery.mockReturnValue({
+      data: updatedProfile,
+      dataUpdatedAt: 2,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    rerender(<MyProfilePage />);
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/new-profile.webp',
+    );
+  });
+
+  it('기존 이미지를 삭제하면 null 파일 ID를 저장하고 삭제 취소 시 복구한다', async () => {
+    const profileWithImage = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/current-profile.png',
+    };
+    mockUseMyProfileQuery.mockReturnValue({
+      data: profileWithImage,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    mockMutateAsync.mockResolvedValueOnce({ ...profileWithImage, profileImageUrl: null });
+    render(<MyProfilePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '이미지 삭제' }));
+    expect(screen.queryByRole('button', { name: '이미지 삭제' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    expect(screen.queryByAltText('김게티 공개 프로필 이미지')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '변경 취소' }));
+    expect(screen.getByRole('button', { name: '이미지 삭제' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '이미지 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        profile: {
+          bio: PROFILE.bio,
+          isPublic: true,
+          links: PROFILE.links,
+          phone: PROFILE.phone,
+          profileImageFileId: null,
+        },
+      });
+    });
+  });
+
+  it('이미지 정책에 맞지 않는 파일은 업로드 전에 거부한다', () => {
+    render(<MyProfilePage />);
+
+    uploadProfileImage(new File(['document'], 'profile.pdf', { type: 'application/pdf' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('지원하지 않는 이미지');
+    expect(mockUploadMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('이미지 업로드에 실패하면 기존 이미지를 유지하고 오류를 표시한다', async () => {
+    const profileWithImage = {
+      ...PROFILE,
+      profileImageUrl: 'https://cdn.example.com/current-profile.png',
+    };
+    mockUseMyProfileQuery.mockReturnValue({
+      data: profileWithImage,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    mockUploadMutateAsync.mockRejectedValueOnce(new Error('failed'));
+    render(<MyProfilePage />);
+
+    uploadProfileImage();
+
+    expect(
+      await screen.findByText('이미지 업로드에 실패했습니다. 다시 시도해 주세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      profileWithImage.profileImageUrl,
+    );
+  });
+
+  it('새 이미지를 다시 업로드하면 직전 Blob 미리보기 URL을 해제한다', async () => {
+    vi.mocked(URL.createObjectURL)
+      .mockReturnValueOnce('blob:first-profile-preview')
+      .mockReturnValueOnce('blob:second-profile-preview');
+    render(<MyProfilePage />);
+
+    uploadProfileImage(new File(['first'], 'first.webp', { type: 'image/webp' }));
+    await waitFor(() => expect(mockUploadMutateAsync).toHaveBeenCalledTimes(1));
+
+    uploadProfileImage(new File(['second'], 'second.webp', { type: 'image/webp' }));
+    await waitFor(() => expect(mockUploadMutateAsync).toHaveBeenCalledTimes(2));
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first-profile-preview');
+    expect(screen.getByAltText('김게티 프로필 이미지')).toHaveAttribute(
+      'src',
+      'blob:second-profile-preview',
+    );
+  });
+
+  it('변경한 항목을 저장하고 재조회된 프로필로 폼과 캐시 상태를 맞춘다', async () => {
+    const updatedProfile: MyProfile = {
+      ...PROFILE,
+      bio: '수정된 자기소개입니다.',
+      isPublic: false,
+      links: [{ label: '기술 블로그', url: 'https://new.example.com' }],
+      majors: ['백엔드'],
+      techStacks: ['TypeScript'],
+    };
+    mockMutateAsync.mockResolvedValueOnce(updatedProfile);
+    const { rerender } = render(<MyProfilePage />);
+
+    fireEvent.change(screen.getByLabelText('자기소개'), {
+      target: { value: '수정된 자기소개입니다.' },
+    });
+    fireEvent.click(screen.getByRole('switch', { name: '프로필 공개' }));
+    fireEvent.click(screen.getByRole('button', { name: '전공' }));
+    fireEvent.click(screen.getByRole('option', { name: '백엔드' }));
+    fireEvent.click(screen.getByRole('button', { name: 'React 기술 삭제' }));
+    fireEvent.change(screen.getByLabelText('URL 1'), {
+      target: { value: 'https://new.example.com' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(screen.getByText('변경사항을 저장 중입니다.')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(700);
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        majorIds: [1],
+        profile: {
+          bio: '수정된 자기소개입니다.',
+          isPublic: false,
+          links: [{ label: '기술 블로그', url: 'https://new.example.com' }],
+          phone: '010-1234-5678',
+        },
+        techStackIds: [11],
+      });
     });
 
     expect(screen.getByText('변경사항이 저장되었습니다.')).toBeInTheDocument();
+    mockUseMyProfileQuery.mockReturnValue({
+      data: updatedProfile,
+      dataUpdatedAt: 2,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    rerender(<MyProfilePage />);
+    expect(screen.getByLabelText('자기소개')).toHaveValue('수정된 자기소개입니다.');
+    expect(screen.getByRole('button', { name: '전공' })).toHaveTextContent('백엔드');
   });
 
-  it.each([
-    ['loading', '변경사항을 저장 중입니다.'],
-    ['success', '변경사항이 저장되었습니다.'],
-    ['error', '변경사항 저장에 실패했습니다.'],
-  ] as const)('%s 정적 상태를 확인할 수 있다', (initialSaveStatus, message) => {
-    render(<MyProfilePage initialSaveStatus={initialSaveStatus} />);
+  it('프로필 캐시가 갱신되면 편집 상태와 기술 검색 상태를 최신 응답으로 초기화한다', () => {
+    const { rerender } = render(<MyProfilePage />);
 
-    expect(screen.getByText(message)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('자기소개'), {
+      target: { value: '저장 전 편집값' },
+    });
+    fireEvent.change(screen.getByLabelText('기술 스택 추가'), {
+      target: { value: 'Next' },
+    });
+    expect(screen.getByRole('listbox', { name: '기술 스택 검색 결과' })).toBeInTheDocument();
+
+    mockUseMyProfileQuery.mockReturnValue({
+      data: { ...PROFILE, bio: '서버에서 다시 불러온 소개' },
+      dataUpdatedAt: 2,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+    rerender(<MyProfilePage />);
+
+    expect(screen.getByLabelText('자기소개')).toHaveValue('서버에서 다시 불러온 소개');
+    expect(screen.getByLabelText('기술 스택 추가')).toHaveValue('');
+    expect(screen.queryByRole('listbox', { name: '기술 스택 검색 결과' })).not.toBeInTheDocument();
+  });
+
+  it('저장에 실패하면 편집값과 미리보기를 마지막 저장 상태로 복구한다', async () => {
+    mockMutateAsync.mockRejectedValueOnce(new Error('failed'));
+    render(<MyProfilePage />);
+
+    fireEvent.change(screen.getByLabelText('자기소개'), {
+      target: { value: '저장되지 않을 소개입니다.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '미리보기 새로고침' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+
+    expect(
+      await screen.findByText('저장 중 문제가 발생해 최신 상태를 다시 불러옵니다.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('자기소개')).toHaveValue(PROFILE.bio);
+    expect(screen.queryByText('저장되지 않을 소개입니다.')).not.toBeInTheDocument();
+    expect(screen.getByText('변경사항 저장에 실패했습니다.')).toBeInTheDocument();
+  });
+
+  it('같은 폼이 연속 제출되어도 저장 요청은 한 번만 보낸다', async () => {
+    let resolveSave!: (profile: MyProfile) => void;
+    mockMutateAsync.mockReturnValueOnce(
+      new Promise<MyProfile>((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    render(<MyProfilePage />);
+
+    const form = screen.getByRole('button', { name: '저장하기' }).closest('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+    fireEvent.submit(form as HTMLFormElement);
+
+    expect(mockMutateAsync).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      resolveSave(PROFILE);
+    });
+  });
+
+  it('저장 중에는 저장과 취소 버튼을 비활성화한다', () => {
+    mockUseUpdateMyProfileMutation.mockReturnValue({
+      isPending: true,
+      mutateAsync: mockMutateAsync,
+    });
+    render(<MyProfilePage />);
+
+    expect(screen.getByRole('button', { name: '저장하기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '변경 취소' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장하기' }).closest('form')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+  });
+
+  it('이미지 업로드 중에는 다른 이미지 선택과 프로필 저장을 막는다', () => {
+    mockUseUploadMyProfileImageMutation.mockReturnValue({
+      isPending: true,
+      mutateAsync: mockUploadMutateAsync,
+    });
+    render(<MyProfilePage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('이미지를 업로드 중입니다.');
+    expect(screen.getByRole('button', { name: '이미지 변경' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '미리보기 새로고침' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장하기' })).toBeDisabled();
+  });
+
+  it('프로필 조회 중 로딩 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: true,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('내 프로필을 불러오는 중입니다.')).toBeInTheDocument();
+  });
+
+  it('프로필 조회 실패 상태에서 다시 조회한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('조회 결과가 없으면 빈 상태를 표시한다', () => {
+    mockUseMyProfileQuery.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: false,
+      refetch: mockRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('등록된 프로필이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('전공 메타데이터 조회에 실패하면 다시 조회한다', () => {
+    mockUseMajorMetadataQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch: mockMajorRefetch,
+    });
+
+    render(<MyProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(mockMajorRefetch).toHaveBeenCalled();
+    expect(mockRefetch).not.toHaveBeenCalled();
+  });
+
+  it('선택 가능한 기술 스택이 없으면 메타데이터 빈 상태를 표시한다', () => {
+    mockUseTechStackMetadataQuery.mockReturnValue({
+      data: [],
+      isError: false,
+      isLoading: false,
+      refetch: mockTechStackRefetch,
+    });
+
+    render(<MyProfilePage />);
+
+    expect(screen.getByText('선택 가능한 프로필 정보가 없습니다.')).toBeInTheDocument();
   });
 });
