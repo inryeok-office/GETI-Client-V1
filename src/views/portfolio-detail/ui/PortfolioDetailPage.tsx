@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { downloadCommonFile } from '@/entities/common-file';
 import {
@@ -28,6 +28,7 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
   const detailQuery = usePortfolioRequestDetailQuery(numericRequestId);
   const submissionMutation = useUpsertPortfolioSubmissionMutation(numericRequestId);
   const [submission, setSubmission] = useState<PortfolioSubmissionApiResponse | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const isInvalidRequestId = !Number.isFinite(numericRequestId);
   const isUnavailable =
@@ -37,10 +38,28 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
     );
   const isClosed =
     detailQuery.data !== undefined &&
-    (detailQuery.data.status !== 'PUBLISHED' || isPastDueAt(detailQuery.data.dueAt));
+    (detailQuery.data.status !== 'PUBLISHED' || isPastDueAt(detailQuery.data.dueAt, now));
   const isSubmitted = submission?.status === 'SUBMITTED';
 
+  useEffect(() => {
+    if (detailQuery.data === undefined || detailQuery.data.status !== 'PUBLISHED') return;
+
+    const dueAt = new Date(detailQuery.data.dueAt).getTime();
+    if (Number.isNaN(dueAt) || dueAt < now) return;
+
+    const timeoutId = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.min(dueAt - now + 1, 2_147_483_647),
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [detailQuery.data, now]);
+
   const handleSubmit = async (request: PortfolioSubmissionUpsertRequest) => {
+    if (detailQuery.data !== undefined && isSubmissionClosed(detailQuery.data)) {
+      throw new Error('제출 기간이 종료되었습니다.');
+    }
+
     const result = await submissionMutation.mutateAsync(request);
     setSubmission(result);
     return result;
@@ -128,8 +147,12 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
   );
 }
 
-function isPastDueAt(dueAt: string): boolean {
-  return new Date(dueAt).getTime() < Date.now();
+function isSubmissionClosed(request: PortfolioRequestDetailApiResponse): boolean {
+  return request.status !== 'PUBLISHED' || isPastDueAt(request.dueAt, Date.now());
+}
+
+function isPastDueAt(dueAt: string, now: number): boolean {
+  return new Date(dueAt).getTime() < now;
 }
 
 function savePortfolioFileBlob(blob: Blob, filename: string) {

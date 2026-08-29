@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import {
   mapPortfolioRequestSummaryToListItem,
   usePortfolioRequestListQuery,
-  type PortfolioApiRequestStatus,
 } from '@/entities/portfolio-request';
 import {
   PortfolioRequestList,
@@ -28,12 +27,6 @@ const FILTER_BY_QUERY: Record<string, PortfolioRequestListFilter> = {
   required: 'REQUIRED',
 };
 
-const API_STATUS_BY_FILTER: Partial<Record<PortfolioRequestListFilter, PortfolioApiRequestStatus>> =
-  {
-    CLOSED: 'CLOSED',
-    REQUIRED: 'PUBLISHED',
-  };
-
 export function PortfolioListPage({
   initialFilter = 'all',
   initialPage = 0,
@@ -49,7 +42,6 @@ export function PortfolioListPage({
   const listQuery = usePortfolioRequestListQuery({
     page,
     size: PAGE_SIZE,
-    status: API_STATUS_BY_FILTER[filter],
   });
   const allListQuery = usePortfolioRequestListQuery({
     page: 0,

@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PortfolioDetailPage } from './PortfolioDetailPage';
 
@@ -49,6 +49,11 @@ const REQUEST_DETAIL = {
 };
 
 describe('PortfolioDetailPage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
   it('PUBLISHED 요청이어도 마감 시간이 지나면 파일 업로드와 제출을 막는다', () => {
     mockUsePortfolioRequestDetailQuery.mockReturnValue({
       data: REQUEST_DETAIL,
@@ -72,6 +77,42 @@ describe('PortfolioDetailPage', () => {
       button.textContent?.trim(),
     );
     expect(actionButtons).toHaveLength(2);
+    expect(actionButtons.every((button) => button.disabled)).toBe(true);
+  });
+
+  it('마감 전에 열린 상세 화면도 dueAt이 지나면 제출 액션을 비활성화한다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-29T09:59:59'));
+    mockUsePortfolioRequestDetailQuery.mockReturnValue({
+      data: {
+        ...REQUEST_DETAIL,
+        dueAt: '2026-08-29T10:00:00',
+      },
+      error: null,
+      isError: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockUseUpsertPortfolioSubmissionMutation.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn(),
+      variables: undefined,
+    });
+
+    const { container } = render(<PortfolioDetailPage requestId="1" />);
+
+    expect(container.querySelector('input[type="file"]')).not.toBeDisabled();
+    expect(container.querySelector('input[type="url"]')).not.toBeDisabled();
+
+    act(() => {
+      vi.advanceTimersByTime(1_002);
+    });
+
+    expect(container.querySelector('input[type="file"]')).toBeDisabled();
+    expect(container.querySelector('input[type="url"]')).toBeDisabled();
+    const actionButtons = Array.from(container.querySelectorAll('button')).filter((button) =>
+      button.textContent?.trim(),
+    );
     expect(actionButtons.every((button) => button.disabled)).toBe(true);
   });
 });
