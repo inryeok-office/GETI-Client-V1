@@ -47,8 +47,10 @@ export function DashboardTableSection({
   hasError,
   onRetry,
   emptyLabel,
+  noticeLabel,
 }: DashboardTable) {
   const isEmpty = !isLoading && !hasError && rows.length === 0 && emptyLabel !== undefined;
+  const showNotice = !isLoading && !hasError && noticeLabel !== undefined;
   return (
     <div className="flex w-[1118px] flex-col rounded-[16px] border border-[#e5e5e5] bg-white p-[24px]">
       <div className="flex items-center justify-between">
@@ -59,6 +61,15 @@ export function DashboardTableSection({
           전체 보기
         </p>
       </div>
+
+      {showNotice ? (
+        <p
+          role="status"
+          className="mt-[12px] rounded-[8px] bg-[#fff7db] px-[12px] py-[8px] text-[13px] leading-[1.5] tracking-[-0.13px] text-[#8a6d0b]"
+        >
+          {noticeLabel}
+        </p>
+      ) : null}
 
       <div className="flex w-full flex-col overflow-hidden rounded-[8px] pt-[20px]">
         <div className="flex h-[52px] items-start bg-[#fafafa]">

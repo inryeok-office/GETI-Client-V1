@@ -40,6 +40,8 @@ export interface DashboardTable {
   onRetry?: () => void;
   /** 로딩·에러가 아닌데 `rows`가 비었을 때 보여줄 문구. 지정하지 않으면 빈 표를 그대로 렌더한다. */
   emptyLabel?: string;
+  /** 여러 소스 중 일부만 실패했을 때 표 위에 띄우는 경고 문구(부분 실패). */
+  noticeLabel?: string;
 }
 
 export interface DashboardNotification {
