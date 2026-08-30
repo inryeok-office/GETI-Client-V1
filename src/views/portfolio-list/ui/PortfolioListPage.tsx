@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import {
   mapPortfolioRequestSummaryToListItem,
+  type PortfolioRequestSummaryApiResponse,
   useAllPortfolioRequestListQuery,
 } from '@/entities/portfolio-request';
 import {
@@ -38,8 +39,21 @@ export function PortfolioListPage({
     FILTER_BY_QUERY[initialFilter] ?? 'ALL',
   );
   const [page, setPage] = useState(initialPage);
+  const [now, setNow] = useState(() => Date.now());
 
   const listQuery = useAllPortfolioRequestListQuery(PAGE_SIZE);
+
+  useEffect(() => {
+    const nextDueAt = findNextPublishedDueAt(listQuery.data ?? [], now);
+    if (nextDueAt === null) return;
+
+    const timeoutId = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.min(nextDueAt - now + 1, 2_147_483_647),
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [listQuery.data, now]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -98,4 +112,17 @@ export function PortfolioListPage({
       </main>
     </div>
   );
+}
+
+function findNextPublishedDueAt(requests: PortfolioRequestSummaryApiResponse[], now: number) {
+  const nextDueAt = requests.reduce<number | null>((nearestDueAt, request) => {
+    if (request.status !== 'PUBLISHED') return nearestDueAt;
+
+    const dueAt = new Date(request.dueAt).getTime();
+    if (Number.isNaN(dueAt) || dueAt < now) return nearestDueAt;
+
+    return nearestDueAt === null || dueAt < nearestDueAt ? dueAt : nearestDueAt;
+  }, null);
+
+  return nextDueAt;
 }

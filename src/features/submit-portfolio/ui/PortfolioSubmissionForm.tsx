@@ -44,7 +44,7 @@ export function PortfolioSubmissionForm({
     setSubmitError(null);
 
     if (canInteract && !canInteract()) {
-      setSubmitError('?쒖텧 湲곌컙??醫낅즺?섏뿀?듬땲??');
+      setSubmitError('제출 기간이 종료되었습니다.');
       return;
     }
 
@@ -91,7 +91,7 @@ export function PortfolioSubmissionForm({
     setSubmitError(null);
 
     if (canInteract && !canInteract()) {
-      setSubmitError('?쒖텧 湲곌컙??醫낅즺?섏뿀?듬땲??');
+      setSubmitError('제출 기간이 종료되었습니다.');
       return;
     }
 

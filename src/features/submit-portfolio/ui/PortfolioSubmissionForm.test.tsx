@@ -23,6 +23,7 @@ const SUBMISSION_RESPONSE = {
 
 describe('PortfolioSubmissionForm', () => {
   beforeEach(() => {
+    vi.mocked(uploadCommonFile).mockClear();
     vi.mocked(uploadCommonFile).mockResolvedValue({
       contentType: 'application/pdf',
       createdAt: '2026-09-20T09:00:00',
@@ -100,5 +101,33 @@ describe('PortfolioSubmissionForm', () => {
 
     expect(handleSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('http 또는 https URL만 입력해 주세요.')).toBeInTheDocument();
+  });
+
+  it('제출 기간이 종료되면 파일 업로드를 시작하지 않는다', async () => {
+    const user = userEvent.setup();
+    const canInteract = vi.fn().mockReturnValue(false);
+    const { container } = render(
+      <PortfolioSubmissionForm canInteract={canInteract} onSubmit={vi.fn()} />,
+    );
+    const fileInput = container.querySelector('input[type="file"]');
+    if (!(fileInput instanceof HTMLInputElement)) throw new Error('file input not found');
+
+    await user.upload(fileInput, new File(['portfolio'], 'portfolio.pdf'));
+
+    expect(uploadCommonFile).not.toHaveBeenCalled();
+    expect(screen.getByText('제출 기간이 종료되었습니다.')).toBeInTheDocument();
+  });
+
+  it('제출 기간이 종료되면 저장 요청을 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const canInteract = vi.fn().mockReturnValue(false);
+    const handleSubmit = vi.fn().mockResolvedValue(SUBMISSION_RESPONSE);
+    render(<PortfolioSubmissionForm canInteract={canInteract} onSubmit={handleSubmit} />);
+
+    await user.type(screen.getByRole('textbox', { name: 'URL' }), 'https://example.com');
+    await user.click(screen.getByRole('button', { name: '임시저장' }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('제출 기간이 종료되었습니다.')).toBeInTheDocument();
   });
 });
