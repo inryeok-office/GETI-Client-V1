@@ -128,6 +128,9 @@ export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
               <CompletedPortfolioMaterials submission={submission} />
             ) : (
               <PortfolioSubmissionForm
+                canInteract={() =>
+                  detailQuery.data !== undefined && !isSubmissionClosed(detailQuery.data)
+                }
                 disabled={isClosed}
                 isSaving={
                   submissionMutation.isPending && submissionMutation.variables?.status === 'DRAFT'

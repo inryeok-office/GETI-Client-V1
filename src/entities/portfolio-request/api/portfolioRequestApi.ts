@@ -4,6 +4,7 @@ import type {
   FetchPortfolioRequestListParams,
   PortfolioRequestDetailApiResponse,
   PortfolioRequestListApiResponse,
+  PortfolioRequestSummaryApiResponse,
   PortfolioSubmissionApiResponse,
   PortfolioSubmissionUpsertRequest,
 } from '../model/types';
@@ -20,6 +21,23 @@ export async function fetchPortfolioRequestList(
     },
   );
   return data.data;
+}
+
+export async function fetchAllPortfolioRequestList(
+  size = 20,
+): Promise<PortfolioRequestSummaryApiResponse[]> {
+  const requests: PortfolioRequestSummaryApiResponse[] = [];
+  let page = 0;
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const response = await fetchPortfolioRequestList({ page, size });
+    requests.push(...response.content);
+    totalPages = response.totalPages;
+    page += 1;
+  }
+
+  return requests;
 }
 
 export async function fetchPortfolioRequestDetail(

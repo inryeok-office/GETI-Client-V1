@@ -12,6 +12,7 @@ import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
 interface PortfolioSubmissionFormProps {
+  canInteract?: () => boolean;
   disabled?: boolean;
   isSaving?: boolean;
   isSubmitting?: boolean;
@@ -26,6 +27,7 @@ interface PortfolioSubmissionFormProps {
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 export function PortfolioSubmissionForm({
+  canInteract,
   disabled = false,
   isSaving = false,
   isSubmitting = false,
@@ -40,6 +42,11 @@ export function PortfolioSubmissionForm({
 
   const handleAddFile = async (selectedFile: File) => {
     setSubmitError(null);
+
+    if (canInteract && !canInteract()) {
+      setSubmitError('?쒖텧 湲곌컙??醫낅즺?섏뿀?듬땲??');
+      return;
+    }
 
     if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
       setFile({
@@ -82,6 +89,11 @@ export function PortfolioSubmissionForm({
 
   const handleSubmit = async (status: PortfolioSubmissionUpsertStatus) => {
     setSubmitError(null);
+
+    if (canInteract && !canInteract()) {
+      setSubmitError('?쒖텧 湲곌컙??醫낅즺?섏뿀?듬땲??');
+      return;
+    }
 
     const nextUrlError = validatePortfolioUrl(url);
     setUrlError(nextUrlError);

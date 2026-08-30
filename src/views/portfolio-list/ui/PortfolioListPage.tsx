@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import {
   mapPortfolioRequestSummaryToListItem,
-  usePortfolioRequestListQuery,
+  useAllPortfolioRequestListQuery,
 } from '@/entities/portfolio-request';
 import {
   PortfolioRequestList,
@@ -39,14 +39,7 @@ export function PortfolioListPage({
   );
   const [page, setPage] = useState(initialPage);
 
-  const listQuery = usePortfolioRequestListQuery({
-    page,
-    size: PAGE_SIZE,
-  });
-  const allListQuery = usePortfolioRequestListQuery({
-    page: 0,
-    size: 1,
-  });
+  const listQuery = useAllPortfolioRequestListQuery(PAGE_SIZE);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -57,21 +50,19 @@ export function PortfolioListPage({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
   }, [filter, page, pathname, router]);
 
+  const allRequests = (listQuery.data ?? []).map(mapPortfolioRequestSummaryToListItem);
+  const filteredRequests =
+    filter === 'ALL' ? allRequests : allRequests.filter((request) => request.status === filter);
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+  const requests = filteredRequests.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const status: PortfolioRequestListStatus = listQuery.isLoading
     ? 'loading'
-    : listQuery.isFetching && listQuery.isPlaceholderData
-      ? 'pageLoading'
-      : listQuery.isError
-        ? 'error'
-        : (listQuery.data?.content.length ?? 0) === 0
-          ? 'empty'
-          : 'success';
-
-  const requests = (listQuery.data?.content ?? []).map(mapPortfolioRequestSummaryToListItem);
-  const hasRequests =
-    filter === 'ALL'
-      ? (listQuery.data?.totalElements ?? 0) > 0
-      : allListQuery.isLoading || (allListQuery.data?.totalElements ?? 0) > 0;
+    : listQuery.isError
+      ? 'error'
+      : allRequests.length === 0
+        ? 'empty'
+        : 'success';
 
   const handleFilterChange = (nextFilter: PortfolioRequestListFilter) => {
     setFilter(nextFilter);
@@ -95,10 +86,10 @@ export function PortfolioListPage({
           <PortfolioRequestList
             currentFilter={filter}
             currentPage={page + 1}
-            hasRequests={hasRequests}
+            hasRequests={allRequests.length > 0}
             requests={requests}
             status={status}
-            totalPages={listQuery.data?.totalPages ?? 0}
+            totalPages={totalPages}
             onFilterChange={handleFilterChange}
             onPageChange={(nextPage) => setPage(nextPage - 1)}
             onRetry={() => listQuery.refetch()}

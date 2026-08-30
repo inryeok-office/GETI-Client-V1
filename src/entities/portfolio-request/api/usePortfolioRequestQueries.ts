@@ -7,6 +7,7 @@ import type {
   PortfolioSubmissionUpsertRequest,
 } from '../model/types';
 import {
+  fetchAllPortfolioRequestList,
   fetchPortfolioRequestDetail,
   fetchPortfolioRequestList,
   upsertPortfolioSubmission,
@@ -19,6 +20,8 @@ export const portfolioRequestKeys = {
   lists: () => [...portfolioRequestKeys.all, 'list'] as const,
   list: (params: FetchPortfolioRequestListParams) =>
     [...portfolioRequestKeys.lists(), params] as const,
+  catalogs: () => [...portfolioRequestKeys.all, 'catalog'] as const,
+  catalog: (size: number) => [...portfolioRequestKeys.catalogs(), size] as const,
 };
 
 export function usePortfolioRequestListQuery(params: FetchPortfolioRequestListParams = {}) {
@@ -26,6 +29,13 @@ export function usePortfolioRequestListQuery(params: FetchPortfolioRequestListPa
     queryKey: portfolioRequestKeys.list(params),
     queryFn: () => fetchPortfolioRequestList(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useAllPortfolioRequestListQuery(size = 20) {
+  return useQuery({
+    queryKey: portfolioRequestKeys.catalog(size),
+    queryFn: () => fetchAllPortfolioRequestList(size),
   });
 }
 
@@ -46,6 +56,7 @@ export function useUpsertPortfolioSubmissionMutation(requestId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.detail(requestId) });
       queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.catalogs() });
     },
   });
 }

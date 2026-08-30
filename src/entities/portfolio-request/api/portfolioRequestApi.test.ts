@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  fetchAllPortfolioRequestList,
   fetchPortfolioRequestDetail,
   fetchPortfolioRequestList,
   upsertPortfolioSubmission,
@@ -100,5 +101,41 @@ describe('portfolioRequestApi', () => {
 
     await expect(upsertPortfolioSubmission(1, request)).resolves.toBe(responseData);
     expect(mockPatch).toHaveBeenCalledWith('/api/v1/portfolio-requests/1/submission', request);
+  });
+
+  it('fetches every page for the student request catalog', async () => {
+    mockGet
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            content: [{ requestId: 1 }],
+            page: 0,
+            size: 20,
+            totalElements: 21,
+            totalPages: 2,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            content: [{ requestId: 2 }],
+            page: 1,
+            size: 20,
+            totalElements: 21,
+            totalPages: 2,
+          },
+        },
+      });
+
+    await expect(fetchAllPortfolioRequestList()).resolves.toEqual([
+      { requestId: 1 },
+      { requestId: 2 },
+    ]);
+    expect(mockGet).toHaveBeenNthCalledWith(2, '/api/v1/portfolio-requests', {
+      params: { page: 1, size: 20 },
+    });
   });
 });
