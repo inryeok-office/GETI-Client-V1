@@ -1,0 +1,41 @@
+'use client';
+
+import { useApplicantListQuery } from '@/entities/applicant';
+import type { AdminNavSection } from '@/widgets/admin-navigation';
+
+import { buildStaffDashboardContent } from '../model/buildStaffDashboardContent';
+import { toMetric } from '../model/dashboardMetric';
+import { DASHBOARD_CONTENT } from '../model/mock';
+
+import { AdminDashboardPage } from './AdminDashboardPage';
+
+interface StaffDashboardLiveProps {
+  navSections: AdminNavSection[];
+  /** "신규 지원자" KPI의 생성 시각 하한(최근 3일, KST `LocalDateTime`). Server Component가 계산해 넘긴다. */
+  newApplicantSince: string;
+}
+
+/**
+ * 교직원 대시보드(`?variant=staff`)의 실데이터 컨테이너. `AdminDashboardLive` 패턴(Issue #187).
+ * 지원서 목록 API로 계산 가능한 신규 지원자·수정 요청 KPI만 연동하고 나머지는 "미지원",
+ * 알림 사이드바는 Mock을 base로 둔다.
+ */
+export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDashboardLiveProps) {
+  const newApplicantsQuery = useApplicantListQuery({
+    createdFrom: newApplicantSince,
+    mineOnly: true,
+    size: 1,
+  });
+  const revisionRequestsQuery = useApplicantListQuery({
+    status: 'REVISION_REQUESTED',
+    mineOnly: true,
+    size: 1,
+  });
+
+  const content = buildStaffDashboardContent(DASHBOARD_CONTENT.staff, {
+    newApplicants: toMetric(newApplicantsQuery, (list) => list.totalElements),
+    revisionRequests: toMetric(revisionRequestsQuery, (list) => list.totalElements),
+  });
+
+  return <AdminDashboardPage content={content} navSections={navSections} />;
+}
