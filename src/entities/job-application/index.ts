@@ -8,6 +8,7 @@ export {
 export {
   useCreateJobApplicationDraftMutation,
   useJobApplicationActionMutation,
+  useResumeJobApplicationDraftMutation,
   useSaveJobApplicationDraftMutation,
   useUploadApplicationFileMutation,
 } from './api/useJobApplicationQueries';
