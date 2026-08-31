@@ -192,6 +192,9 @@ export interface ExportedFile {
   filename: string;
 }
 
+/** `materialTypes` 값. PROFILE·ANSWERS는 XLSX 문서, ATTACHMENTS는 첨부파일. GETI-Server-V1 #242. */
+export type ApplicationExportMaterialType = 'PROFILE' | 'ANSWERS' | 'ATTACHMENTS';
+
 export interface ExportJobApplicationsParams {
   jobId: number;
   /**
@@ -200,6 +203,11 @@ export interface ExportJobApplicationsParams {
    * 조용히 무시한다.
    */
   applicationIds?: number[];
+  /**
+   * 내보낼 자료 종류. 반복 키(`materialTypes=PROFILE&materialTypes=ANSWERS`)로 보낸다.
+   * 비우거나 생략하면 서버 기본값(ATTACHMENTS)이다. GETI-Server-V1 #242.
+   */
+  materialTypes?: ApplicationExportMaterialType[];
 }
 
 const EXPORT_FILENAME_PATTERN = /filename="?([^";]+)"?/;
@@ -214,10 +222,15 @@ const EXPORT_FILENAME_PATTERN = /filename="?([^";]+)"?/;
 export async function exportJobApplications({
   jobId,
   applicationIds,
+  materialTypes,
 }: ExportJobApplicationsParams): Promise<ExportedFile> {
+  const params: Record<string, unknown> = {};
+  if (applicationIds) params.applicationIds = applicationIds;
+  if (materialTypes && materialTypes.length > 0) params.materialTypes = materialTypes;
+
   const response = await api.get<Blob>(`${JOBS_BASE_PATH}/${jobId}/applications/export`, {
     responseType: 'blob',
-    params: applicationIds ? { applicationIds } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
     paramsSerializer: { indexes: null },
   });
   const contentDisposition = response.headers['content-disposition'] as string | undefined;
