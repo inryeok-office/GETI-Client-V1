@@ -8,14 +8,57 @@ import type {
 } from '../model/types';
 
 const APPLICATIONS_BASE = '/api/v1/job-applications';
+const MY_APPLICATIONS_PATH = '/api/v1/me/job-applications';
 
-/** `POST /jobs/{jobId}/applications` — 지원서 초안 생성. 이미 활성 지원서가 있으면 409(재조회 방법 없음)다. */
+/**
+ * `POST /jobs/{jobId}/applications` — 지원서 초안 생성. 이미 활성 지원서가 있으면
+ * 409 `ACTIVE_APPLICATION_EXISTS`다 — 이땐 `findActiveJobApplicationDraft`로 이어서 작성한다.
+ */
 export async function createJobApplicationDraft(jobId: number): Promise<JobApplicationDraft> {
   const { data } = await api.post<ApiResponse<JobApplicationDraft>>(
     `/api/v1/jobs/${jobId}/applications`,
     { prefillProfileFields: true },
   );
   return data.data;
+}
+
+/**
+ * `GET /job-applications/{id}` — 본인 지원서 상세. 임시저장 중이면 DRAFT를 그대로 준다.
+ * 초안 생성 응답과 같은 `JobApplicationDraftResponse` DTO라 `questions`·`answers`·`files`가 모두
+ * 들어 있다(GETI-Server-V1 #186/#234).
+ */
+export async function fetchJobApplicationDraft(
+  applicationId: number,
+): Promise<JobApplicationDraft> {
+  const { data } = await api.get<ApiResponse<JobApplicationDraft>>(
+    `${APPLICATIONS_BASE}/${applicationId}`,
+  );
+  return data.data;
+}
+
+interface MyJobApplicationDraftSummary {
+  applicationId: number;
+  job: { jobId: number } | null;
+}
+
+/**
+ * `POST /jobs/{jobId}/applications`가 409(`ACTIVE_APPLICATION_EXISTS`)를 냈을 때, 그 공고에
+ * 이미 있는 임시저장 지원서를 찾아 이어서 작성하도록 돌려준다(GETI-Server-V1 #186). DRAFT를
+ * 못 찾으면(그새 제출·철회로 상태가 넘어감) null. `/me/job-applications` 목록의 상세 뷰는
+ * `entities/my-application` 소유라, 여기선 매칭에 필요한 최소 필드만 읽는다.
+ */
+export async function findActiveJobApplicationDraft(
+  jobId: number,
+): Promise<JobApplicationDraft | null> {
+  const { data } = await api.get<ApiResponse<{ content: MyJobApplicationDraftSummary[] }>>(
+    MY_APPLICATIONS_PATH,
+    { params: { status: 'DRAFT', page: 0, size: 100 } },
+  );
+
+  const existing = data.data.content.find((item) => item.job?.jobId === jobId);
+  if (!existing) return null;
+
+  return fetchJobApplicationDraft(existing.applicationId);
 }
 
 export interface SaveJobApplicationDraftParams {
