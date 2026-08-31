@@ -7,16 +7,27 @@ import type {
   SaveJobApplicationDraftParams,
   UploadedApplicationFile,
 } from '@/entities/job-application';
+import { ApiError } from '@/shared/api';
 
 import { JobApplyPage } from './JobApplyPage';
 
-const { mockCreateDraftMutate, mockSaveDraftMutate, mockActionMutate, mockUploadFileMutate } =
-  vi.hoisted(() => ({
-    mockCreateDraftMutate: vi.fn(),
-    mockSaveDraftMutate: vi.fn(),
-    mockActionMutate: vi.fn(),
-    mockUploadFileMutate: vi.fn(),
-  }));
+function activeApplicationExistsError(): ApiError {
+  return new ApiError('이미 활성 지원서가 있습니다.', 409, 'ACTIVE_APPLICATION_EXISTS');
+}
+
+const {
+  mockCreateDraftMutate,
+  mockResumeDraftMutate,
+  mockSaveDraftMutate,
+  mockActionMutate,
+  mockUploadFileMutate,
+} = vi.hoisted(() => ({
+  mockCreateDraftMutate: vi.fn(),
+  mockResumeDraftMutate: vi.fn(),
+  mockSaveDraftMutate: vi.fn(),
+  mockActionMutate: vi.fn(),
+  mockUploadFileMutate: vi.fn(),
+}));
 
 vi.mock('@/entities/job-application', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job-application')>(
@@ -25,6 +36,7 @@ vi.mock('@/entities/job-application', async () => {
   return {
     ...actual,
     useCreateJobApplicationDraftMutation: () => ({ mutate: mockCreateDraftMutate }),
+    useResumeJobApplicationDraftMutation: () => ({ mutate: mockResumeDraftMutate }),
     useSaveJobApplicationDraftMutation: () => ({ mutate: mockSaveDraftMutate }),
     useJobApplicationActionMutation: () => ({ mutate: mockActionMutate }),
     useUploadApplicationFileMutation: () => ({ mutate: mockUploadFileMutate }),
@@ -282,5 +294,47 @@ describe('JobApplyPage', () => {
 
     expect(mockUploadFileMutate).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('개수 초과')).not.toBeInTheDocument();
+  });
+
+  it('이미 활성 지원서가 있으면(409) 기존 임시저장을 불러와 이어서 작성한다', async () => {
+    mockCreateDraftMutate.mockImplementation(
+      (_jobId: number, options: { onError: (error: unknown) => void }) => {
+        options.onError(activeApplicationExistsError());
+      },
+    );
+    mockResumeDraftMutate.mockImplementation(
+      (_jobId: number, options: { onSuccess: (draft: JobApplicationDraft | null) => void }) => {
+        options.onSuccess(
+          baseDraft({
+            applicationId: 42,
+            questions: [TEXT_QUESTION],
+            answers: [{ fieldId: 'q-text', value: '이어서 작성 중인 답변', fileIds: null }],
+          }),
+        );
+      },
+    );
+
+    renderPage();
+
+    expect(mockResumeDraftMutate).toHaveBeenCalledWith(1, expect.anything());
+    expect(await screen.findByDisplayValue('이어서 작성 중인 답변')).toBeInTheDocument();
+    expect(screen.queryByText('이미 작성 중인 지원서가 있습니다.')).not.toBeInTheDocument();
+  });
+
+  it('409인데 임시저장이 없으면(제출·철회로 넘어감) 기존 안내로 폴백한다', () => {
+    mockCreateDraftMutate.mockImplementation(
+      (_jobId: number, options: { onError: (error: unknown) => void }) => {
+        options.onError(activeApplicationExistsError());
+      },
+    );
+    mockResumeDraftMutate.mockImplementation(
+      (_jobId: number, options: { onSuccess: (draft: JobApplicationDraft | null) => void }) => {
+        options.onSuccess(null);
+      },
+    );
+
+    renderPage();
+
+    expect(screen.getByText('이미 작성 중인 지원서가 있습니다.')).toBeInTheDocument();
   });
 });
