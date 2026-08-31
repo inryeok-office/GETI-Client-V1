@@ -337,4 +337,22 @@ describe('JobApplyPage', () => {
 
     expect(screen.getByText('이미 작성 중인 지원서가 있습니다.')).toBeInTheDocument();
   });
+
+  it('409 후 기존 초안 재조회 자체가 실패하면 오류 안내를 표시한다', () => {
+    mockCreateDraftMutate.mockImplementation(
+      (_jobId: number, options: { onError: (error: unknown) => void }) => {
+        options.onError(activeApplicationExistsError());
+      },
+    );
+    mockResumeDraftMutate.mockImplementation(
+      (_jobId: number, options: { onError: (error: unknown) => void }) => {
+        options.onError(new Error('network'));
+      },
+    );
+
+    renderPage();
+
+    expect(screen.getByText('지원서를 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('이미 작성 중인 지원서가 있습니다.')).not.toBeInTheDocument();
+  });
 });
