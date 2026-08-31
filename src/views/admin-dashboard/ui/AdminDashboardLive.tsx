@@ -2,6 +2,7 @@
 
 import { useApplicationStatusCountsQuery } from '@/entities/applicant';
 import { useAdminInquiryListQuery } from '@/entities/inquiry';
+import { useJobListQuery } from '@/entities/job';
 import { useStaffApprovalCountQuery } from '@/entities/staff-approval';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
@@ -23,11 +24,13 @@ interface AdminDashboardLiveProps {
 export function AdminDashboardLive({ navSections }: AdminDashboardLiveProps) {
   const pendingSignupsQuery = useStaffApprovalCountQuery('pending');
   const unansweredInquiriesQuery = useAdminInquiryListQuery({ answered: false, size: 1 });
+  const jobPostingsQuery = useJobListQuery({ size: 1 });
   const statusCountsQuery = useApplicationStatusCountsQuery();
 
   const content = buildAdminDashboardContent(DASHBOARD_CONTENT.admin, {
     pendingSignups: toMetric(pendingSignupsQuery, (count) => count),
     unansweredInquiries: toMetric(unansweredInquiriesQuery, (list) => list.totalElements),
+    jobPostings: toMetric(jobPostingsQuery, (result) => result.totalElements),
     applicationStatusCounts: toMetric(statusCountsQuery, (counts) => counts),
   });
 
