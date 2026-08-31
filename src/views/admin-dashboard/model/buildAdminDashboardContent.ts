@@ -1,18 +1,20 @@
 import type { ApplicantStatus, ApplicationStatusCounts } from '@/entities/applicant';
 
-import type { DashboardContent, DashboardTableRow, KpiCardData } from './types';
+import {
+  applyCountMetric,
+  formatCount,
+  METRIC_PLACEHOLDER,
+  type DashboardMetric,
+} from './dashboardMetric';
+import type { DashboardContent, DashboardTableRow } from './types';
 
-/** TanStack Query 결과를 대시보드 빌더가 읽는 최소 모양으로 좁힌 것. */
-export interface DashboardMetric<T> {
-  data: T | undefined;
-  isLoading: boolean;
-  isError: boolean;
-  onRetry: () => void;
-}
+export type { DashboardMetric } from './dashboardMetric';
 
 export interface AdminDashboardMetrics {
   /** 교직원 가입 승인 대기 건수. */
   pendingSignups: DashboardMetric<number>;
+  /** 미답변 문의 건수. */
+  unansweredInquiries: DashboardMetric<number>;
   /** 지원서 상태별 건수. "전체 지원서" KPI와 "지원 처리 현황" 표가 함께 쓴다. */
   applicationStatusCounts: DashboardMetric<ApplicationStatusCounts>;
 }
@@ -23,23 +25,6 @@ const STATUS_ROWS: { id: string; label: string; status: ApplicantStatus }[] = [
   { id: 'revision', label: '수정 요청', status: 'REVISION_REQUESTED' },
   { id: 'approved', label: '승인 완료', status: 'APPROVED' },
 ];
-
-const PLACEHOLDER = '—';
-
-function formatCount(value: number): string {
-  return `${value.toLocaleString('ko-KR')}건`;
-}
-
-/** 숫자 지표 하나를 KPI 카드에 반영한다. */
-function applyCountMetric(card: KpiCardData, metric: DashboardMetric<number>): KpiCardData {
-  if (metric.isError) {
-    return { ...card, loadState: 'error', onRetry: metric.onRetry, count: '' };
-  }
-  if (metric.isLoading || metric.data === undefined) {
-    return { ...card, loadState: 'loading', count: '' };
-  }
-  return { ...card, count: formatCount(metric.data) };
-}
 
 function buildStatusRows(metric: DashboardMetric<ApplicationStatusCounts>): DashboardTableRow[] {
   const counts = metric.data?.counts ?? {};
@@ -54,8 +39,8 @@ function buildStatusRows(metric: DashboardMetric<ApplicationStatusCounts>): Dash
       id: row.id,
       cells: [
         { label: row.label },
-        { label: showValue ? formatCount(count) : PLACEHOLDER },
-        { label: showValue ? `${ratio}%` : PLACEHOLDER },
+        { label: showValue ? formatCount(count) : METRIC_PLACEHOLDER },
+        { label: showValue ? `${ratio}%` : METRIC_PLACEHOLDER },
         { label: '목록 보기', variant: 'link' },
       ],
     };
@@ -64,8 +49,7 @@ function buildStatusRows(metric: DashboardMetric<ApplicationStatusCounts>): Dash
 
 /**
  * Mock `DASHBOARD_CONTENT.admin`을 base로, 연동 가능한 지표만 실데이터로 치환한다(Issue #179).
- * 공고 상세 · 프로그램 상태 KPI는 관리자 목록 API가, 미답변 문의 KPI는 문의 슬라이스(다른 파트)
- * 확장이 필요해 이번 범위에서 제외하고 "미지원"으로 둔다.
+ * 공고 상세 · 프로그램 상태 KPI는 관리자 공고·프로그램 목록 API가 없어 "미지원"으로 둔다.
  */
 export function buildAdminDashboardContent(
   base: DashboardContent,
@@ -80,9 +64,10 @@ export function buildAdminDashboardContent(
           ...metrics.applicationStatusCounts,
           data: metrics.applicationStatusCounts.data?.totalCount,
         });
+      case 'inquiries':
+        return applyCountMetric(card, metrics.unansweredInquiries);
       case 'jobs':
       case 'programs':
-      case 'inquiries':
         return { ...card, unsupported: true };
       default:
         return card;
@@ -96,5 +81,12 @@ export function buildAdminDashboardContent(
     onRetry: metrics.applicationStatusCounts.onRetry,
   };
 
-  return { ...base, kpiCards, table };
+  const unansweredCount = metrics.unansweredInquiries.data;
+  const notifications = base.notifications.map((notification) =>
+    notification.id === 'inquiries' && unansweredCount !== undefined
+      ? { ...notification, subtitle: `관리자 확인 필요 ${formatCount(unansweredCount)}` }
+      : notification,
+  );
+
+  return { ...base, kpiCards, table, notifications };
 }

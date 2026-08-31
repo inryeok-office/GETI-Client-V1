@@ -35,8 +35,22 @@ function TableCell({ cell }: { cell: DashboardTableCell }) {
   );
 }
 
+const MESSAGE_ROW_CLASS =
+  'flex h-[180px] flex-col items-center justify-center gap-[12px] border-t border-[#e5e5e5] text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]';
+
 /** 대시보드 하단 좌측 테이블 섹션. Figma(node 942:21818 등)의 Section 컴포넌트를 옮겼다. */
-export function DashboardTableSection({ title, columns, rows, hasError, onRetry }: DashboardTable) {
+export function DashboardTableSection({
+  title,
+  columns,
+  rows,
+  isLoading,
+  hasError,
+  onRetry,
+  emptyLabel,
+  noticeLabel,
+}: DashboardTable) {
+  const isEmpty = !isLoading && !hasError && rows.length === 0 && emptyLabel !== undefined;
+  const showNotice = !isLoading && !hasError && noticeLabel !== undefined;
   return (
     <div className="flex w-[1118px] flex-col rounded-[16px] border border-[#e5e5e5] bg-white p-[24px]">
       <div className="flex items-center justify-between">
@@ -47,6 +61,15 @@ export function DashboardTableSection({ title, columns, rows, hasError, onRetry 
           전체 보기
         </p>
       </div>
+
+      {showNotice ? (
+        <p
+          role="status"
+          className="mt-[12px] rounded-[8px] bg-[#fff7db] px-[12px] py-[8px] text-[13px] leading-[1.5] tracking-[-0.13px] text-[#8a6d0b]"
+        >
+          {noticeLabel}
+        </p>
+      ) : null}
 
       <div className="flex w-full flex-col overflow-hidden rounded-[8px] pt-[20px]">
         <div className="flex h-[52px] items-start bg-[#fafafa]">
@@ -59,11 +82,13 @@ export function DashboardTableSection({ title, columns, rows, hasError, onRetry 
           ))}
         </div>
 
-        {hasError ? (
-          <div className="flex h-[180px] flex-col items-center justify-center gap-[12px] border-t border-[#e5e5e5]">
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
-              처리 현황을 불러오지 못했습니다.
-            </p>
+        {isLoading ? (
+          <div className={MESSAGE_ROW_CLASS} aria-busy="true">
+            불러오는 중...
+          </div>
+        ) : hasError ? (
+          <div className={MESSAGE_ROW_CLASS}>
+            내용을 불러오지 못했습니다.
             <button
               type="button"
               onClick={onRetry}
@@ -72,6 +97,8 @@ export function DashboardTableSection({ title, columns, rows, hasError, onRetry 
               다시 시도
             </button>
           </div>
+        ) : isEmpty ? (
+          <div className={MESSAGE_ROW_CLASS}>{emptyLabel}</div>
         ) : (
           rows.map((row) => (
             <div key={row.id} className="flex h-[60px] items-start border-t border-[#e5e5e5]">

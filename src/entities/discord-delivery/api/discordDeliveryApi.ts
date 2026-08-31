@@ -10,6 +10,10 @@ const LIST_PATH = '/api/v1/admin/discord-deliveries';
 
 export interface FetchDiscordDeliveryListParams {
   status?: DiscordDeliveryStatus;
+  /** 최근 시도 시각(`lastAttemptAt`) 하한, 포함. `LocalDateTime`이라 KST 로컬 문자열로 보낸다. GETI-Server-V1 #283. */
+  startAt?: string;
+  /** 최근 시도 시각(`lastAttemptAt`) 상한, 미포함. GETI-Server-V1 #283. */
+  endAt?: string;
   page?: number;
   size?: number;
 }
@@ -17,6 +21,7 @@ export interface FetchDiscordDeliveryListParams {
 /**
  * `GET /admin/discord-deliveries` — 대상 종류(JOB/PROGRAM/INQUIRY)를 가리지 않는 Discord 전달
  * 내역 전체 목록 조회. 최신순 고정 정렬이라 `sort`는 없다(GETI-Server-V1 #206/PR #213).
+ * `startAt`/`endAt`으로 `lastAttemptAt` 기간을 좁힐 수 있다(GETI-Server-V1 #283).
  */
 export async function fetchDiscordDeliveryList(
   params: FetchDiscordDeliveryListParams = {},
