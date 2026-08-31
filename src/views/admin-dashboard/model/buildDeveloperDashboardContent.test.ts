@@ -101,12 +101,12 @@ describe('buildDeveloperDashboardContent', () => {
     expect(card(content.kpiCards, 'inquiries').count).toBe('5건');
   });
 
-  it('최근 실패 내역 표는 Discord·정기 작업 실패를 시각 내림차순으로 병합한다', () => {
+  it('최근 실패 내역 표는 Discord·정기 작업 실패를 시각 내림차순으로 병합하고 날짜까지 표시한다', () => {
     const content = buildDeveloperDashboardContent(BASE, fullMetrics());
 
     expect(content.table.rows.map((row) => row.cells.map((cell) => cell.label))).toEqual([
-      ['10:31', 'Discord', '전송 응답 시간 초과', '재시도'],
-      ['09:58', '프로그램 마감', '정기 작업 실행 실패', '미처리'],
+      ['08.27 10:31', 'Discord', '전송 응답 시간 초과', '재시도'],
+      ['08.27 09:58', '프로그램 마감', '정기 작업 실행 실패', '미처리'],
     ]);
   });
 
@@ -136,7 +136,21 @@ describe('buildDeveloperDashboardContent', () => {
     expect(content.table.isLoading).toBe(true);
   });
 
-  it('한쪽 피드만 실패하면 표는 에러가 아니라 남은 피드로 렌더한다', () => {
+  it('두 피드가 모두 실패하면 표는 에러 상태이고 로딩이 아니다', () => {
+    const content = buildDeveloperDashboardContent(
+      BASE,
+      fullMetrics({
+        discordFailures: metric<FailureFeed<DiscordDelivery>>({ isError: true }),
+        failedJobs: metric<FailureFeed<OperationJob>>({ isError: true }),
+      }),
+    );
+
+    expect(content.table.hasError).toBe(true);
+    expect(content.table.isLoading).toBe(false);
+    expect(content.table.noticeLabel).toBeUndefined();
+  });
+
+  it('한쪽 피드만 실패하면 표는 에러가 아니라 남은 피드를 렌더하고 부분 실패를 알린다', () => {
     const content = buildDeveloperDashboardContent(
       BASE,
       fullMetrics({
@@ -145,8 +159,10 @@ describe('buildDeveloperDashboardContent', () => {
     );
 
     expect(content.table.hasError).toBe(false);
+    expect(content.table.isLoading).toBe(false);
     expect(content.table.rows).toHaveLength(1);
     expect(content.table.rows[0].cells[1].label).toBe('프로그램 마감');
+    expect(content.table.noticeLabel).toContain('Discord 전달 내역을 불러오지 못');
   });
 
   it('Discord 실패 조회가 에러면 해당 KPI만 에러 상태다', () => {

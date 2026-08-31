@@ -15,6 +15,8 @@ export interface AdminDashboardMetrics {
   pendingSignups: DashboardMetric<number>;
   /** 미답변 문의 건수. */
   unansweredInquiries: DashboardMetric<number>;
+  /** 공개 공고(모집 중 + 마감) 전체 수. */
+  jobPostings: DashboardMetric<number>;
   /** 지원서 상태별 건수. "전체 지원서" KPI와 "지원 처리 현황" 표가 함께 쓴다. */
   applicationStatusCounts: DashboardMetric<ApplicationStatusCounts>;
 }
@@ -48,8 +50,8 @@ function buildStatusRows(metric: DashboardMetric<ApplicationStatusCounts>): Dash
 }
 
 /**
- * Mock `DASHBOARD_CONTENT.admin`을 base로, 연동 가능한 지표만 실데이터로 치환한다(Issue #179).
- * 공고 상세 · 프로그램 상태 KPI는 관리자 공고·프로그램 목록 API가 없어 "미지원"으로 둔다.
+ * Mock `DASHBOARD_CONTENT.admin`을 base로, 연동 가능한 지표만 실데이터로 치환한다(Issue #179, #189).
+ * 프로그램 상태 KPI는 관리자 프로그램 목록 API가 없어 "미지원"으로 둔다.
  */
 export function buildAdminDashboardContent(
   base: DashboardContent,
@@ -67,6 +69,8 @@ export function buildAdminDashboardContent(
       case 'inquiries':
         return applyCountMetric(card, metrics.unansweredInquiries);
       case 'jobs':
+        // 공개 검색 API는 비공개 공고를 안 주므로 설명에서 "비공개"를 뺀다(GETI-Server-V1 #189).
+        return { ...applyCountMetric(card, metrics.jobPostings), description: '모집 · 마감' };
       case 'programs':
         return { ...card, unsupported: true };
       default:

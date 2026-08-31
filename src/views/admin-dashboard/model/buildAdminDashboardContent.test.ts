@@ -24,6 +24,7 @@ function loadedMetrics(counts: ApplicationStatusCounts): AdminDashboardMetrics {
   return {
     pendingSignups: metric<number>({ data: 8 }),
     unansweredInquiries: metric<number>({ data: 15 }),
+    jobPostings: metric<number>({ data: 35 }),
     applicationStatusCounts: metric<ApplicationStatusCounts>({ data: counts }),
   };
 }
@@ -41,23 +42,27 @@ describe('buildAdminDashboardContent', () => {
     const content = buildAdminDashboardContent(BASE, {
       pendingSignups: metric<number>({ isLoading: true }),
       unansweredInquiries: metric<number>({ isLoading: true }),
+      jobPostings: metric<number>({ isLoading: true }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isLoading: true }),
     });
 
     expect(card(content.kpiCards, 'signup').loadState).toBe('loading');
     expect(card(content.kpiCards, 'applications').loadState).toBe('loading');
     expect(card(content.kpiCards, 'inquiries').loadState).toBe('loading');
+    expect(card(content.kpiCards, 'jobs').loadState).toBe('loading');
     expect(content.table.rows.every((row) => row.cells[1].label === '—')).toBe(true);
   });
 
-  it('공고 · 프로그램 KPI는 미지원으로 둔다', () => {
+  it('프로그램 KPI만 미지원으로 두고 공고 KPI는 실데이터로 채운다', () => {
     const content = buildAdminDashboardContent(
       BASE,
       loadedMetrics({ totalCount: 100, counts: {} }),
     );
 
-    expect(card(content.kpiCards, 'jobs').unsupported).toBe(true);
     expect(card(content.kpiCards, 'programs').unsupported).toBe(true);
+    expect(card(content.kpiCards, 'jobs').unsupported).toBeUndefined();
+    expect(card(content.kpiCards, 'jobs').count).toBe('35건');
+    expect(card(content.kpiCards, 'jobs').description).toBe('모집 · 마감');
     expect(card(content.kpiCards, 'inquiries').unsupported).toBeUndefined();
   });
 
@@ -90,6 +95,7 @@ describe('buildAdminDashboardContent', () => {
     const content = buildAdminDashboardContent(BASE, {
       pendingSignups: metric<number>({ data: 8 }),
       unansweredInquiries: metric<number>({ data: 15 }),
+      jobPostings: metric<number>({ data: 35 }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isError: true, onRetry }),
     });
 
@@ -99,17 +105,19 @@ describe('buildAdminDashboardContent', () => {
     expect(content.table.onRetry).toBe(onRetry);
   });
 
-  it('가입 대기 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
+  it('공고 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
     const onRetry = vi.fn();
     const content = buildAdminDashboardContent(BASE, {
-      pendingSignups: metric<number>({ isError: true, onRetry }),
+      pendingSignups: metric<number>({ data: 8 }),
       unansweredInquiries: metric<number>({ data: 15 }),
+      jobPostings: metric<number>({ isError: true, onRetry }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({
         data: { totalCount: 10, counts: {} },
       }),
     });
 
-    expect(card(content.kpiCards, 'signup').loadState).toBe('error');
+    expect(card(content.kpiCards, 'jobs').loadState).toBe('error');
+    expect(card(content.kpiCards, 'jobs').onRetry).toBe(onRetry);
     expect(card(content.kpiCards, 'applications').loadState).toBeUndefined();
   });
 

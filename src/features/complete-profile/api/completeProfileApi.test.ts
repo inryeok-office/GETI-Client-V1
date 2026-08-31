@@ -1,23 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CompleteProfileRequest } from '../model/types';
-import { completeProfile, uploadProfileImage } from './completeProfileApi';
+import { completeProfile } from './completeProfileApi';
 
-const {
-  mockFetchSession,
-  mockReplaceMyMajors,
-  mockReplaceMyTechStacks,
-  mockUpdateMyProfile,
-  mockUploadCommonFile,
-} = vi.hoisted(() => ({
-  mockFetchSession: vi.fn(),
-  mockReplaceMyMajors: vi.fn(),
-  mockReplaceMyTechStacks: vi.fn(),
-  mockUpdateMyProfile: vi.fn(),
-  mockUploadCommonFile: vi.fn(),
-}));
+const { mockFetchSession, mockReplaceMyMajors, mockReplaceMyTechStacks, mockUpdateMyProfile } =
+  vi.hoisted(() => ({
+    mockFetchSession: vi.fn(),
+    mockReplaceMyMajors: vi.fn(),
+    mockReplaceMyTechStacks: vi.fn(),
+    mockUpdateMyProfile: vi.fn(),
+  }));
 
-vi.mock('@/entities/common-file', () => ({ uploadCommonFile: mockUploadCommonFile }));
 vi.mock('@/entities/member', () => ({
   replaceMyMajors: mockReplaceMyMajors,
   replaceMyTechStacks: mockReplaceMyTechStacks,
@@ -44,15 +37,6 @@ beforeEach(() => {
 });
 
 describe('completeProfileApi', () => {
-  it('프로필 이미지를 PROFILE_IMAGE 용도로 업로드한다', async () => {
-    const file = new File(['image'], 'profile.png', { type: 'image/png' });
-    mockUploadCommonFile.mockResolvedValue({ fileId: 77 });
-
-    await uploadProfileImage(file);
-
-    expect(mockUploadCommonFile).toHaveBeenCalledWith(file, 'PROFILE_IMAGE');
-  });
-
   it('전공·기술 스택·프로필을 저장한 뒤 최신 세션을 반환한다', async () => {
     await expect(completeProfile(REQUEST)).resolves.toEqual({
       memberId: 1,

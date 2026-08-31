@@ -11,12 +11,14 @@ import {
   isNonFileAnswerEmpty,
   useCreateJobApplicationDraftMutation,
   useJobApplicationActionMutation,
+  useResumeJobApplicationDraftMutation,
   useSaveJobApplicationDraftMutation,
   useUploadApplicationFileMutation,
   type ApplicantProfile,
   type ApplicationAnswer,
   type ApplicationAttachment,
   type ApplicationQuestion,
+  type JobApplicationDraft,
 } from '@/entities/job-application';
 import {
   ApplicantInfoSection,
@@ -82,9 +84,10 @@ export interface JobApplyPageProps {
  * 조용히 빠진 채로 저장되거나 제출된다. "자기소개"(`ApplicantInfoSection`)는 API 어디에도
  * 대응 필드가 없어 여전히 입력을 막아 둔다 — 별도 사안이다.
  *
- * 이미 활성 지원서가 있으면(409 `ACTIVE_APPLICATION_EXISTS`) 이어서 작성하는 기능은 구현하지
- * 못했다 — 학생이 자신의 기존 초안을 조회하는 API가 아직 없다(GETI-Server Issue #184/PR #186 미병합).
- * 지원 불가(400 `JOB_NOT_APPLICABLE`)도 기간 종료 · 정원 마감 사유를 구분하는 값이 없어 하나로 합쳤다.
+ * 이미 활성 지원서가 있으면(409 `ACTIVE_APPLICATION_EXISTS`) `findActiveJobApplicationDraft`로
+ * 그 공고의 기존 임시저장을 불러와 이어서 작성한다(GETI-Server-V1 #186). 그새 제출·철회로
+ * DRAFT가 사라졌으면 "이미 작성 중인 지원서" 안내로 폴백한다. 지원 불가(400 `JOB_NOT_APPLICABLE`)는
+ * 기간 종료 · 정원 마감 사유를 구분하는 값이 없어 하나로 합쳤다.
  *
  * 간격 · 색상은 Figma("지원서" 섹션, node 500:2568 기준 각 상태 프레임)의 값을 그대로 옮겼다.
  */
@@ -93,6 +96,7 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   const hasStartedDraft = useRef(false);
 
   const createDraftMutation = useCreateJobApplicationDraftMutation();
+  const resumeDraftMutation = useResumeJobApplicationDraftMutation();
   const saveDraftMutation = useSaveJobApplicationDraftMutation();
   const actionMutation = useJobApplicationActionMutation();
   const uploadFileMutation = useUploadApplicationFileMutation();
@@ -116,6 +120,23 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
   const nonFileQuestions = questions.filter((question) => question.type !== 'FILE');
   const fileQuestions = questions.filter((question) => question.type === 'FILE');
 
+  const loadDraftIntoState = (draft: JobApplicationDraft) => {
+    setApplicationId(draft.applicationId);
+    setProfile({
+      name: draft.applicantName,
+      cohort: draft.applicantCohort,
+      department: draft.applicantDepartment,
+      email: draft.contactEmail,
+      phone: draft.contactPhone ?? '',
+    });
+    setConsentChecked(draft.privacyConsent);
+    setQuestions(draft.questions);
+    const { values, attachmentsByFieldId: initialAttachments } = buildInitialAnswerState(draft);
+    setAnswerValues(values);
+    setAttachmentsByFieldId(initialAttachments);
+    setDraftLoadState('ready');
+  };
+
   useEffect(() => {
     if (hasStartedDraft.current) return;
     hasStartedDraft.current = true;
@@ -124,27 +145,26 @@ export function JobApplyPage({ jobId, backHref }: JobApplyPageProps) {
     if (!Number.isInteger(parsedJobId)) return;
 
     createDraftMutation.mutate(parsedJobId, {
-      onSuccess: (draft) => {
-        setApplicationId(draft.applicationId);
-        setProfile({
-          name: draft.applicantName,
-          cohort: draft.applicantCohort,
-          department: draft.applicantDepartment,
-          email: draft.contactEmail,
-          phone: draft.contactPhone ?? '',
-        });
-        setConsentChecked(draft.privacyConsent);
-        setQuestions(draft.questions);
-        const { values, attachmentsByFieldId: initialAttachments } = buildInitialAnswerState(draft);
-        setAnswerValues(values);
-        setAttachmentsByFieldId(initialAttachments);
-        setDraftLoadState('ready');
-      },
+      onSuccess: loadDraftIntoState,
       onError: (error) => {
         const code = error instanceof ApiError ? error.code : undefined;
-        if (code === 'ACTIVE_APPLICATION_EXISTS') setDraftLoadState('already-exists');
-        else if (code === 'JOB_NOT_APPLICABLE') setDraftLoadState('unavailable');
-        else setDraftLoadState('error');
+        if (code === 'JOB_NOT_APPLICABLE') {
+          setDraftLoadState('unavailable');
+          return;
+        }
+        if (code !== 'ACTIVE_APPLICATION_EXISTS') {
+          setDraftLoadState('error');
+          return;
+        }
+
+        // 이미 임시저장 중인 지원서가 있으면 그걸 불러와 이어서 작성한다(GETI-Server-V1 #186).
+        resumeDraftMutation.mutate(parsedJobId, {
+          onSuccess: (draft) => {
+            if (draft) loadDraftIntoState(draft);
+            else setDraftLoadState('already-exists');
+          },
+          onError: () => setDraftLoadState('error'),
+        });
       },
     });
     // 최초 진입 시 한 번만 초안을 만든다(hasStartedDraft로 중복 생성 방지).
