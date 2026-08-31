@@ -8,14 +8,18 @@ import {
   useJobApplicantOptionsQuery,
   useJobPostingOptionsQuery,
 } from '@/entities/applicant';
-import type { ExportedFile } from '@/entities/applicant';
+import type { ApplicationExportMaterialType, ExportedFile } from '@/entities/applicant';
 import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 
-/** "포함 자료"는 이번 범위에서 제외한다 — 대응 API(GETI-Server-V1 #218)가 아직 없다. */
-const MATERIAL_LABELS = ['인적사항', '답변', '첨부파일'];
+/** "포함 자료" 선택지 → `materialTypes` 파라미터(GETI-Server-V1 #242). */
+const MATERIAL_OPTIONS: { value: ApplicationExportMaterialType; label: string }[] = [
+  { value: 'PROFILE', label: '인적사항' },
+  { value: 'ANSWERS', label: '답변' },
+  { value: 'ATTACHMENTS', label: '첨부파일' },
+];
 
-type OpenField = 'job' | 'applicant';
+type OpenField = 'job' | 'applicant' | 'material';
 
 /**
  * export 실패 사유별 안내 문구. 이슈 #120은 대상 공고에 대한 권한이 없으면(403) 사용자에게
@@ -56,7 +60,8 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  * 쿼리스트링을 만들 이유가 없다. 하나라도 선택 해제하면 그때부터 선택된 id만 담은 Set으로
  * 바뀐다. 공고를 바꾸면 이전 공고의 선택은 의미가 없어 전체 선택으로 되돌린다.
  *
- * "포함 자료"는 대응 API(GETI-Server-V1 #218)가 아직 없어 계속 비활성 안내 전용으로 둔다.
+ * "포함 자료"는 GETI-Server-V1 #242의 `materialTypes`(PROFILE·ANSWERS·ATTACHMENTS 반복 키)에
+ * 연결된다. 기본은 3개 모두 선택이고, 하나도 안 고르면 다운로드를 막는다(빈 요청 방지).
  *
  * 공고 · 지원자 데이터는 목록 화면에 지금 로드돼 있는(페이지네이션 · 필터가 걸린) 배열을
  * 그대로 쓰지 않는다. "공고" 드롭다운은 `useJobPostingOptionsQuery`가, "지원자" 체크박스
@@ -80,6 +85,11 @@ export function DownloadModal() {
 
   /** `null`이면 전체 선택. 하나라도 선택 해제하면 선택된 applicationId만 담는다. */
   const [selectedApplicantIds, setSelectedApplicantIds] = useState<Set<number> | null>(null);
+
+  /** 포함할 자료 종류. 기본은 3개 모두. */
+  const [selectedMaterialTypes, setSelectedMaterialTypes] = useState<
+    Set<ApplicationExportMaterialType>
+  >(() => new Set(MATERIAL_OPTIONS.map((option) => option.value)));
 
   const applicantOptionsQuery = useJobApplicantOptionsQuery(selectedJobId);
   const applicantOptions = applicantOptionsQuery.data ?? [];
@@ -117,6 +127,15 @@ export function DownloadModal() {
     setSelectedApplicantIds((current) => (current === null ? new Set() : null));
   };
 
+  const toggleMaterialType = (value: ApplicationExportMaterialType) => {
+    setSelectedMaterialTypes((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
   const toggleApplicant = (applicationId: number) => {
     setSelectedApplicantIds((current) => {
       const next = new Set(current ?? applicantOptions.map((applicant) => applicant.applicationId));
@@ -149,6 +168,7 @@ export function DownloadModal() {
       {
         jobId: selectedJobId,
         applicationIds: selectedApplicantIds ? Array.from(selectedApplicantIds) : undefined,
+        materialTypes: Array.from(selectedMaterialTypes),
       },
       {
         onSuccess: (file) => {
@@ -334,16 +354,51 @@ export function DownloadModal() {
                 포함 자료
               </p>
               <div
-                aria-disabled="true"
-                className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 bg-neutral-50 p-[16px] text-left"
+                ref={openField === 'material' ? openDropdownRef : undefined}
+                className="relative"
               >
-                <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-500">
-                  {MATERIAL_LABELS.join(' · ')}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpenField((prev) => (prev === 'material' ? null : 'material'))}
+                  className="flex w-full items-center justify-between rounded-[8px] border border-neutral-200 p-[16px] text-left focus:outline-none"
+                >
+                  <span className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
+                    {selectedMaterialTypes.size === 0
+                      ? '포함할 자료를 선택해 주세요'
+                      : MATERIAL_OPTIONS.filter((option) => selectedMaterialTypes.has(option.value))
+                          .map((option) => option.label)
+                          .join(' · ')}
+                  </span>
+                  <Icon
+                    name="chevronRight"
+                    className="h-[10px] w-[20px] shrink-0 rotate-90 text-neutral-600"
+                  />
+                </button>
+
+                {openField === 'material' && (
+                  <div className="absolute top-full left-0 z-20 mt-[4px] flex w-full flex-col items-start gap-[2px] rounded-[8px] border border-neutral-200 bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+                    {MATERIAL_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className="hover:bg-primary-50 flex h-[44px] w-full cursor-pointer items-center gap-[8px] rounded-[8px] px-[16px] text-[14px] leading-[21px] tracking-[-0.14px] text-neutral-900"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMaterialTypes.has(option.value)}
+                          onChange={() => toggleMaterialType(option.value)}
+                          className="size-[16px]"
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="px-[4px] text-[12px] leading-[1.5] tracking-[-0.12px] text-neutral-500">
-                지원자 개별 선택은 지원하지만 자료 종류 선택은 아직 지원하지 않습니다.
-              </p>
+              {selectedMaterialTypes.size === 0 && (
+                <p className="text-status-error px-[4px] text-[12px] leading-[1.5] tracking-[-0.12px]">
+                  최소 한 가지 자료를 선택해 주세요.
+                </p>
+              )}
             </div>
           </>
         )}
@@ -370,6 +425,7 @@ export function DownloadModal() {
               exportMutation.isPending ||
               jobPostingsQuery.isLoading ||
               isApplicantDataUnusable ||
+              selectedMaterialTypes.size === 0 ||
               (!isAllApplicantsSelected && selectedApplicantCount === 0)
             }
             className="bg-primary-700 flex items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white focus:outline-none disabled:opacity-50"
