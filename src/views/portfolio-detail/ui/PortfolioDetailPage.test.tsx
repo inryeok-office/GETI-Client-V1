@@ -1,4 +1,5 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PortfolioDetailPage } from './PortfolioDetailPage';
@@ -52,6 +53,58 @@ describe('PortfolioDetailPage', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+  });
+
+  it.each(['0', '-1', '1.5', '9007199254740992'])('잘못된 requestId %s를 조회하지 않는다', (id) => {
+    mockUsePortfolioRequestDetailQuery.mockReturnValue({
+      data: undefined,
+      error: null,
+      isError: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockUseUpsertPortfolioSubmissionMutation.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn(),
+      variables: undefined,
+    });
+
+    render(<PortfolioDetailPage requestId={id} />);
+
+    expect(mockUsePortfolioRequestDetailQuery).toHaveBeenCalledWith(null);
+    expect(mockUseUpsertPortfolioSubmissionMutation).toHaveBeenCalledWith(null);
+  });
+
+  it('서버가 반환한 안전하지 않은 포트폴리오 URL은 링크로 렌더하지 않는다', async () => {
+    const user = userEvent.setup();
+    mockUsePortfolioRequestDetailQuery.mockReturnValue({
+      data: { ...REQUEST_DETAIL, dueAt: '2099-01-01T00:00:00' },
+      error: null,
+      isError: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockUseUpsertPortfolioSubmissionMutation.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn().mockResolvedValue({
+        files: [],
+        note: null,
+        portfolioUrl: 'javascript:alert(1)',
+        requestId: 1,
+        status: 'SUBMITTED',
+        submissionId: 1,
+        submittedAt: '2026-08-31T12:00:00',
+        updatedAt: '2026-08-31T12:00:00',
+      }),
+      variables: undefined,
+    });
+
+    const { container } = render(<PortfolioDetailPage requestId="1" />);
+    await user.type(screen.getByRole('textbox', { name: 'URL' }), 'https://example.com');
+    await user.click(screen.getByRole('button', { name: '제출하기' }));
+
+    expect(await screen.findByRole('heading', { name: '제출 완료' })).toBeInTheDocument();
+    expect(container.querySelector('a[href^="javascript:"]')).not.toBeInTheDocument();
   });
 
   it('PUBLISHED 요청이어도 마감 시간이 지나면 파일 업로드와 제출을 막는다', () => {

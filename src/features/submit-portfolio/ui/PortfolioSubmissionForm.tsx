@@ -3,10 +3,11 @@
 import { useId, useState } from 'react';
 
 import { uploadCommonFile } from '@/entities/common-file';
-import type {
-  PortfolioSubmissionApiResponse,
-  PortfolioSubmissionUpsertStatus,
-  PortfolioUploadFile,
+import {
+  isSafePortfolioUrl,
+  type PortfolioSubmissionApiResponse,
+  type PortfolioSubmissionUpsertStatus,
+  type PortfolioUploadFile,
 } from '@/entities/portfolio-request';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
@@ -327,12 +328,5 @@ function validatePortfolioUrl(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  try {
-    const parsedUrl = new URL(trimmed);
-    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
-      ? null
-      : 'http 또는 https URL만 입력해 주세요.';
-  } catch {
-    return '올바른 URL을 입력해 주세요.';
-  }
+  return isSafePortfolioUrl(trimmed) ? null : 'http 또는 https URL만 입력해 주세요.';
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { downloadCommonFile } from '@/entities/common-file';
 import {
   formatDueAt,
+  isSafePortfolioUrl,
   usePortfolioRequestDetailQuery,
   useUpsertPortfolioSubmissionMutation,
   type PortfolioRequestDetailApiResponse,
@@ -24,13 +25,15 @@ interface PortfolioDetailPageProps {
 }
 
 export function PortfolioDetailPage({ requestId }: PortfolioDetailPageProps) {
-  const numericRequestId = Number(requestId);
+  const parsedRequestId = Number(requestId);
+  const numericRequestId =
+    Number.isSafeInteger(parsedRequestId) && parsedRequestId > 0 ? parsedRequestId : null;
   const detailQuery = usePortfolioRequestDetailQuery(numericRequestId);
   const submissionMutation = useUpsertPortfolioSubmissionMutation(numericRequestId);
   const [submission, setSubmission] = useState<PortfolioSubmissionApiResponse | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  const isInvalidRequestId = !Number.isFinite(numericRequestId);
+  const isInvalidRequestId = numericRequestId === null;
   const isUnavailable =
     detailQuery.error instanceof ApiError &&
     ['NOT_REQUEST_TARGET', 'PORTFOLIO_REQUEST_NOT_FOUND', 'SUBMISSION_CLOSED'].includes(
@@ -248,6 +251,11 @@ function CompletedPortfolioMaterials({
 }: {
   submission: PortfolioSubmissionApiResponse | null;
 }) {
+  const safePortfolioUrl =
+    submission?.portfolioUrl && isSafePortfolioUrl(submission.portfolioUrl)
+      ? submission.portfolioUrl
+      : null;
+
   const handleDownload = async (file: PortfolioSubmissionApiResponse['files'][number]) => {
     try {
       const blob = await downloadCommonFile(file.fileId);
@@ -284,19 +292,19 @@ function CompletedPortfolioMaterials({
         </button>
       ))}
 
-      {submission?.portfolioUrl ? (
+      {safePortfolioUrl ? (
         <>
           <h2 className="mt-8 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
             등록한 링크
           </h2>
           <a
-            href={submission.portfolioUrl}
+            href={safePortfolioUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="mt-4 flex h-14 items-center gap-3 rounded-lg border border-neutral-200 px-4 text-sm leading-[1.5] tracking-[-0.14px] text-neutral-900"
           >
             <Icon name="externalLink" className="size-4 text-neutral-600" />
-            {submission.portfolioUrl}
+            {safePortfolioUrl}
           </a>
         </>
       ) : null}

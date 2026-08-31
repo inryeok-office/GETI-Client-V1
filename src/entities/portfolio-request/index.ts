@@ -36,4 +36,5 @@ export {
   mapPortfolioRequestSummaryToListItem,
   mapRequestStatusToSubmissionStatus,
 } from './model/mapPortfolioRequest';
+export { isSafePortfolioUrl } from './model/portfolioUrl';
 export { PortfolioRequestCard } from './ui/PortfolioRequestCard';

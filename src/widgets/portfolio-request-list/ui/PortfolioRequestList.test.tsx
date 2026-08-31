@@ -111,6 +111,7 @@ describe('PortfolioRequestList', () => {
     const articles = screen.getAllByRole('article');
     expect(articles).toHaveLength(1);
     expect(within(articles[0]).getByText('마감된 포트폴리오')).toBeInTheDocument();
+    expect(within(articles[0]).queryByRole('link', { name: '제출 마감' })).not.toBeInTheDocument();
   });
 
   it('빈 목록 상태를 표시한다', () => {

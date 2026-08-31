@@ -72,6 +72,16 @@ describe('portfolio request queries', () => {
     queryClient.clear();
   });
 
+  it('유효한 requestId가 없으면 상세 API를 호출하지 않는다', () => {
+    const { queryClient, wrapper } = setupQueryClient();
+
+    const { result } = renderHook(() => usePortfolioRequestDetailQuery(null), { wrapper });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(mockFetchPortfolioRequestDetail).not.toHaveBeenCalled();
+    queryClient.clear();
+  });
+
   it('임시저장/제출 성공 후 상세와 목록 query를 갱신한다', async () => {
     const { queryClient, wrapper } = setupQueryClient();
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');

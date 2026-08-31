@@ -1,6 +1,12 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import type {
   FetchPortfolioRequestListParams,
@@ -39,21 +45,23 @@ export function useAllPortfolioRequestListQuery(size = 20) {
   });
 }
 
-export function usePortfolioRequestDetailQuery(requestId: number) {
+export function usePortfolioRequestDetailQuery(requestId: number | null) {
   return useQuery({
-    queryKey: portfolioRequestKeys.detail(requestId),
-    queryFn: () => fetchPortfolioRequestDetail(requestId),
-    enabled: Number.isFinite(requestId),
+    queryKey: portfolioRequestKeys.detail(requestId ?? -1),
+    queryFn: requestId === null ? skipToken : () => fetchPortfolioRequestDetail(requestId),
   });
 }
 
-export function useUpsertPortfolioSubmissionMutation(requestId: number) {
+export function useUpsertPortfolioSubmissionMutation(requestId: number | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: PortfolioSubmissionUpsertRequest) =>
-      upsertPortfolioSubmission(requestId, request),
+    mutationFn: (request: PortfolioSubmissionUpsertRequest) => {
+      if (requestId === null) return Promise.reject(new Error('잘못된 포트폴리오 요청입니다.'));
+      return upsertPortfolioSubmission(requestId, request);
+    },
     onSuccess: () => {
+      if (requestId === null) return;
       queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.detail(requestId) });
       queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.lists() });
       queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.catalogs() });

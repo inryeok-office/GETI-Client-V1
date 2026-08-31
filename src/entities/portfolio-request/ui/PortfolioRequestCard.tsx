@@ -76,14 +76,21 @@ export function PortfolioRequestCard({ request }: PortfolioRequestCardProps) {
         <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-500">
           제출 현황 {request.submittedCount}/{request.targetCount}
         </p>
-        <Link
-          href={`/portfolios/${request.requestId}`}
-          aria-disabled={request.status === 'CLOSED'}
-          tabIndex={request.status === 'CLOSED' ? -1 : undefined}
-          className={`inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] ${style.button}`}
-        >
-          {style.action}
-        </Link>
+        {request.status === 'CLOSED' ? (
+          <span
+            aria-disabled="true"
+            className={`inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] ${style.button}`}
+          >
+            {style.action}
+          </span>
+        ) : (
+          <Link
+            href={`/portfolios/${request.requestId}`}
+            className={`inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] ${style.button}`}
+          >
+            {style.action}
+          </Link>
+        )}
       </div>
     </article>
   );
