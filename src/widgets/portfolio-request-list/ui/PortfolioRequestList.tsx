@@ -63,7 +63,7 @@ export function PortfolioRequestList({
       <section className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-6 pt-6 pb-8">
         <div>
           <h2 className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-            제출이 필요한 포트폴리오가 있어요
+            포트폴리오 제출 요청을 확인해 주세요
           </h2>
           <p className="mt-3 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
             마감일을 확인하고 기간 내에 제출해 주세요.

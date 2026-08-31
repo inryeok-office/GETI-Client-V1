@@ -88,6 +88,13 @@ describe('PortfolioRequestList', () => {
     expect(screen.getByRole('link', { name: '제출하기' })).toHaveAttribute('href', '/portfolios/1');
   });
 
+  it('모든 요청이 마감되어도 제출 필요 상태를 단정하지 않는다', () => {
+    renderList({ requests: REQUESTS.filter((request) => request.status === 'CLOSED') });
+
+    expect(screen.getByText('포트폴리오 제출 요청을 확인해 주세요')).toBeInTheDocument();
+    expect(screen.queryByText('제출이 필요한 포트폴리오가 있어요')).not.toBeInTheDocument();
+  });
+
   it('필터 버튼을 누르면 onFilterChange를 호출한다', async () => {
     const user = userEvent.setup();
     const handleFilterChange = vi.fn();

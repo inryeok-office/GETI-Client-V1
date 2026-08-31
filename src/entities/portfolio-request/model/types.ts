@@ -1,5 +1,5 @@
 export type PortfolioApiRequestStatus = 'CLOSED' | 'DELETED' | 'DRAFT' | 'PUBLISHED';
-export type PortfolioRequestStatus = PortfolioApiRequestStatus | 'OPEN';
+export type PortfolioRequestStatus = 'CLOSED' | 'DRAFT' | 'OPEN';
 
 export interface PortfolioRequest {
   requestId: number;

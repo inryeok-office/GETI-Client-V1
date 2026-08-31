@@ -55,20 +55,30 @@ export function PortfolioListPage({
     return () => window.clearTimeout(timeoutId);
   }, [listQuery.data, now]);
 
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (filter !== 'ALL') params.set('filter', filter.toLowerCase());
-    if (page > 0) params.set('page', String(page + 1));
-
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [filter, page, pathname, router]);
-
   const allRequests = (listQuery.data ?? []).map(mapPortfolioRequestSummaryToListItem);
   const filteredRequests =
     filter === 'ALL' ? allRequests : allRequests.filter((request) => request.status === filter);
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
-  const requests = filteredRequests.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const resolvedPage =
+    listQuery.data === undefined ? page : Math.min(Math.max(page, 0), totalPages - 1);
+  const requests = filteredRequests.slice(resolvedPage * PAGE_SIZE, (resolvedPage + 1) * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page === resolvedPage) return;
+
+    const timeoutId = window.setTimeout(() => setPage(resolvedPage), 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [page, resolvedPage]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== 'ALL') params.set('filter', filter.toLowerCase());
+    if (resolvedPage > 0) params.set('page', String(resolvedPage + 1));
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [filter, pathname, resolvedPage, router]);
 
   const status: PortfolioRequestListStatus = listQuery.isLoading
     ? 'loading'
@@ -99,7 +109,7 @@ export function PortfolioListPage({
         <div className="mt-8">
           <PortfolioRequestList
             currentFilter={filter}
-            currentPage={page + 1}
+            currentPage={resolvedPage + 1}
             hasRequests={allRequests.length > 0}
             requests={requests}
             status={status}
