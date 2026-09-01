@@ -96,12 +96,16 @@ describe('DownloadModal', () => {
     expect(screen.getByText('선택한 지원자 3명')).toBeInTheDocument();
   });
 
-  it('전체 선택 상태에서 다운로드하면 applicationIds 없이 jobId만 보낸다', () => {
+  it('전체 선택 상태에서 다운로드하면 applicationIds 없이 jobId와 전체 자료 종류를 보낸다', () => {
     render(<DownloadModal />);
     fireEvent.click(screen.getByRole('button', { name: '다운로드' }));
 
     expect(mockMutate).toHaveBeenCalledWith(
-      { jobId: 1, applicationIds: undefined },
+      {
+        jobId: 1,
+        applicationIds: undefined,
+        materialTypes: ['PROFILE', 'ANSWERS', 'ATTACHMENTS'],
+      },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
@@ -113,9 +117,32 @@ describe('DownloadModal', () => {
     fireEvent.click(screen.getByRole('button', { name: '다운로드' }));
 
     expect(mockMutate).toHaveBeenCalledWith(
-      { jobId: 1, applicationIds: [1, 3] },
+      expect.objectContaining({ jobId: 1, applicationIds: [1, 3] }),
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
+  });
+
+  it('포함 자료 종류를 골라 materialTypes로 보낸다', () => {
+    render(<DownloadModal />);
+    fireEvent.click(screen.getByRole('button', { name: '인적사항 · 답변 · 첨부파일' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '답변' }));
+    fireEvent.click(screen.getByRole('button', { name: '다운로드' }));
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ materialTypes: ['PROFILE', 'ATTACHMENTS'] }),
+      expect.anything(),
+    );
+  });
+
+  it('포함 자료를 하나도 고르지 않으면 다운로드 버튼이 비활성화된다', () => {
+    render(<DownloadModal />);
+    fireEvent.click(screen.getByRole('button', { name: '인적사항 · 답변 · 첨부파일' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '인적사항' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '답변' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '첨부파일' }));
+
+    expect(screen.getByText('최소 한 가지 자료를 선택해 주세요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
   it('전체 선택 체크박스를 해제하면 0명이 되고 다운로드 버튼이 비활성화된다', () => {

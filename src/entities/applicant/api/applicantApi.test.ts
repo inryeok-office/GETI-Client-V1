@@ -229,4 +229,18 @@ describe('exportJobApplications', () => {
       paramsSerializer: { indexes: null },
     });
   });
+
+  it('materialTypes를 반복 키로 전달하고, 비면 생략한다', async () => {
+    const stub = stubServer(() => new Blob(['zip']));
+    restore = stub.restore;
+
+    await exportJobApplications({ jobId: 10, materialTypes: ['PROFILE', 'ANSWERS'] });
+    expect(stub.requests[0]).toMatchObject({
+      params: { materialTypes: ['PROFILE', 'ANSWERS'] },
+      paramsSerializer: { indexes: null },
+    });
+
+    await exportJobApplications({ jobId: 10, materialTypes: [] });
+    expect(stub.requests[1].params).toBeUndefined();
+  });
 });

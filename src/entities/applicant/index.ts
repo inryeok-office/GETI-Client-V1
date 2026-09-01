@@ -12,6 +12,7 @@ export {
 } from './api/useApplicantQueries';
 export type {
   ApplicantDepartment,
+  ApplicationExportMaterialType,
   ApplicationStatusCounts,
   ExecuteApplicantActionParams,
   ExportedFile,
