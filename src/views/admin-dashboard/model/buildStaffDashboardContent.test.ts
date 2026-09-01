@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { JobApplicationJobSummary } from '@/entities/applicant';
+import type { NotificationApiItem } from '@/entities/notification';
 
 import {
   buildStaffDashboardContent,
@@ -25,11 +26,30 @@ function jobSummary(overrides: Partial<JobApplicationJobSummary> = {}): JobAppli
   };
 }
 
+function notificationItem(overrides: Partial<NotificationApiItem> = {}): NotificationApiItem {
+  return {
+    notificationId: 3,
+    notificationType: 'JOB_APPLICATION_STATUS_CHANGED',
+    title: '지원서가 재제출되었습니다.',
+    content: '김민재 지원자',
+    targetType: 'JOB_APPLICATION',
+    targetId: 12,
+    targetAvailable: true,
+    targetUnavailableReason: null,
+    deepLink: '/job-applications/12',
+    read: false,
+    readAt: null,
+    createdAt: '2026-09-01T08:30:00',
+    ...overrides,
+  };
+}
+
 function fullMetrics(overrides: Partial<StaffDashboardMetrics> = {}): StaffDashboardMetrics {
   return {
     newApplicants: metric<number>({ data: 14 }),
     revisionRequests: metric<number>({ data: 4 }),
     jobSummaries: metric<JobApplicationJobSummary[]>({ data: [jobSummary()] }),
+    notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
     ...overrides,
   };
 }
@@ -156,10 +176,22 @@ describe('buildStaffDashboardContent', () => {
     expect(errored.table.onRetry).toBe(onRetry);
   });
 
-  it('알림 사이드바는 Mock 그대로 둔다', () => {
-    const content = buildStaffDashboardContent(BASE, fullMetrics());
+  it('알림 사이드바를 실데이터로 채우고, 조회 실패는 사이드바만 에러로 둔다', () => {
+    const onRetry = vi.fn();
 
-    expect(content.notifications).toEqual(BASE.notifications);
+    const success = buildStaffDashboardContent(BASE, fullMetrics());
+    expect(success.notificationsLoadState).toBeUndefined();
+    expect(success.notifications[0]).toMatchObject({
+      id: '3',
+      title: '지원서가 재제출되었습니다.',
+    });
+
+    const errored = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({ notifications: metric<NotificationApiItem[]>({ isError: true, onRetry }) }),
+    );
+    expect(errored.notificationsLoadState).toBe('error');
+    expect(errored.onNotificationsRetry).toBe(onRetry);
   });
 
   it('로딩·에러는 KPI별로 독립 반영한다', () => {

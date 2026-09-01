@@ -3,11 +3,13 @@
 import { useApplicationStatusCountsQuery } from '@/entities/applicant';
 import { useAdminInquiryListQuery } from '@/entities/inquiry';
 import { useJobListQuery } from '@/entities/job';
+import { useNotificationListQuery } from '@/entities/notification';
 import { useStaffApprovalCountQuery } from '@/entities/staff-approval';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildAdminDashboardContent } from '../model/buildAdminDashboardContent';
 import { toMetric } from '../model/dashboardMetric';
+import { NOTIFICATION_FEED_SIZE } from '../model/mapDashboardNotification';
 import { DASHBOARD_CONTENT } from '../model/mock';
 
 import { AdminDashboardPage } from './AdminDashboardPage';
@@ -26,12 +28,14 @@ export function AdminDashboardLive({ navSections }: AdminDashboardLiveProps) {
   const unansweredInquiriesQuery = useAdminInquiryListQuery({ answered: false, size: 1 });
   const jobPostingsQuery = useJobListQuery({ size: 1 });
   const statusCountsQuery = useApplicationStatusCountsQuery();
+  const notificationsQuery = useNotificationListQuery({ size: NOTIFICATION_FEED_SIZE });
 
   const content = buildAdminDashboardContent(DASHBOARD_CONTENT.admin, {
     pendingSignups: toMetric(pendingSignupsQuery, (count) => count),
     unansweredInquiries: toMetric(unansweredInquiriesQuery, (list) => list.totalElements),
     jobPostings: toMetric(jobPostingsQuery, (result) => result.totalElements),
     applicationStatusCounts: toMetric(statusCountsQuery, (counts) => counts),
+    notifications: toMetric(notificationsQuery, (list) => list.content),
   });
 
   return <AdminDashboardPage content={content} navSections={navSections} />;

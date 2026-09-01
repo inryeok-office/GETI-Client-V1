@@ -1,7 +1,9 @@
 import { formatDeliveryDateTimeShort, type DiscordDelivery } from '@/entities/discord-delivery';
+import type { NotificationApiItem } from '@/entities/notification';
 import type { OperationJob } from '@/entities/scheduler';
 
 import { applyCountMetric, type DashboardMetric } from './dashboardMetric';
+import { resolveNotificationFeed } from './mapDashboardNotification';
 import type { DashboardContent, DashboardTableRow } from './types';
 
 export type { DashboardMetric } from './dashboardMetric';
@@ -21,6 +23,8 @@ export interface DeveloperDashboardMetrics {
   collectorFailureCount: DashboardMetric<number>;
   /** 미처리(미답변) 오류 유형 문의 건수. */
   errorInquiries: DashboardMetric<number>;
+  /** 알림 사이드바에 표시할 로그인 사용자 알림 목록. */
+  notifications: DashboardMetric<NotificationApiItem[]>;
 }
 
 const MAX_FAILURE_ROWS = 5;
@@ -149,5 +153,10 @@ export function buildDeveloperDashboardContent(
     noticeLabel,
   };
 
-  return { ...base, kpiCards, table };
+  return {
+    ...base,
+    kpiCards,
+    table,
+    ...resolveNotificationFeed(metrics.notifications),
+  };
 }

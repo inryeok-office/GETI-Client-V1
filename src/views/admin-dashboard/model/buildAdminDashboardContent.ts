@@ -1,4 +1,5 @@
 import type { ApplicantStatus, ApplicationStatusCounts } from '@/entities/applicant';
+import type { NotificationApiItem } from '@/entities/notification';
 
 import {
   applyCountMetric,
@@ -6,6 +7,7 @@ import {
   METRIC_PLACEHOLDER,
   type DashboardMetric,
 } from './dashboardMetric';
+import { resolveNotificationFeed } from './mapDashboardNotification';
 import type { DashboardContent, DashboardTableRow } from './types';
 
 export type { DashboardMetric } from './dashboardMetric';
@@ -19,6 +21,8 @@ export interface AdminDashboardMetrics {
   jobPostings: DashboardMetric<number>;
   /** 지원서 상태별 건수. "전체 지원서" KPI와 "지원 처리 현황" 표가 함께 쓴다. */
   applicationStatusCounts: DashboardMetric<ApplicationStatusCounts>;
+  /** 알림 사이드바에 표시할 로그인 사용자 알림 목록. */
+  notifications: DashboardMetric<NotificationApiItem[]>;
 }
 
 /** "지원 처리 현황" 표의 3행 — 서버에 REVIEWING 상태가 없어 SUBMITTED를 검토 대기로 본다. */
@@ -85,12 +89,10 @@ export function buildAdminDashboardContent(
     onRetry: metrics.applicationStatusCounts.onRetry,
   };
 
-  const unansweredCount = metrics.unansweredInquiries.data;
-  const notifications = base.notifications.map((notification) =>
-    notification.id === 'inquiries' && unansweredCount !== undefined
-      ? { ...notification, subtitle: `관리자 확인 필요 ${formatCount(unansweredCount)}` }
-      : notification,
-  );
-
-  return { ...base, kpiCards, table, notifications };
+  return {
+    ...base,
+    kpiCards,
+    table,
+    ...resolveNotificationFeed(metrics.notifications),
+  };
 }
