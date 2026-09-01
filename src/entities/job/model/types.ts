@@ -29,6 +29,12 @@ export type JobApplicationMethod = 'INTERNAL' | 'EXTERNAL';
 /** 공개 목록 조회에서 필터로 받는 상태. 관리자 전용(DRAFT/DELETED)은 여기 없다. */
 export type PublicJobStatus = 'PUBLISHED' | 'CLOSED';
 
+/**
+ * 관리자 상세(`GET /api/v1/admin/jobs/{jobId}`)가 반환하는 전체 상태(`JobStatus`).
+ * 공개 목록·상세와 달리 임시저장·삭제 공고까지 조회된다.
+ */
+export type AdminJobStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'DELETED';
+
 export type JobSort = 'LATEST' | 'DEADLINE' | 'VIEWS';
 export type JobSortDirection = 'ASC' | 'DESC';
 
@@ -188,4 +194,13 @@ export interface JobDetail {
   bookmarked: boolean;
   /** 공고가 PUBLISHED/CLOSED 상태일 때만 채워진다(GETI-Server-V1 Issue #126 응답 설명). */
   files: JobAttachment[];
+}
+
+/**
+ * `GET /api/v1/admin/jobs/{jobId}`(GETI-Server `JobAdminController`) 관리자 상세 응답.
+ * 공개 상세(`JobDetail`)와 같은 `JobDetailResponse` DTO지만 `status`가 임시저장·삭제까지
+ * 포함하고, 조회수를 올리지 않는다.
+ */
+export interface AdminJobDetail extends Omit<JobDetail, 'status'> {
+  status: AdminJobStatus;
 }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { downloadJobAttachment } from './jobApi';
+import { downloadJobAttachment, fetchAdminJobDetail } from './jobApi';
 
 /**
  * `discordDeliveryApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 갈아 끼운다 —
@@ -74,5 +74,24 @@ describe('downloadJobAttachment', () => {
       status: 403,
       code: 'FILE_ACCESS_DENIED',
     });
+  });
+});
+
+describe('fetchAdminJobDetail', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('관리자 상세 경로(GET /api/v1/admin/jobs/{jobId})로 요청하고 data.data를 반환한다', async () => {
+    const detail = { jobId: 7, title: '임시저장 공고', status: 'DRAFT' };
+    const stub = stubServer(() => ({ success: true, data: detail }));
+    restore = stub.restore;
+
+    const result = await fetchAdminJobDetail(7);
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs/7', method: 'get', responseType: undefined },
+    ]);
+    expect(result).toEqual(detail);
   });
 });

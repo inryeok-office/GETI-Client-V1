@@ -4,6 +4,7 @@ import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/re
 
 import {
   downloadJobAttachment,
+  fetchAdminJobDetail,
   fetchJobDetail,
   fetchJobList,
   fetchJobSources,
@@ -14,6 +15,7 @@ export const jobKeys = {
   all: ['jobs'] as const,
   list: (params: FetchJobListParams) => [...jobKeys.all, 'list', params] as const,
   detail: (jobId: number) => [...jobKeys.all, 'detail', jobId] as const,
+  adminDetail: (jobId: number) => [...jobKeys.all, 'admin-detail', jobId] as const,
   sources: () => [...jobKeys.all, 'sources'] as const,
 };
 
@@ -34,6 +36,17 @@ export function useJobDetailQuery(jobId: number | null) {
   return useQuery({
     queryKey: jobKeys.detail(jobId ?? -1),
     queryFn: jobId === null ? skipToken : () => fetchJobDetail(jobId),
+  });
+}
+
+/**
+ * 관리자 공고 상세 화면(`/admin/jobs/[jobId]`). jobId가 null이면(라우트 파라미터가 정수가
+ * 아닐 때) 요청을 보내지 않는다 — `useAdminCompanyDetailQuery`와 같은 패턴.
+ */
+export function useAdminJobDetailQuery(jobId: number | null) {
+  return useQuery({
+    queryKey: jobKeys.adminDetail(jobId ?? -1),
+    queryFn: jobId === null ? skipToken : () => fetchAdminJobDetail(jobId),
   });
 }
 
