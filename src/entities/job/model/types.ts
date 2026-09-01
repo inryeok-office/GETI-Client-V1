@@ -204,3 +204,44 @@ export interface JobDetail {
 export interface AdminJobDetail extends Omit<JobDetail, 'status'> {
   status: AdminJobStatus;
 }
+
+/**
+ * `POST /api/v1/admin/jobs`(`JobCreateRequest`) 요청 Body. `status`는 DRAFT(임시저장) 또는
+ * PUBLISHED(게시)만 — CLOSED·DELETED는 상태 변경 API를 쓴다. Discord 채널(`discordChannelKey`)·
+ * 첨부파일(`fileIds`)은 이 클라이언트에서 다루지 않아 생략한다(서버는 기본 채널을 쓰고 첨부는 없음).
+ * 날짜는 `LocalDateTime` 문자열(`2026-08-01T00:00:00`).
+ */
+export interface JobCreatePayload {
+  companyId: number;
+  postingType: JobPostingType;
+  applicationMethod: JobApplicationMethod;
+  title: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  content?: string | null;
+  externalUrl?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  targetGrade?: number | null;
+  capacity?: number | null;
+  location?: string | null;
+  employmentType?: string | null;
+  firstComeServed?: boolean;
+}
+
+/**
+ * `PATCH /api/v1/admin/jobs/{jobId}`(`JobUpdateRequest`) 요청 Body. 전달한 필드만 반영되고
+ * 생략하면 기존 값을 유지한다 — 서버가 "값 비우기"를 지원하지 않아, 빈 선택 필드는 보내지 않는다.
+ * 기업·공고 유형·지원 방식·상태는 이 API로 못 바꾼다(상태는 별도 API).
+ */
+export interface JobUpdatePayload {
+  title?: string;
+  content?: string | null;
+  externalUrl?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  targetGrade?: number | null;
+  capacity?: number | null;
+  location?: string | null;
+  employmentType?: string | null;
+  firstComeServed?: boolean;
+}

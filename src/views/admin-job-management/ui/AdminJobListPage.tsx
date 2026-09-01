@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -72,9 +73,10 @@ function buildSearchParams(state: {
  * 어드민 공고 관리 목록 화면(`/admin/jobs`). `GET /api/v1/jobs`(공개 검색 API)로 목록을 불러온다 —
  * 어드민 전용 공고 목록 API가 없어 게시(PUBLISHED)·마감(CLOSED) 공고만 나오고, 담당자 정보도
  * 응답에 없어 "ㅡ"로 표시한다(Issue #202). 공고명을 누르면 `/admin/jobs/[jobId]` 상세로 간다.
- * 마감·삭제는 이 화면이 상태 변경 API에 연동한다 — 뮤테이션·확인 모달·토스터를 여기서 소유해,
+ * "공고 등록"은 `/admin/jobs/new`, 표의 "수정"은 `/admin/jobs/[jobId]/edit`로 이동한다.
+ * "마감"·"삭제"는 이 화면이 상태 변경 API에 연동한다 — 뮤테이션·확인 모달·토스터를 여기서 소유해,
  * 마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도(표가 언마운트돼도) 성공 토스트가 유지된다
- * (PR #208 코드리뷰 반영). 등록·수정은 아직 폼이 없어 "공고 등록"·"수정"은 비활성이다.
+ * (PR #208 코드리뷰 반영).
  * 검색·필터·페이지는 URL 쿼리스트링과 동기화한다(`AdminApplicantPage`와 동일).
  * 간격·색상은 Figma(node 586:12549)를 옮겼다.
  */
@@ -213,15 +215,13 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
             className="w-[232px] shrink-0"
           />
 
-          <button
-            type="button"
-            disabled
-            title="공고 등록은 준비 중입니다."
-            className="bg-primary-700 flex h-[56px] shrink-0 cursor-not-allowed items-center gap-[8px] rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white opacity-50"
+          <Link
+            href="/admin/jobs/new"
+            className="bg-primary-700 flex h-[56px] shrink-0 items-center gap-[8px] rounded-[8px] px-[32px] py-[16px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
           >
             <Icon name="plus" className="size-[20px]" />
             공고 등록
-          </button>
+          </Link>
         </div>
 
         {listQuery.isLoading ? (

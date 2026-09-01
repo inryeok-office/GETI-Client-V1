@@ -3,12 +3,14 @@ import { api, type ApiResponse } from '@/shared/api';
 import type {
   AdminJobDetail,
   JobApplicationMethod,
+  JobCreatePayload,
   JobDetail,
   JobPostingType,
   JobSearchResponse,
   JobSort,
   JobSortDirection,
   JobSourceOption,
+  JobUpdatePayload,
   PublicJobStatus,
 } from '../model/types';
 
@@ -70,6 +72,31 @@ export async function changeAdminJobStatus(
   const { data } = await api.patch<ApiResponse<AdminJobDetail>>(
     `${ADMIN_BASE_PATH}/${jobId}/status`,
     { status },
+  );
+  return data.data;
+}
+
+/**
+ * `POST /api/v1/admin/jobs`(`JobAdminController`) — 공고 등록·임시저장. `status = PUBLISHED`면
+ * 서버가 게시 필수값(본문·외부 URL 등)을 검증해 `JOB_VALIDATION_FAILED`/`JOB_FORM_REQUIRED`로
+ * 거부할 수 있다. 응답은 방금 만든 공고의 관리자 상세다(201).
+ */
+export async function createAdminJob(payload: JobCreatePayload): Promise<AdminJobDetail> {
+  const { data } = await api.post<ApiResponse<AdminJobDetail>>(ADMIN_BASE_PATH, payload);
+  return data.data;
+}
+
+/**
+ * `PATCH /api/v1/admin/jobs/{jobId}`(`JobAdminController`) — 공고 내용 부분 수정. 전달한 필드만
+ * 반영된다. 이미 게시된 공고를 수정하면 결과가 게시 필수값을 계속 만족하는지 서버가 다시 검증한다.
+ */
+export async function updateAdminJob(
+  jobId: number,
+  payload: JobUpdatePayload,
+): Promise<AdminJobDetail> {
+  const { data } = await api.patch<ApiResponse<AdminJobDetail>>(
+    `${ADMIN_BASE_PATH}/${jobId}`,
+    payload,
   );
   return data.data;
 }

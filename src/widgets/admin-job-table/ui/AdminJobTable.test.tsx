@@ -68,7 +68,10 @@ describe('AdminJobTable', () => {
     expect(screen.getByText('모집 중')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '마감' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
-    expect(screen.getByText(/^수정/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '수정' })).toHaveAttribute(
+      'href',
+      '/admin/jobs/1/edit',
+    );
   });
 
   it('CLOSED는 마감 버튼 없이 삭제 버튼만 있다', () => {

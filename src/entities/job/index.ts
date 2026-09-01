@@ -13,10 +13,12 @@ export {
   jobKeys,
   useAdminJobDetailQuery,
   useChangeAdminJobStatusMutation,
+  useCreateAdminJobMutation,
   useDownloadJobAttachmentMutation,
   useJobDetailQuery,
   useJobListQuery,
   useJobSourcesQuery,
+  useUpdateAdminJobMutation,
 } from './api/useJobQueries';
 export type { FetchJobListParams } from './api/jobApi';
 
@@ -37,6 +39,8 @@ export type { JobSourceFilterOption } from './model/buildJobSourceFilterOptions'
 export type {
   AdminJobDetail,
   AdminJobStatus,
+  JobCreatePayload,
+  JobUpdatePayload,
   JobListItem,
   JobAttachment,
   JobPostingType,
