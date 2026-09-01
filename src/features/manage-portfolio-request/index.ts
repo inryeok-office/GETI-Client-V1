@@ -1,2 +1,5 @@
 export { PortfolioRequestDeleteDialog } from './ui/PortfolioRequestDeleteDialog';
-export { PortfolioRequestFormPanel } from './ui/PortfolioRequestFormPanel';
+export {
+  PortfolioRequestFormPanel,
+  type PortfolioRequestFormValues,
+} from './ui/PortfolioRequestFormPanel';

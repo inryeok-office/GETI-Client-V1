@@ -4,6 +4,8 @@ export type PortfolioRequestStatus = 'CLOSED' | 'DRAFT' | 'OPEN';
 export interface PortfolioRequest {
   requestId: number;
   title: string;
+  description: string | null;
+  dueAt: string;
   duePeriod: string;
   target: string;
   submittedCount: number;
@@ -13,9 +15,12 @@ export interface PortfolioRequest {
 }
 
 export type PortfolioSubmissionStatus = 'SUBMITTED' | 'NOT_SUBMITTED';
+export type PortfolioSubmissionApiStatus = 'DRAFT' | 'SUBMITTED';
+export type PortfolioSubmissionMaterialType = 'FILE' | 'URL' | 'BOTH';
 
 export interface PortfolioSubmission {
   submissionId: number;
+  memberId: number;
   studentName: string;
   studentNumber: string;
   cohortAndDepartment: string;
@@ -112,4 +117,86 @@ export interface PortfolioUploadFile {
   name: string;
   progress: number | null;
   size: string;
+}
+
+export interface PortfolioRequestSummaryResponse {
+  requestId: number;
+  title: string;
+  status: PortfolioApiRequestStatus;
+  dueAt: string;
+  targetCount: number;
+  submittedCount: number;
+}
+
+export interface PortfolioRequestResponse extends PortfolioRequestSummaryResponse {
+  createdAt: string | null;
+  description: string | null;
+  updatedAt: string | null;
+}
+
+export interface FetchAdminPortfolioRequestListParams {
+  page?: number;
+  size?: number;
+  status?: PortfolioApiRequestStatus;
+}
+
+export interface CreateAdminPortfolioRequestRequest {
+  description?: string | null;
+  dueAt: string;
+  targetStudentIds: number[];
+  title: string;
+}
+
+export interface UpdateAdminPortfolioRequestRequest {
+  description?: string | null;
+  dueAt?: string | null;
+  targetStudentIds?: number[] | null;
+  title?: string | null;
+}
+
+export interface UpdateAdminPortfolioRequestVariables {
+  request: UpdateAdminPortfolioRequestRequest;
+  requestId: number;
+}
+
+export interface UpdateAdminPortfolioRequestStatusRequest {
+  status: PortfolioApiRequestStatus;
+}
+
+export interface UpdateAdminPortfolioRequestStatusVariables {
+  requestId: number;
+  status: PortfolioApiRequestStatus;
+}
+
+export interface PortfolioSubmissionStatusResponse {
+  cohort: number | null;
+  department: string | null;
+  materialType: PortfolioSubmissionMaterialType | null;
+  memberId: number;
+  status: PortfolioSubmissionApiStatus | null;
+  studentName: string | null;
+  submitted: boolean;
+  submittedAt: string | null;
+}
+
+export interface PortfolioSubmissionStatusListApiResponse {
+  content: PortfolioSubmissionStatusResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface FetchAdminPortfolioSubmissionsParams {
+  name?: string;
+  page?: number;
+  size?: number;
+  submitted?: boolean;
+}
+
+export interface DownloadAdminPortfolioSubmissionsVariables {
+  requestId: number;
+  submittedOnly?: boolean;
 }
