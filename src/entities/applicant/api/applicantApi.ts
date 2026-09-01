@@ -68,6 +68,52 @@ export async function fetchApplicationStatusCounts(): Promise<ApplicationStatusC
   return data.data;
 }
 
+/** 담당 공고 요약의 공고 상태. 서버 `JobStatus` enum 중 `job-summaries`가 실제로 반환하는 값
+ * (`DELETED`는 삭제되지 않은 공고만 조회하므로 제외된다). GETI-Server-V1 #297. */
+export type JobSummaryStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+
+/** `GET /admin/job-applications/job-summaries` 목록 항목(GETI-Server-V1 #297). */
+export interface JobApplicationJobSummary {
+  jobId: number;
+  jobTitle: string;
+  jobStatus: JobSummaryStatus;
+  /** DRAFT 지원서를 제외한 전체 지원자 수. */
+  applicantCount: number;
+  /** 교직원 처리가 필요한 SUBMITTED · EDIT_REQUESTED 지원서 수. */
+  pendingCount: number;
+}
+
+export interface JobApplicationJobSummariesResponse {
+  content: JobApplicationJobSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface FetchJobApplicationJobSummariesParams {
+  page?: number;
+  size?: number;
+}
+
+/**
+ * `GET /admin/job-applications/job-summaries` — 담당 공고별 지원 현황 요약. 로그인한 교직원 ·
+ * 개발자가 담당하거나 등록한(삭제되지 않은) 공고를 최신순으로 페이지 조회하고, 공고별 지원자 수와
+ * 처리 대기 수를 함께 준다. 교직원 대시보드 "담당 공고 현황" 표에서 공고마다 목록 API를 반복
+ * 호출하지 않도록 한 번에 받는다. 필터는 없다.
+ */
+export async function fetchJobApplicationJobSummaries(
+  params: FetchJobApplicationJobSummariesParams = {},
+): Promise<JobApplicationJobSummariesResponse> {
+  const { data } = await api.get<ApiResponse<JobApplicationJobSummariesResponse>>(
+    `${BASE_PATH}/job-summaries`,
+    { params: { page: 0, size: 20, ...params } },
+  );
+  return data.data;
+}
+
 /** `GET /admin/job-applications/{id}` — 지원서 상세 조회. */
 export async function fetchApplicantDetail(applicationId: number): Promise<ApplicantDetail> {
   const { data } = await api.get<ApiResponse<ApplicantDetail>>(`${BASE_PATH}/${applicationId}`);

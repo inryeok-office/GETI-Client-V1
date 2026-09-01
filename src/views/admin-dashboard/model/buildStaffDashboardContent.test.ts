@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { JobApplicationJobSummary } from '@/entities/applicant';
+
 import {
   buildStaffDashboardContent,
   type StaffDashboardMetrics,
@@ -12,10 +14,22 @@ function metric<T>(overrides: Partial<DashboardMetric<T>> = {}): DashboardMetric
   return { data: undefined, isLoading: false, isError: false, onRetry: vi.fn(), ...overrides };
 }
 
+function jobSummary(overrides: Partial<JobApplicationJobSummary> = {}): JobApplicationJobSummary {
+  return {
+    jobId: 1,
+    jobTitle: '플로우테크 프론트엔드 인턴',
+    jobStatus: 'PUBLISHED',
+    applicantCount: 12,
+    pendingCount: 4,
+    ...overrides,
+  };
+}
+
 function fullMetrics(overrides: Partial<StaffDashboardMetrics> = {}): StaffDashboardMetrics {
   return {
     newApplicants: metric<number>({ data: 14 }),
     revisionRequests: metric<number>({ data: 4 }),
+    jobSummaries: metric<JobApplicationJobSummary[]>({ data: [jobSummary()] }),
     ...overrides,
   };
 }
@@ -45,11 +59,101 @@ describe('buildStaffDashboardContent', () => {
     expect(card(content.kpiCards, 'portfolio').unsupported).toBe(true);
   });
 
-  it('담당 공고 현황 표는 준비 중 문구로 대체한다', () => {
-    const content = buildStaffDashboardContent(BASE, fullMetrics());
+  it('담당 공고 현황 표를 job-summaries 실데이터로 채운다', () => {
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        jobSummaries: metric<JobApplicationJobSummary[]>({
+          data: [
+            jobSummary({
+              jobId: 1,
+              jobTitle: '플로우테크 인턴',
+              applicantCount: 12,
+              pendingCount: 4,
+            }),
+            jobSummary({
+              jobId: 2,
+              jobTitle: '네오시스템 채용',
+              jobStatus: 'CLOSED',
+              applicantCount: 0,
+              pendingCount: 0,
+            }),
+          ],
+        }),
+      }),
+    );
+
+    expect(content.table.rows).toHaveLength(2);
+    expect(content.table.rows[0].cells.map((cell) => cell.label)).toEqual([
+      '플로우테크 인턴',
+      '12',
+      '4건',
+      '모집 중',
+    ]);
+    expect(content.table.rows[1].cells[3]).toMatchObject({
+      label: '마감',
+      variant: 'badge',
+      tone: 'neutral',
+    });
+    expect(content.table.isLoading).toBe(false);
+    expect(content.table.hasError).toBe(false);
+  });
+
+  it('담당 공고가 없으면 빈 상태 문구를 보여준다', () => {
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({ jobSummaries: metric<JobApplicationJobSummary[]>({ data: [] }) }),
+    );
 
     expect(content.table.rows).toHaveLength(0);
-    expect(content.table.emptyLabel).toBe('담당 공고 현황은 준비 중입니다.');
+    expect(content.table.emptyLabel).toBe('담당하거나 등록한 공고가 없습니다.');
+  });
+
+  it('매핑에 없는 공고 상태가 오면 상태 문자열을 그대로 배지로 노출한다', () => {
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        jobSummaries: metric<JobApplicationJobSummary[]>({
+          data: [jobSummary({ jobStatus: 'ARCHIVED' as JobApplicationJobSummary['jobStatus'] })],
+        }),
+      }),
+    );
+
+    expect(content.table.rows[0].cells[3]).toMatchObject({
+      label: 'ARCHIVED',
+      variant: 'badge',
+      tone: 'neutral',
+    });
+  });
+
+  it('담당 공고 표는 최대 5행까지만 보여준다', () => {
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        jobSummaries: metric<JobApplicationJobSummary[]>({
+          data: Array.from({ length: 8 }, (_, index) => jobSummary({ jobId: index + 1 })),
+        }),
+      }),
+    );
+
+    expect(content.table.rows).toHaveLength(5);
+  });
+
+  it('담당 공고 표의 로딩·에러를 독립 반영한다', () => {
+    const onRetry = vi.fn();
+
+    const loading = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({ jobSummaries: metric<JobApplicationJobSummary[]>({ isLoading: true }) }),
+    );
+    expect(loading.table.isLoading).toBe(true);
+
+    const errored = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({ jobSummaries: metric<JobApplicationJobSummary[]>({ isError: true, onRetry }) }),
+    );
+    expect(errored.table.hasError).toBe(true);
+    expect(errored.table.onRetry).toBe(onRetry);
   });
 
   it('알림 사이드바는 Mock 그대로 둔다', () => {
@@ -60,10 +164,13 @@ describe('buildStaffDashboardContent', () => {
 
   it('로딩·에러는 KPI별로 독립 반영한다', () => {
     const onRetry = vi.fn();
-    const content = buildStaffDashboardContent(BASE, {
-      newApplicants: metric<number>({ isLoading: true }),
-      revisionRequests: metric<number>({ isError: true, onRetry }),
-    });
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        newApplicants: metric<number>({ isLoading: true }),
+        revisionRequests: metric<number>({ isError: true, onRetry }),
+      }),
+    );
 
     expect(card(content.kpiCards, 'new').loadState).toBe('loading');
     expect(card(content.kpiCards, 'revision').loadState).toBe('error');
