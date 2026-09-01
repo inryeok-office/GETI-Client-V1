@@ -1,6 +1,6 @@
 'use client';
 
-import { useApplicantListQuery } from '@/entities/applicant';
+import { useApplicantListQuery, useJobApplicationJobSummariesQuery } from '@/entities/applicant';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildStaffDashboardContent } from '../model/buildStaffDashboardContent';
@@ -17,8 +17,8 @@ interface StaffDashboardLiveProps {
 
 /**
  * 교직원 대시보드(`?variant=staff`)의 실데이터 컨테이너. `AdminDashboardLive` 패턴(Issue #187).
- * 지원서 목록 API로 계산 가능한 신규 지원자·수정 요청 KPI만 연동하고 나머지는 "미지원",
- * 알림 사이드바는 Mock을 base로 둔다.
+ * 신규 지원자·수정 요청 KPI는 지원서 목록 API로, 담당 공고 현황 표는 `job-summaries` API로 채우고
+ * (Issue #197) 나머지 KPI는 "미지원", 알림 사이드바는 Mock을 base로 둔다.
  */
 export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDashboardLiveProps) {
   const newApplicantsQuery = useApplicantListQuery({
@@ -31,10 +31,12 @@ export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDash
     mineOnly: true,
     size: 1,
   });
+  const jobSummariesQuery = useJobApplicationJobSummariesQuery();
 
   const content = buildStaffDashboardContent(DASHBOARD_CONTENT.staff, {
     newApplicants: toMetric(newApplicantsQuery, (list) => list.totalElements),
     revisionRequests: toMetric(revisionRequestsQuery, (list) => list.totalElements),
+    jobSummaries: toMetric(jobSummariesQuery, (page) => page.content),
   });
 
   return <AdminDashboardPage content={content} navSections={navSections} />;

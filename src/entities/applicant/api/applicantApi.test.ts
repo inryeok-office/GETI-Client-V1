@@ -8,6 +8,7 @@ import {
   fetchAllJobApplicants,
   fetchApplicantList,
   fetchApplicationStatusCounts,
+  fetchJobApplicationJobSummaries,
   fetchTeacherOptions,
 } from './applicantApi';
 import type { ApplicantListItem, ApplicantListResponse } from '../model/types';
@@ -195,6 +196,54 @@ describe('fetchApplicationStatusCounts', () => {
       totalCount: 84,
       counts: { SUBMITTED: 42, REVISION_REQUESTED: 14, APPROVED: 28 },
     });
+  });
+});
+
+describe('fetchJobApplicationJobSummaries', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('job-summaries를 GET하고 기본 page·size를 붙인다', async () => {
+    const stub = stubServer(() => ({
+      success: true,
+      data: {
+        content: [
+          {
+            jobId: 10,
+            jobTitle: 'Backend 인턴',
+            jobStatus: 'PUBLISHED',
+            applicantCount: 12,
+            pendingCount: 4,
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
+        first: true,
+        last: true,
+      },
+    }));
+    restore = stub.restore;
+
+    const result = await fetchJobApplicationJobSummaries();
+
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({
+      url: '/api/v1/admin/job-applications/job-summaries',
+      params: { page: 0, size: 20 },
+    });
+    expect(result.content[0]).toMatchObject({ jobId: 10, applicantCount: 12, pendingCount: 4 });
+  });
+
+  it('전달한 page·size로 덮어쓴다', async () => {
+    const stub = stubServer(() => ({ success: true, data: { content: [] } }));
+    restore = stub.restore;
+
+    await fetchJobApplicationJobSummaries({ page: 2, size: 5 });
+
+    expect(stub.requests[0]).toMatchObject({ params: { page: 2, size: 5 } });
   });
 });
 

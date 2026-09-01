@@ -7,6 +7,7 @@ export {
   useApplicationStatusCountsQuery,
   useExportJobApplicationsMutation,
   useJobApplicantOptionsQuery,
+  useJobApplicationJobSummariesQuery,
   useJobPostingOptionsQuery,
   useTeacherOptionsQuery,
 } from './api/useApplicantQueries';
@@ -18,8 +19,12 @@ export type {
   ExportedFile,
   ExportJobApplicationsParams,
   FetchApplicantListParams,
+  FetchJobApplicationJobSummariesParams,
   JobApplicantOption,
+  JobApplicationJobSummariesResponse,
+  JobApplicationJobSummary,
   JobPostingOption,
+  JobSummaryStatus,
   TeacherOption,
 } from './api/applicantApi';
 

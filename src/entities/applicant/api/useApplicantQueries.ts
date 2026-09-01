@@ -11,10 +11,12 @@ import {
   fetchApplicantHistory,
   fetchApplicantList,
   fetchApplicationStatusCounts,
+  fetchJobApplicationJobSummaries,
   fetchTeacherOptions,
   type ExecuteApplicantActionParams,
   type ExportJobApplicationsParams,
   type FetchApplicantListParams,
+  type FetchJobApplicationJobSummariesParams,
 } from './applicantApi';
 
 export const applicantKeys = {
@@ -25,6 +27,8 @@ export const applicantKeys = {
     [...applicantKeys.all, 'job-applicant-options', jobId] as const,
   teacherOptions: () => [...applicantKeys.all, 'teacher-options'] as const,
   statusCounts: () => [...applicantKeys.all, 'status-counts'] as const,
+  jobSummaries: (params: FetchJobApplicationJobSummariesParams) =>
+    [...applicantKeys.all, 'job-summaries', params] as const,
   detail: (applicationId: number) => [...applicantKeys.all, 'detail', applicationId] as const,
   history: (applicationId: number) => [...applicantKeys.all, 'history', applicationId] as const,
 };
@@ -70,6 +74,16 @@ export function useApplicationStatusCountsQuery() {
   return useQuery({
     queryKey: applicantKeys.statusCounts(),
     queryFn: fetchApplicationStatusCounts,
+  });
+}
+
+/** 교직원 대시보드 "담당 공고 현황" 표. 담당·등록 공고별 지원자 수 · 처리 대기 수를 한 번에 받는다. */
+export function useJobApplicationJobSummariesQuery(
+  params: FetchJobApplicationJobSummariesParams = {},
+) {
+  return useQuery({
+    queryKey: applicantKeys.jobSummaries(params),
+    queryFn: () => fetchJobApplicationJobSummaries(params),
   });
 }
 
