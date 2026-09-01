@@ -64,7 +64,8 @@ function buildSearchParams(state: {
  * 어드민 공고 관리 목록 화면(`/admin/jobs`). `GET /api/v1/jobs`(공개 검색 API)로 목록을 불러온다 —
  * 어드민 전용 공고 목록 API가 없어 게시(PUBLISHED)·마감(CLOSED) 공고만 나오고, 담당자 정보도
  * 응답에 없어 "ㅡ"로 표시한다(Issue #202). 공고명을 누르면 `/admin/jobs/[jobId]` 상세로 간다.
- * 등록·수정·마감·삭제 액션은 이번 범위 밖이라 "공고 등록" 버튼과 표의 관리 텍스트는 비활성이다.
+ * 마감·삭제는 표(`AdminJobTable`)가 상태 변경 API에 직접 연동한다. 등록·수정은 아직 폼이 없어
+ * "공고 등록" 버튼과 표의 "수정" 텍스트는 비활성이다(Issue #202 후속).
  * 검색·필터·페이지는 URL 쿼리스트링과 동기화한다(`AdminApplicantPage`와 동일).
  * 간격·색상은 Figma(node 586:12549)를 옮겼다.
  */

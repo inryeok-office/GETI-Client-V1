@@ -5,11 +5,13 @@ import type { JobSummary } from '@/entities/job';
 
 import { AdminJobListPage } from './AdminJobListPage';
 
-const { mockUseJobListQuery, mockReplace, mockRefetch } = vi.hoisted(() => ({
-  mockUseJobListQuery: vi.fn(),
-  mockReplace: vi.fn(),
-  mockRefetch: vi.fn(),
-}));
+const { mockUseJobListQuery, mockUseChangeAdminJobStatusMutation, mockReplace, mockRefetch } =
+  vi.hoisted(() => ({
+    mockUseJobListQuery: vi.fn(),
+    mockUseChangeAdminJobStatusMutation: vi.fn(),
+    mockReplace: vi.fn(),
+    mockRefetch: vi.fn(),
+  }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
@@ -18,7 +20,13 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/entities/job', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
-  return { ...actual, useJobListQuery: mockUseJobListQuery };
+  return {
+    ...actual,
+    useJobListQuery: mockUseJobListQuery,
+    // AdminJobTable(표)이 상태 변경 뮤테이션을 직접 호출한다 — 목록 화면 테스트에서는 실제
+    // QueryClient가 없어 mock하지 않으면 렌더링 자체가 실패한다.
+    useChangeAdminJobStatusMutation: mockUseChangeAdminJobStatusMutation,
+  };
 });
 
 function jobSummary(overrides: Partial<JobSummary> = {}): JobSummary {
@@ -74,6 +82,11 @@ function idleList() {
 
 beforeEach(() => {
   mockUseJobListQuery.mockReturnValue(listResult());
+  mockUseChangeAdminJobStatusMutation.mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    variables: undefined,
+  });
 });
 
 afterEach(() => {

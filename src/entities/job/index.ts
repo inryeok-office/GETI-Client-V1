@@ -12,6 +12,7 @@ export { JobDetailContent } from './ui/JobDetailContent';
 export {
   jobKeys,
   useAdminJobDetailQuery,
+  useChangeAdminJobStatusMutation,
   useDownloadJobAttachmentMutation,
   useJobDetailQuery,
   useJobListQuery,

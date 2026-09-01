@@ -57,6 +57,23 @@ export async function fetchAdminJobDetail(jobId: number): Promise<AdminJobDetail
   return data.data;
 }
 
+/**
+ * `PATCH /api/v1/admin/jobs/{jobId}/status`(`JobAdminController`) — 공고 상태 변경.
+ * 허용 전이는 DRAFT→PUBLISHED|DELETED, PUBLISHED→CLOSED|DELETED, CLOSED→DELETED뿐이고
+ * 그 외(동일 상태 포함)는 409로 거부된다. 이 클라이언트는 공개(PUBLISHED)·마감(CLOSED) 공고만
+ * 다루므로 `CLOSED`(마감)·`DELETED`(삭제, Soft Delete — 기존 지원·북마크 이력 보존)만 호출한다.
+ */
+export async function changeAdminJobStatus(
+  jobId: number,
+  status: 'CLOSED' | 'DELETED',
+): Promise<AdminJobDetail> {
+  const { data } = await api.patch<ApiResponse<AdminJobDetail>>(
+    `${ADMIN_BASE_PATH}/${jobId}/status`,
+    { status },
+  );
+  return data.data;
+}
+
 interface PublicJobSourceListResponse {
   sources: JobSourceOption[];
 }

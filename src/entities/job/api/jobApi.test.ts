@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { downloadJobAttachment, fetchAdminJobDetail } from './jobApi';
+import { changeAdminJobStatus, downloadJobAttachment, fetchAdminJobDetail } from './jobApi';
 
 /**
  * `discordDeliveryApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 갈아 끼운다 —
@@ -92,6 +92,30 @@ describe('fetchAdminJobDetail', () => {
     expect(stub.requests).toEqual([
       { url: '/api/v1/admin/jobs/7', method: 'get', responseType: undefined },
     ]);
+    expect(result).toEqual(detail);
+  });
+});
+
+describe('changeAdminJobStatus', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('PATCH /api/v1/admin/jobs/{jobId}/status로 status를 Body에 담아 보낸다', async () => {
+    const detail = { jobId: 7, title: '백엔드 개발자 채용', status: 'CLOSED' };
+    let receivedBody: unknown;
+    const stub = stubServer((config) => {
+      receivedBody = JSON.parse(config.data as string);
+      return { success: true, data: detail };
+    });
+    restore = stub.restore;
+
+    const result = await changeAdminJobStatus(7, 'CLOSED');
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs/7/status', method: 'patch', responseType: undefined },
+    ]);
+    expect(receivedBody).toEqual({ status: 'CLOSED' });
     expect(result).toEqual(detail);
   });
 });
