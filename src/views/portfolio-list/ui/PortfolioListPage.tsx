@@ -1,3 +1,13 @@
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import {
+  mapPortfolioRequestSummaryToListItem,
+  type PortfolioRequestSummaryApiResponse,
+  useAllPortfolioRequestListQuery,
+} from '@/entities/portfolio-request';
 import {
   PortfolioRequestList,
   type PortfolioRequestListFilter,
@@ -5,29 +15,83 @@ import {
 } from '@/widgets/portfolio-request-list';
 import { SiteHeader } from '@/widgets/site-header';
 
-import { MOCK_PORTFOLIO_REQUESTS } from '../model/mock';
-
 interface PortfolioListPageProps {
-  searchParams: Promise<{ filter?: string; variant?: string }>;
+  initialFilter?: string;
+  initialPage?: number;
 }
 
-const STATUS_BY_VARIANT: Record<string, PortfolioRequestListStatus> = {
-  empty: 'empty',
-  error: 'error',
-  loading: 'loading',
-};
+const PAGE_SIZE = 20;
 
 const FILTER_BY_QUERY: Record<string, PortfolioRequestListFilter> = {
   all: 'ALL',
   closed: 'CLOSED',
   required: 'REQUIRED',
-  submitted: 'SUBMITTED',
 };
 
-/** 학생 포트폴리오 요청 목록의 디자인 상태를 목업 데이터로 검토하는 정적 화면. */
-export async function PortfolioListPage({ searchParams }: PortfolioListPageProps) {
-  const { filter, variant } = await searchParams;
-  const status = STATUS_BY_VARIANT[variant ?? 'success'] ?? 'success';
+export function PortfolioListPage({
+  initialFilter = 'all',
+  initialPage = 0,
+}: PortfolioListPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [filter, setFilter] = useState<PortfolioRequestListFilter>(
+    FILTER_BY_QUERY[initialFilter] ?? 'ALL',
+  );
+  const [page, setPage] = useState(initialPage);
+  const [now, setNow] = useState(() => Date.now());
+
+  const listQuery = useAllPortfolioRequestListQuery(PAGE_SIZE);
+
+  useEffect(() => {
+    const nextDueAt = findNextPublishedDueAt(listQuery.data ?? [], now);
+    if (nextDueAt === null) return;
+
+    const timeoutId = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.min(nextDueAt - now + 1, 2_147_483_647),
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [listQuery.data, now]);
+
+  const allRequests = (listQuery.data ?? []).map(mapPortfolioRequestSummaryToListItem);
+  const filteredRequests =
+    filter === 'ALL' ? allRequests : allRequests.filter((request) => request.status === filter);
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+  const resolvedPage =
+    listQuery.data === undefined ? page : Math.min(Math.max(page, 0), totalPages - 1);
+  const requests = filteredRequests.slice(resolvedPage * PAGE_SIZE, (resolvedPage + 1) * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page === resolvedPage) return;
+
+    const timeoutId = window.setTimeout(() => setPage(resolvedPage), 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [page, resolvedPage]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== 'ALL') params.set('filter', filter.toLowerCase());
+    if (resolvedPage > 0) params.set('page', String(resolvedPage + 1));
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [filter, pathname, resolvedPage, router]);
+
+  const status: PortfolioRequestListStatus = listQuery.isLoading
+    ? 'loading'
+    : listQuery.isError
+      ? 'error'
+      : allRequests.length === 0
+        ? 'empty'
+        : 'success';
+
+  const handleFilterChange = (nextFilter: PortfolioRequestListFilter) => {
+    setFilter(nextFilter);
+    setPage(0);
+  };
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -44,12 +108,31 @@ export async function PortfolioListPage({ searchParams }: PortfolioListPageProps
 
         <div className="mt-8">
           <PortfolioRequestList
-            initialFilter={FILTER_BY_QUERY[filter ?? 'all'] ?? 'ALL'}
-            initialStatus={status}
-            requests={status === 'empty' ? [] : MOCK_PORTFOLIO_REQUESTS}
+            currentFilter={filter}
+            currentPage={resolvedPage + 1}
+            hasRequests={allRequests.length > 0}
+            requests={requests}
+            status={status}
+            totalPages={totalPages}
+            onFilterChange={handleFilterChange}
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+            onRetry={() => listQuery.refetch()}
           />
         </div>
       </main>
     </div>
   );
+}
+
+function findNextPublishedDueAt(requests: PortfolioRequestSummaryApiResponse[], now: number) {
+  const nextDueAt = requests.reduce<number | null>((nearestDueAt, request) => {
+    if (request.status !== 'PUBLISHED') return nearestDueAt;
+
+    const dueAt = new Date(request.dueAt).getTime();
+    if (Number.isNaN(dueAt) || dueAt < now) return nearestDueAt;
+
+    return nearestDueAt === null || dueAt < nearestDueAt ? dueAt : nearestDueAt;
+  }, null);
+
+  return nextDueAt;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import {
   PortfolioRequestCard,
@@ -11,91 +11,87 @@ import {
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
-export type PortfolioRequestListFilter = 'ALL' | PortfolioRequestSubmissionStatus;
-export type PortfolioRequestListStatus = 'empty' | 'error' | 'loading' | 'success';
+export type PortfolioRequestListFilter =
+  'ALL' | Exclude<PortfolioRequestSubmissionStatus, 'SUBMITTED'>;
+export type PortfolioRequestListStatus = 'empty' | 'error' | 'loading' | 'pageLoading' | 'success';
 
 interface PortfolioRequestListProps {
-  initialFilter?: PortfolioRequestListFilter;
-  initialStatus: PortfolioRequestListStatus;
+  currentFilter: PortfolioRequestListFilter;
+  currentPage: number;
+  hasRequests: boolean;
+  onFilterChange: (filter: PortfolioRequestListFilter) => void;
+  onPageChange: (page: number) => void;
+  onRetry: () => void;
   requests: PortfolioRequestListItem[];
+  status: PortfolioRequestListStatus;
+  totalPages: number;
 }
 
 const FILTER_LABEL: Record<PortfolioRequestListFilter, string> = {
   ALL: '전체',
-  REQUIRED: '제출 필요',
-  SUBMITTED: '제출 완료',
   CLOSED: '제출 마감',
+  REQUIRED: '제출 필요',
 };
 
-const FILTERS: PortfolioRequestListFilter[] = ['ALL', 'REQUIRED', 'SUBMITTED', 'CLOSED'];
+const FILTERS: PortfolioRequestListFilter[] = ['ALL', 'REQUIRED', 'CLOSED'];
 
 export function PortfolioRequestList({
-  initialFilter = 'ALL',
-  initialStatus,
+  currentFilter,
+  currentPage,
+  hasRequests,
+  onFilterChange,
+  onPageChange,
+  onRetry,
   requests,
+  status,
+  totalPages,
 }: PortfolioRequestListProps) {
-  const [filter, setFilter] = useState(initialFilter);
-  const [status, setStatus] = useState(initialStatus);
-
-  const counts = useMemo(
-    () => ({
-      ALL: requests.length,
-      REQUIRED: requests.filter((request) => request.status === 'REQUIRED').length,
-      SUBMITTED: requests.filter((request) => request.status === 'SUBMITTED').length,
-      CLOSED: requests.filter((request) => request.status === 'CLOSED').length,
-    }),
-    [requests],
-  );
   const filteredRequests = useMemo(
-    () => (filter === 'ALL' ? requests : requests.filter((request) => request.status === filter)),
-    [filter, requests],
+    () =>
+      currentFilter === 'ALL'
+        ? requests
+        : requests.filter((request) => request.status === currentFilter),
+    [currentFilter, requests],
   );
 
-  if (status === 'loading') return <PortfolioRequestListSkeleton />;
-  if (status === 'error') {
-    return (
-      <PortfolioRequestListError onRetry={() => setStatus(requests.length ? 'success' : 'empty')} />
-    );
-  }
-  if (status === 'empty' || requests.length === 0) return <PortfolioRequestListEmpty />;
+  if (status === 'loading' || status === 'pageLoading') return <PortfolioRequestListSkeleton />;
+  if (status === 'error') return <PortfolioRequestListError onRetry={onRetry} />;
+  if (status === 'empty' && !hasRequests) return <PortfolioRequestListEmpty />;
 
   return (
     <div className="flex flex-col gap-8">
       <section className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-6 pt-6 pb-8">
         <div>
           <h2 className="text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-            제출이 필요한 포트폴리오가 있어요.
+            포트폴리오 제출 요청을 확인해 주세요
           </h2>
           <p className="mt-3 text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
             마감일을 확인하고 기간 내에 제출해 주세요.
           </p>
         </div>
         <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
-          <strong className="text-primary-700 mr-1 text-xl leading-[1.4] font-semibold tracking-[-0.2px]">
-            {counts.REQUIRED}
-          </strong>
-          건 제출 필요
+          마감 전 요청을 확인해 주세요.
         </p>
       </section>
 
       <section className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center gap-3" aria-label="포트폴리오 제출 상태 필터">
           {FILTERS.map((item) => {
-            const isActive = filter === item;
+            const isActive = currentFilter === item;
 
             return (
               <button
                 key={item}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => setFilter(item)}
+                onClick={() => onFilterChange(item)}
                 className={`rounded-2xl border px-3 py-1.5 text-xs leading-[1.5] tracking-[-0.12px] ${
                   isActive
                     ? 'border-primary-300 bg-primary-100 text-primary-700 font-semibold'
                     : 'border-neutral-200 bg-white text-neutral-600'
                 }`}
               >
-                {FILTER_LABEL[item]} {counts[item]}
+                {FILTER_LABEL[item]}
               </button>
             );
           })}
@@ -111,6 +107,28 @@ export function PortfolioRequestList({
           <PortfolioRequestListEmpty isFiltered />
         )}
       </section>
+
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="neutral"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            이전
+          </Button>
+          <span className="text-sm text-neutral-600">
+            {currentPage} / {totalPages}
+          </span>
+          <Button
+            variant="neutral"
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            다음
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -120,7 +138,7 @@ function PortfolioRequestListEmpty({ isFiltered = false }: { isFiltered?: boolea
     <section className="flex min-h-[620px] flex-col items-center justify-center text-center">
       <Image src="/icons/portfolio-empty-file-search.svg" alt="" width={72} height={72} />
       <h2 className="mt-6 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-        {isFiltered ? '해당 상태의 포트폴리오가 없어요.' : '요청 받은 포트폴리오가 없어요.'}
+        {isFiltered ? '해당 상태의 포트폴리오가 없어요' : '요청 받은 포트폴리오가 없어요'}
       </h2>
       <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
         {isFiltered
@@ -139,7 +157,7 @@ function PortfolioRequestListError({ onRetry }: { onRetry: () => void }) {
     >
       <Icon name="alertCircleLarge" className="size-[58px] text-neutral-500" />
       <h2 className="mt-6 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
-        포트폴리오 요청을 불러올 수 없습니다.
+        포트폴리오 요청을 불러올 수 없어요.
       </h2>
       <p className="mt-3 text-base leading-[1.6] tracking-[-0.16px] text-neutral-600">
         잠시 후 다시 시도해 주세요.
