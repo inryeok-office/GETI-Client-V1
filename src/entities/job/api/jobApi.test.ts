@@ -8,6 +8,7 @@ import {
   createAdminJob,
   downloadJobAttachment,
   fetchAdminJobDetail,
+  reanalyzeAdminJob,
   updateAdminJob,
 } from './jobApi';
 
@@ -178,5 +179,44 @@ describe('updateAdminJob', () => {
     ]);
     expect(receivedBody).toEqual({ title: '수정된 제목' });
     expect(result).toEqual(detail);
+  });
+});
+
+describe('reanalyzeAdminJob', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('POST /api/v1/jobs/{jobId}/ai-reanalysis로 접수 요청한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: { jobId: 3, status: 'PENDING' } }));
+    restore = stub.restore;
+
+    await reanalyzeAdminJob(3);
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/jobs/3/ai-reanalysis', method: 'post', responseType: undefined },
+    ]);
+  });
+
+  it('429(재분석 횟수 초과)면 오류를 그대로 올린다', async () => {
+    const stub = stubServer(
+      () =>
+        new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, null, {
+          status: 429,
+          data: {
+            success: false,
+            error: { code: 'AI_REANALYSIS_LIMIT', message: '재분석 횟수를 모두 사용했습니다.' },
+          },
+          statusText: '',
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+        }),
+    );
+    restore = stub.restore;
+
+    await expect(reanalyzeAdminJob(3)).rejects.toMatchObject({
+      status: 429,
+      code: 'AI_REANALYSIS_LIMIT',
+    });
   });
 });

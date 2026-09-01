@@ -12,11 +12,12 @@ import {
   formatJobDeadlineState,
   formatJobPublicState,
   useAdminJobDetailQuery,
+  useReanalyzeAdminJobMutation,
   type AdminJobDetail,
 } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
-import { AppToaster } from '@/shared/ui/toast';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 
 interface AdminJobDetailPageProps {
   jobId: string;
@@ -33,7 +34,8 @@ interface AdminJobDetailPageProps {
  * 조회한다(Issue #202). 라우트 파라미터가 정수가 아니거나 조회가 실패하면
  * (404 공고 없음, 403 권한 없음 포함) 오류 상태를 보여준다 — `AdminCompanyDetailPage`와 같은 패턴.
  * `AppToaster`는 등록·수정 후 이 화면으로 이동해 오는 성공 토스트를 그리기 위해 둔다(Issue #205).
- * "AI 재분석"은 아직 범위 밖이라 버튼을 비활성으로 둔다.
+ * "AI 재분석"은 `POST /api/v1/jobs/{jobId}/ai-reanalysis`에 연동한다(Issue #206) — 접수만 되고
+ * 실제 결과는 비동기라, 성공 시 상세를 다시 불러온다.
  * 간격·색상은 Figma(node 586:12852)를 옮겼다.
  */
 export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJobDetailPageProps) {
@@ -41,9 +43,22 @@ export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJob
   const isValidId = Number.isInteger(numericId);
 
   const detailQuery = useAdminJobDetailQuery(isValidId ? numericId : null);
+  const reanalyzeMutation = useReanalyzeAdminJobMutation();
 
   const detail = detailQuery.data;
   const isError = !isValidId || detailQuery.isError;
+
+  function handleReanalyze() {
+    if (!detail) return;
+    reanalyzeMutation.mutate(detail.jobId, {
+      onSuccess: () =>
+        showToast({
+          tone: 'success',
+          message: 'AI 재분석을 요청했습니다. 잠시 후 결과가 갱신됩니다.',
+        }),
+      onError: (error) => showToast({ tone: 'error', message: error.message }),
+    });
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -94,14 +109,26 @@ export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJob
             />
           </div>
         ) : (
-          <AdminJobDetailContent detail={detail} />
+          <AdminJobDetailContent
+            detail={detail}
+            isReanalyzing={reanalyzeMutation.isPending}
+            onReanalyze={handleReanalyze}
+          />
         )}
       </main>
     </div>
   );
 }
 
-function AdminJobDetailContent({ detail }: { detail: AdminJobDetail }) {
+function AdminJobDetailContent({
+  detail,
+  isReanalyzing,
+  onReanalyze,
+}: {
+  detail: AdminJobDetail;
+  isReanalyzing: boolean;
+  onReanalyze: () => void;
+}) {
   const deadlineState = formatJobDeadlineState(detail.status);
   const subtitle = [detail.company?.name, formatJobPublicState(detail.status), deadlineState]
     .filter((part): part is string => Boolean(part))
@@ -205,11 +232,16 @@ function AdminJobDetailContent({ detail }: { detail: AdminJobDetail }) {
 
           <button
             type="button"
-            disabled
-            title="AI 재분석은 준비 중입니다."
-            className="bg-primary-700 mt-[8px] flex w-fit cursor-not-allowed items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white opacity-50"
+            disabled={!analysis?.canReanalyze || isReanalyzing}
+            onClick={onReanalyze}
+            title={
+              analysis?.canReanalyze
+                ? undefined
+                : '지금은 AI 재분석을 요청할 수 없습니다(분석 진행 중이거나 횟수 소진).'
+            }
+            className="bg-primary-700 mt-[8px] flex w-fit items-center justify-center rounded-[8px] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            AI 재분석
+            {isReanalyzing ? '요청 중…' : 'AI 재분석'}
           </button>
         </section>
       </div>

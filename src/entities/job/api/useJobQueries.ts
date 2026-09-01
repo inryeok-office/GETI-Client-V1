@@ -16,6 +16,7 @@ import {
   fetchJobDetail,
   fetchJobList,
   fetchJobSources,
+  reanalyzeAdminJob,
   updateAdminJob,
   type FetchJobListParams,
 } from './jobApi';
@@ -85,6 +86,21 @@ export function useCreateAdminJobMutation() {
 
   return useMutation({
     mutationFn: (payload: JobCreatePayload) => createAdminJob(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.all });
+    },
+  });
+}
+
+/**
+ * AI 공고 분석 수동 재요청. 접수(202)만 되고 실제 결과는 비동기라, 성공 시 상세 캐시를
+ * 무효화해 분석 상태가 "대기/중"으로 바뀌게 한다(결과 반영은 이후 사용자가 다시 열 때).
+ */
+export function useReanalyzeAdminJobMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: number) => reanalyzeAdminJob(jobId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobKeys.all });
     },

@@ -5,14 +5,25 @@ import type { AdminJobDetail } from '@/entities/job';
 
 import { AdminJobDetailPage } from './AdminJobDetailPage';
 
-const { mockUseAdminJobDetailQuery, mockRefetch } = vi.hoisted(() => ({
+const {
+  mockUseAdminJobDetailQuery,
+  mockUseReanalyzeAdminJobMutation,
+  mockReanalyzeMutate,
+  mockRefetch,
+} = vi.hoisted(() => ({
   mockUseAdminJobDetailQuery: vi.fn(),
+  mockUseReanalyzeAdminJobMutation: vi.fn(),
+  mockReanalyzeMutate: vi.fn(),
   mockRefetch: vi.fn(),
 }));
 
 vi.mock('@/entities/job', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
-  return { ...actual, useAdminJobDetailQuery: mockUseAdminJobDetailQuery };
+  return {
+    ...actual,
+    useAdminJobDetailQuery: mockUseAdminJobDetailQuery,
+    useReanalyzeAdminJobMutation: mockUseReanalyzeAdminJobMutation,
+  };
 });
 
 function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
@@ -77,6 +88,10 @@ function idle() {
 
 beforeEach(() => {
   mockUseAdminJobDetailQuery.mockReturnValue(queryResult());
+  mockUseReanalyzeAdminJobMutation.mockReturnValue({
+    mutate: mockReanalyzeMutate,
+    isPending: false,
+  });
 });
 
 afterEach(() => {
@@ -142,10 +157,42 @@ describe('AdminJobDetailPage', () => {
     expect(screen.getByText(/삭제된 공고입니다/)).toBeInTheDocument();
   });
 
-  it('"AI 재분석" 버튼은 이번 범위에서 비활성이다', () => {
+  it('canReanalyze면 "AI 재분석" 버튼을 눌러 jobId로 뮤테이션을 호출한다', () => {
+    render(<AdminJobDetailPage jobId="1" />);
+
+    const button = screen.getByRole('button', { name: 'AI 재분석' });
+    expect(button).toBeEnabled();
+
+    fireEvent.click(button);
+    expect(mockReanalyzeMutate).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it('canReanalyze가 false면 "AI 재분석" 버튼이 비활성이다', () => {
+    mockUseAdminJobDetailQuery.mockReturnValue(
+      queryResult({
+        data: detail({
+          aiAnalysis: { ...detail().aiAnalysis!, canReanalyze: false, status: 'PROCESSING' },
+        }),
+      }),
+    );
+
     render(<AdminJobDetailPage jobId="1" />);
 
     expect(screen.getByRole('button', { name: 'AI 재분석' })).toBeDisabled();
+  });
+
+  it('재분석 요청 중이면 버튼이 "요청 중…"으로 잠긴다', () => {
+    mockUseReanalyzeAdminJobMutation.mockReturnValue({
+      mutate: mockReanalyzeMutate,
+      isPending: true,
+    });
+
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.getByRole('button', { name: '요청 중…' })).toBeDisabled();
   });
 
   it('브레드크럼은 backHref로 이동한다(목록 조회 조건 유지)', () => {

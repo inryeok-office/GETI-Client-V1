@@ -18,6 +18,7 @@ export {
   useJobDetailQuery,
   useJobListQuery,
   useJobSourcesQuery,
+  useReanalyzeAdminJobMutation,
   useUpdateAdminJobMutation,
 } from './api/useJobQueries';
 export type { FetchJobListParams } from './api/jobApi';
