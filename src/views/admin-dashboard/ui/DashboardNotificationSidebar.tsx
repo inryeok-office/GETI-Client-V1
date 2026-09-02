@@ -11,7 +11,7 @@ interface DashboardNotificationSidebarProps {
 }
 
 const MESSAGE_CLASS =
-  'flex flex-1 flex-col items-center justify-center gap-[12px] pt-[20px] text-[13px] leading-[1.5] tracking-[-0.13px] text-[#525252]';
+  'flex min-h-0 flex-1 flex-col items-center justify-center gap-[12px] pt-[20px] text-[13px] leading-[1.5] tracking-[-0.13px] text-[#525252]';
 
 /**
  * 대시보드 하단 우측 알림 패널. Figma(node 942:21864 등)의 Sidebar 컴포넌트를 옮겼다.
@@ -55,7 +55,9 @@ export function DashboardNotificationSidebar({
       ) : isEmpty ? (
         <div className={MESSAGE_CLASS}>{emptyLabel}</div>
       ) : (
-        <div className="flex flex-col pt-[20px]">
+        // 패널 높이는 고정이고 알림은 최대 4건이라, 한 줄 제목·부제라도 내용이 넘칠 수 있어
+        // 목록 영역만 세로 스크롤한다(PR #201 코드리뷰 반영).
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-[20px]">
           {notifications.map((notification, index) => (
             <div
               key={notification.id}
