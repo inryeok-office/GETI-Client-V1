@@ -1,8 +1,15 @@
 'use client';
 
-import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
+  changeAdminJobStatus,
   downloadJobAttachment,
   fetchAdminJobDetail,
   fetchJobDetail,
@@ -47,6 +54,25 @@ export function useAdminJobDetailQuery(jobId: number | null) {
   return useQuery({
     queryKey: jobKeys.adminDetail(jobId ?? -1),
     queryFn: jobId === null ? skipToken : () => fetchAdminJobDetail(jobId),
+  });
+}
+
+/**
+ * 공고 마감·삭제(`changeAdminJobStatus`). 성공하면 목록·상세 캐시를 모두 무효화해 다시 불러온다 —
+ * 마감은 목록에 그대로 남아 상태만 바뀌고, 삭제는 공개 검색 API에서 더 이상 조회되지 않아
+ * 목록에서 사라진다(`entities/job` 어드민 상세도 같은 jobId로 다시 조회되면 DELETED로 보인다).
+ *
+ * `onSuccess`에서 `invalidateQueries`의 Promise를 반환해, 재조회가 끝날 때까지 `isPending`을
+ * 유지한다 — 그 사이 옛 PUBLISHED 행의 마감·삭제 버튼이 다시 활성화돼 같은 전이를 재호출(409)하는
+ * 걸 막는다(PR #208 코드리뷰 반영).
+ */
+export function useChangeAdminJobStatusMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ jobId, status }: { jobId: number; status: 'CLOSED' | 'DELETED' }) =>
+      changeAdminJobStatus(jobId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
   });
 }
 

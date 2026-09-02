@@ -3,10 +3,18 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { useJobListQuery, type PublicJobStatus } from '@/entities/job';
+import {
+  useChangeAdminJobStatusMutation,
+  useJobListQuery,
+  type JobSummary,
+  type PublicJobStatus,
+} from '@/entities/job';
+import { Button } from '@/shared/ui/button';
+import { Dialog } from '@/shared/ui/dialog';
 import { DropdownField, type DropdownOption } from '@/shared/ui/dropdown-field';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
+import { AppToaster, showToast } from '@/shared/ui/toast';
 import { AdminJobTable } from '@/widgets/admin-job-table';
 
 /**
@@ -64,7 +72,9 @@ function buildSearchParams(state: {
  * 어드민 공고 관리 목록 화면(`/admin/jobs`). `GET /api/v1/jobs`(공개 검색 API)로 목록을 불러온다 —
  * 어드민 전용 공고 목록 API가 없어 게시(PUBLISHED)·마감(CLOSED) 공고만 나오고, 담당자 정보도
  * 응답에 없어 "ㅡ"로 표시한다(Issue #202). 공고명을 누르면 `/admin/jobs/[jobId]` 상세로 간다.
- * 등록·수정·마감·삭제 액션은 이번 범위 밖이라 "공고 등록" 버튼과 표의 관리 텍스트는 비활성이다.
+ * 마감·삭제는 이 화면이 상태 변경 API에 연동한다 — 뮤테이션·확인 모달·토스터를 여기서 소유해,
+ * 마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도(표가 언마운트돼도) 성공 토스트가 유지된다
+ * (PR #208 코드리뷰 반영). 등록·수정은 아직 폼이 없어 "공고 등록"·"수정"은 비활성이다.
  * 검색·필터·페이지는 URL 쿼리스트링과 동기화한다(`AdminApplicantPage`와 동일).
  * 간격·색상은 Figma(node 586:12549)를 옮겼다.
  */
@@ -91,6 +101,9 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
     query: searchQuery.trim() || undefined,
     status: DEADLINE_TO_STATUS[deadline],
   });
+
+  const statusMutation = useChangeAdminJobStatusMutation();
+  const [deleteTarget, setDeleteTarget] = useState<JobSummary | null>(null);
 
   /**
    * URL의 `page`는 상한이 없어 `?page=999`나 데이터 감소로 현재 페이지가 사라지면 빈 응답이 온다.
@@ -126,8 +139,36 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
     setPage(0);
   }
 
+  function handleCloseJob(job: JobSummary) {
+    statusMutation.mutate(
+      { jobId: job.jobId, status: 'CLOSED' },
+      {
+        onSuccess: () =>
+          showToast({ tone: 'success', message: `"${job.title}" 공고를 마감했습니다.` }),
+        onError: (error) => showToast({ tone: 'error', message: error.message }),
+      },
+    );
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    const job = deleteTarget;
+
+    statusMutation.mutate(
+      { jobId: job.jobId, status: 'DELETED' },
+      {
+        onSuccess: () => {
+          setDeleteTarget(null);
+          showToast({ tone: 'success', message: `"${job.title}" 공고를 삭제했습니다.` });
+        },
+        onError: (error) => showToast({ tone: 'error', message: error.message }),
+      },
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AppToaster />
       <header className="flex h-[80px] items-center justify-between border-b border-neutral-200 bg-white px-[40px]">
         <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">공고 관리</p>
         <div className="flex items-center gap-[12px]">
@@ -233,7 +274,13 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
               총 {totalCount}개 공고
             </p>
 
-            <AdminJobTable jobs={jobs} queryString={filterQueryString} />
+            <AdminJobTable
+              jobs={jobs}
+              queryString={filterQueryString}
+              isMutating={statusMutation.isPending}
+              onCloseJob={handleCloseJob}
+              onDeleteJob={setDeleteTarget}
+            />
 
             {listQuery.data && listQuery.data.totalPages > 1 && (
               <div className="flex items-center justify-center gap-[12px]">
@@ -261,6 +308,35 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
           </div>
         )}
       </main>
+
+      <Dialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="공고 삭제"
+        panelClassName="w-full max-w-[380px] rounded-2xl bg-white p-6 shadow-lg"
+        actions={
+          <>
+            <Button variant="neutral" onClick={() => setDeleteTarget(null)}>
+              취소
+            </Button>
+            <Button
+              variant="dangerOutline"
+              isLoading={statusMutation.isPending}
+              onClick={handleDeleteConfirm}
+            >
+              삭제
+            </Button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <>
+            {deleteTarget.title} 공고를 삭제하시겠습니까?
+            <br />
+            기존 지원·북마크 이력은 보존됩니다.
+          </>
+        )}
+      </Dialog>
     </div>
   );
 }

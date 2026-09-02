@@ -1,12 +1,21 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/shared/api';
 import type { JobSummary } from '@/entities/job';
 
 import { AdminJobListPage } from './AdminJobListPage';
 
-const { mockUseJobListQuery, mockReplace, mockRefetch } = vi.hoisted(() => ({
+const {
+  mockUseJobListQuery,
+  mockUseChangeAdminJobStatusMutation,
+  mockMutate,
+  mockReplace,
+  mockRefetch,
+} = vi.hoisted(() => ({
   mockUseJobListQuery: vi.fn(),
+  mockUseChangeAdminJobStatusMutation: vi.fn(),
+  mockMutate: vi.fn(),
   mockReplace: vi.fn(),
   mockRefetch: vi.fn(),
 }));
@@ -18,8 +27,20 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/entities/job', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
-  return { ...actual, useJobListQuery: mockUseJobListQuery };
+  return {
+    ...actual,
+    useJobListQuery: mockUseJobListQuery,
+    useChangeAdminJobStatusMutation: mockUseChangeAdminJobStatusMutation,
+  };
 });
+
+/** `mockMutate`가 마지막으로 받은 콜백. `onSuccess`/`onError`를 직접 실행해 완료 흐름을 검증한다. */
+function lastMutateCallbacks() {
+  return mockMutate.mock.calls.at(-1)?.[1] as {
+    onSuccess: () => void;
+    onError: (error: unknown) => void;
+  };
+}
 
 function jobSummary(overrides: Partial<JobSummary> = {}): JobSummary {
   return {
@@ -72,8 +93,13 @@ function idleList() {
   };
 }
 
+function mutationResult(overrides: Record<string, unknown> = {}) {
+  return { mutate: mockMutate, isPending: false, variables: undefined, ...overrides };
+}
+
 beforeEach(() => {
   mockUseJobListQuery.mockReturnValue(listResult());
+  mockUseChangeAdminJobStatusMutation.mockReturnValue(mutationResult());
 });
 
 afterEach(() => {
@@ -192,5 +218,105 @@ describe('AdminJobListPage', () => {
 
     const lastCall = mockUseJobListQuery.mock.calls.at(-1)?.[0];
     expect(lastCall).toMatchObject({ page: 0 });
+  });
+
+  it('"마감" 클릭 → CLOSED 뮤테이션 호출, 성공 콜백 실행 시 토스트를 띄운다', () => {
+    render(<AdminJobListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '마감' }));
+    expect(mockMutate).toHaveBeenCalledWith(
+      { jobId: 1, status: 'CLOSED' },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+
+    act(() => lastMutateCallbacks().onSuccess());
+    expect(screen.getByText('"프론트엔드 개발자 채용" 공고를 마감했습니다.')).toBeInTheDocument();
+  });
+
+  it('"삭제"는 확인 모달을 거쳐 DELETED 뮤테이션을 호출하고, 취소 시 아무 일도 없다', () => {
+    render(<AdminJobListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    const dialog = screen.getByRole('dialog', { name: '공고 삭제' });
+    expect(dialog).toHaveTextContent('프론트엔드 개발자 채용 공고를 삭제하시겠습니까?');
+
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(mockMutate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: '삭제' }).find((el) => el.closest('[role="dialog"]'))!,
+    );
+    expect(mockMutate).toHaveBeenCalledWith({ jobId: 1, status: 'DELETED' }, expect.anything());
+  });
+
+  it('상태 변경이 진행 중이면 모든 행의 마감·삭제 버튼이 잠긴다 (A행 변경 중 B행 재호출 방지)', () => {
+    mockUseJobListQuery.mockReturnValue(
+      listResult({
+        data: {
+          content: [
+            jobSummary({ jobId: 1 }),
+            jobSummary({ jobId: 2, title: '백엔드 개발자 채용' }),
+          ],
+          page: 0,
+          size: 20,
+          totalElements: 2,
+          totalPages: 1,
+          first: true,
+          last: true,
+        },
+      }),
+    );
+    mockUseChangeAdminJobStatusMutation.mockReturnValue(
+      mutationResult({ isPending: true, variables: { jobId: 1, status: 'CLOSED' } }),
+    );
+
+    render(<AdminJobListPage />);
+
+    // variables가 가리키는 1번 행뿐 아니라 2번 행 버튼도 함께 잠겨야 한다.
+    for (const button of screen.getAllByRole('button', { name: '마감' })) {
+      expect(button).toBeDisabled();
+    }
+    for (const button of screen.getAllByRole('button', { name: '삭제' })) {
+      expect(button).toBeDisabled();
+    }
+  });
+
+  it('마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도 성공 토스트가 유지된다', () => {
+    render(<AdminJobListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: '삭제' }).find((el) => el.closest('[role="dialog"]'))!,
+    );
+
+    // 삭제 성공 → 목록이 빈 응답으로 갱신되는 상황
+    mockUseJobListQuery.mockReturnValue(
+      listResult({
+        data: {
+          content: [],
+          page: 0,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
+          first: true,
+          last: true,
+        },
+      }),
+    );
+    act(() => lastMutateCallbacks().onSuccess());
+
+    expect(screen.getByText('등록된 공고가 없습니다.')).toBeInTheDocument();
+    // 표(AdminJobTable)가 언마운트돼도 상위의 AppToaster가 남아 토스트가 보인다.
+    expect(screen.getByText('"프론트엔드 개발자 채용" 공고를 삭제했습니다.')).toBeInTheDocument();
+  });
+
+  it('상태 변경 실패 시 오류 토스트를 띄운다', () => {
+    render(<AdminJobListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '마감' }));
+    act(() => lastMutateCallbacks().onError(new ApiError('허용되지 않은 상태 전이입니다.', 409)));
+
+    expect(screen.getByText('허용되지 않은 상태 전이입니다.')).toBeInTheDocument();
   });
 });
