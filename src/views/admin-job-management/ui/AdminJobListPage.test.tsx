@@ -250,15 +250,36 @@ describe('AdminJobListPage', () => {
     expect(mockMutate).toHaveBeenCalledWith({ jobId: 1, status: 'DELETED' }, expect.anything());
   });
 
-  it('상태 변경이 진행 중인 행의 마감·삭제 버튼은 잠긴다', () => {
+  it('상태 변경이 진행 중이면 모든 행의 마감·삭제 버튼이 잠긴다 (A행 변경 중 B행 재호출 방지)', () => {
+    mockUseJobListQuery.mockReturnValue(
+      listResult({
+        data: {
+          content: [
+            jobSummary({ jobId: 1 }),
+            jobSummary({ jobId: 2, title: '백엔드 개발자 채용' }),
+          ],
+          page: 0,
+          size: 20,
+          totalElements: 2,
+          totalPages: 1,
+          first: true,
+          last: true,
+        },
+      }),
+    );
     mockUseChangeAdminJobStatusMutation.mockReturnValue(
-      mutationResult({ isPending: true, variables: { jobId: 1, status: 'DELETED' } }),
+      mutationResult({ isPending: true, variables: { jobId: 1, status: 'CLOSED' } }),
     );
 
     render(<AdminJobListPage />);
 
-    expect(screen.getByRole('button', { name: '마감' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '삭제' })).toBeDisabled();
+    // variables가 가리키는 1번 행뿐 아니라 2번 행 버튼도 함께 잠겨야 한다.
+    for (const button of screen.getAllByRole('button', { name: '마감' })) {
+      expect(button).toBeDisabled();
+    }
+    for (const button of screen.getAllByRole('button', { name: '삭제' })) {
+      expect(button).toBeDisabled();
+    }
   });
 
   it('마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도 성공 토스트가 유지된다', () => {

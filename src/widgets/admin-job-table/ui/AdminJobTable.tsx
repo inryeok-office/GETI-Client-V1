@@ -36,8 +36,12 @@ interface AdminJobTableProps {
   onCloseJob: (job: JobSummary) => void;
   /** 삭제 클릭. 확인 모달을 여는 것도 호출부가 담당한다. */
   onDeleteJob: (job: JobSummary) => void;
-  /** 상태 변경이 진행 중인 공고 ID. 그 행의 마감·삭제 버튼을 잠가 중복 호출을 막는다. */
-  mutatingJobId: number | null;
+  /**
+   * 상태 변경(마감·삭제)이 진행 중인지. 하나의 뮤테이션을 공유하므로 특정 행만이 아니라 모든 행의
+   * 마감·삭제 버튼을 잠근다 — A행 변경 중 B행을 눌러 A가 다시 활성화되고 재조회 전에 같은 전이를
+   * 재호출(409)하는 걸 막는다(PR #208 코드리뷰 반영).
+   */
+  isMutating: boolean;
 }
 
 /**
@@ -55,7 +59,7 @@ export function AdminJobTable({
   queryString,
   onCloseJob,
   onDeleteJob,
-  mutatingJobId,
+  isMutating,
 }: AdminJobTableProps) {
   return (
     <div
@@ -84,65 +88,61 @@ export function AdminJobTable({
           </tr>
         </thead>
         <tbody>
-          {jobs.map((job) => {
-            const isMutatingThisRow = mutatingJobId === job.jobId;
-
-            return (
-              <tr key={job.jobId} className="h-[60px] border-t border-neutral-200">
-                <td className="px-[24px]">
-                  <Link
-                    href={`/admin/jobs/${job.jobId}${queryString ? `?${queryString}` : ''}`}
-                    className="text-primary-700 text-[14px] leading-[1.5] font-medium tracking-[-0.14px] hover:underline"
+          {jobs.map((job) => (
+            <tr key={job.jobId} className="h-[60px] border-t border-neutral-200">
+              <td className="px-[24px]">
+                <Link
+                  href={`/admin/jobs/${job.jobId}${queryString ? `?${queryString}` : ''}`}
+                  className="text-primary-700 text-[14px] leading-[1.5] font-medium tracking-[-0.14px] hover:underline"
+                >
+                  {job.title}
+                </Link>
+              </td>
+              <td className={CELL_CLASS}>{job.company?.name ?? EMPTY_CELL}</td>
+              <td className={CELL_CLASS}>{EMPTY_CELL}</td>
+              <td className="px-[24px]">
+                <PublicStateBadge status={job.status} />
+              </td>
+              <td className={CELL_CLASS}>{formatJobDeadlineState(job.status) ?? EMPTY_CELL}</td>
+              <td className={CELL_CLASS}>
+                {job.publishedAt ? formatDateOnly(job.publishedAt) : EMPTY_CELL}
+              </td>
+              <td className="px-[24px]">
+                <div className="flex items-center gap-[6px] text-[14px] leading-[1.4] tracking-[-0.14px]">
+                  <span className="text-neutral-400">
+                    수정
+                    <span className="sr-only"> (준비 중)</span>
+                  </span>
+                  {job.status === 'PUBLISHED' && (
+                    <>
+                      <span className="text-neutral-300" aria-hidden="true">
+                        ·
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isMutating}
+                        onClick={() => onCloseJob(job)}
+                        className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        마감
+                      </button>
+                    </>
+                  )}
+                  <span className="text-neutral-300" aria-hidden="true">
+                    ·
+                  </span>
+                  <button
+                    type="button"
+                    disabled={isMutating}
+                    onClick={() => onDeleteJob(job)}
+                    className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {job.title}
-                  </Link>
-                </td>
-                <td className={CELL_CLASS}>{job.company?.name ?? EMPTY_CELL}</td>
-                <td className={CELL_CLASS}>{EMPTY_CELL}</td>
-                <td className="px-[24px]">
-                  <PublicStateBadge status={job.status} />
-                </td>
-                <td className={CELL_CLASS}>{formatJobDeadlineState(job.status) ?? EMPTY_CELL}</td>
-                <td className={CELL_CLASS}>
-                  {job.publishedAt ? formatDateOnly(job.publishedAt) : EMPTY_CELL}
-                </td>
-                <td className="px-[24px]">
-                  <div className="flex items-center gap-[6px] text-[14px] leading-[1.4] tracking-[-0.14px]">
-                    <span className="text-neutral-400">
-                      수정
-                      <span className="sr-only"> (준비 중)</span>
-                    </span>
-                    {job.status === 'PUBLISHED' && (
-                      <>
-                        <span className="text-neutral-300" aria-hidden="true">
-                          ·
-                        </span>
-                        <button
-                          type="button"
-                          disabled={isMutatingThisRow}
-                          onClick={() => onCloseJob(job)}
-                          className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          마감
-                        </button>
-                      </>
-                    )}
-                    <span className="text-neutral-300" aria-hidden="true">
-                      ·
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isMutatingThisRow}
-                      onClick={() => onDeleteJob(job)}
-                      className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                    삭제
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

@@ -42,7 +42,7 @@ function renderTable(props: Partial<Parameters<typeof AdminJobTable>[0]> = {}) {
     <AdminJobTable
       jobs={[jobSummary()]}
       queryString=""
-      mutatingJobId={null}
+      isMutating={false}
       onCloseJob={onCloseJob}
       onDeleteJob={onDeleteJob}
       {...props}
@@ -106,10 +106,17 @@ describe('AdminJobTable', () => {
     expect(onDeleteJob).toHaveBeenCalledWith(job);
   });
 
-  it('mutatingJobId와 같은 행은 마감·삭제 버튼이 잠긴다', () => {
-    renderTable({ jobs: [jobSummary({ jobId: 5 })], mutatingJobId: 5 });
+  it('isMutating이면 모든 행의 마감·삭제 버튼이 잠긴다', () => {
+    renderTable({
+      jobs: [jobSummary({ jobId: 5 }), jobSummary({ jobId: 6, title: '백엔드 개발자 채용' })],
+      isMutating: true,
+    });
 
-    expect(screen.getByRole('button', { name: '마감' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '삭제' })).toBeDisabled();
+    for (const button of screen.getAllByRole('button', { name: '마감' })) {
+      expect(button).toBeDisabled();
+    }
+    for (const button of screen.getAllByRole('button', { name: '삭제' })) {
+      expect(button).toBeDisabled();
+    }
   });
 });

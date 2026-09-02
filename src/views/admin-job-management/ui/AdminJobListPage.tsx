@@ -129,9 +129,6 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
   const totalCount = listQuery.data?.totalElements ?? 0;
   const hasActiveFilters = Boolean(searchQuery.trim() || deadline);
 
-  /** 상태 변경이 진행 중인(재조회까지 대기 중인) 공고 ID. 그 행의 마감·삭제 버튼을 잠근다. */
-  const mutatingJobId = statusMutation.isPending ? (statusMutation.variables?.jobId ?? null) : null;
-
   function handleSearchInputChange(value: string) {
     setSearchInput(value);
     setPage(0);
@@ -280,7 +277,7 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
             <AdminJobTable
               jobs={jobs}
               queryString={filterQueryString}
-              mutatingJobId={mutatingJobId}
+              isMutating={statusMutation.isPending}
               onCloseJob={handleCloseJob}
               onDeleteJob={setDeleteTarget}
             />
