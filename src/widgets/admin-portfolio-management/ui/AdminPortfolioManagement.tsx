@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   mapAdminPortfolioRequest,
@@ -36,6 +37,56 @@ const PORTFOLIO_REQUEST_STATUS_LABEL: Record<PortfolioRequestStatus, string> = {
 };
 
 const PAGE_SIZE = 20;
+const LIST_STATUS_VALUES = new Set<PortfolioApiRequestStatus>(['CLOSED', 'DRAFT', 'PUBLISHED']);
+
+export interface AdminPortfolioSearchParams {
+  page?: string;
+  query?: string;
+  requestId?: string;
+  status?: string;
+}
+
+function parseListStatus(value: string | null | undefined) {
+  return value && LIST_STATUS_VALUES.has(value as PortfolioApiRequestStatus)
+    ? (value as PortfolioApiRequestStatus)
+    : 'ALL';
+}
+
+function parsePage(value: string | null | undefined) {
+  const page = Number(value);
+  return Number.isInteger(page) && page > 1 ? page - 1 : 0;
+}
+
+function parseRequestId(value: string | null | undefined) {
+  const requestId = Number(value);
+  return Number.isInteger(requestId) && requestId > 0 ? requestId : null;
+}
+
+function sanitizeArchiveFilenamePart(value: string) {
+  const sanitized = Array.from(value, (character) =>
+    character.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(character) ? '_' : character,
+  ).join('');
+  return sanitized.replace(/[. ]+$/g, '').trim() || 'portfolio';
+}
+
+function buildAdminPortfolioSearchParams({
+  page,
+  query,
+  requestId,
+  status,
+}: {
+  page: number;
+  query: string;
+  requestId: number | null;
+  status: PortfolioApiRequestStatus | 'ALL';
+}) {
+  const params = new URLSearchParams();
+  if (query) params.set('query', query);
+  if (status !== 'ALL') params.set('status', status);
+  if (page > 0) params.set('page', String(page + 1));
+  if (requestId !== null) params.set('requestId', String(requestId));
+  return params;
+}
 
 function getMutationErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -68,17 +119,31 @@ function savePortfolioArchive(blob: Blob, filename: string) {
   link.href = objectUrl;
   link.download = filename;
   link.click();
-  URL.revokeObjectURL(objectUrl);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
 
-export function AdminPortfolioManagement() {
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<PortfolioApiRequestStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(0);
+export function AdminPortfolioManagement({
+  initialSearchParams = {},
+}: {
+  initialSearchParams?: AdminPortfolioSearchParams;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [query, setQuery] = useState(initialSearchParams.query ?? '');
+  const [status, setStatus] = useState<PortfolioApiRequestStatus | 'ALL'>(() =>
+    parseListStatus(initialSearchParams.status),
+  );
+  const [page, setPage] = useState(() => parsePage(initialSearchParams.page));
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [deletingRequest, setDeletingRequest] = useState<PortfolioRequest | null>(null);
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(() =>
+    parseRequestId(initialSearchParams.requestId),
+  );
+  const pendingStatusRequestIdsRef = useRef(new Set<number>());
+  const [pendingStatusRequestIds, setPendingStatusRequestIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const listQuery = useAllAdminPortfolioRequestListQuery(
     status === 'ALL' ? undefined : status,
     PAGE_SIZE,
@@ -126,31 +191,73 @@ export function AdminPortfolioManagement() {
   const hasListFilters = query.trim().length > 0 || status !== 'ALL';
 
   useEffect(() => {
+    const params = buildAdminPortfolioSearchParams({
+      page,
+      query,
+      requestId: selectedRequestId,
+      status,
+    });
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [page, pathname, query, router, selectedRequestId, status]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setQuery(params.get('query') ?? '');
+      setStatus(parseListStatus(params.get('status')));
+      setPage(parsePage(params.get('page')));
+      setSelectedRequestId(parseRequestId(params.get('requestId')));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
     if (page === resolvedPage) return;
 
     const timeoutId = window.setTimeout(() => setPage(resolvedPage), 0);
     return () => window.clearTimeout(timeoutId);
   }, [page, resolvedPage]);
 
-  const handleStatusChange = (
+  const runStatusMutation = async (requestId: number, nextStatus: PortfolioApiRequestStatus) => {
+    if (pendingStatusRequestIdsRef.current.has(requestId)) return false;
+
+    pendingStatusRequestIdsRef.current.add(requestId);
+    setPendingStatusRequestIds(new Set(pendingStatusRequestIdsRef.current));
+
+    try {
+      await statusMutation.mutateAsync({ requestId, status: nextStatus });
+      return true;
+    } catch (error) {
+      showToast({ tone: 'error', message: getMutationErrorMessage(error) });
+      return false;
+    } finally {
+      pendingStatusRequestIdsRef.current.delete(requestId);
+      setPendingStatusRequestIds(new Set(pendingStatusRequestIdsRef.current));
+    }
+  };
+
+  const handleStatusChange = async (
     request: PortfolioRequest,
     nextStatus: Extract<PortfolioApiRequestStatus, 'CLOSED' | 'PUBLISHED'>,
   ) => {
-    statusMutation.mutate(
-      { requestId: request.requestId, status: nextStatus },
-      {
-        onSuccess: () => {
-          showToast({
-            tone: 'success',
-            message:
-              nextStatus === 'PUBLISHED'
-                ? '수합 요청을 공개했습니다.'
-                : '수합 요청을 마감했습니다.',
-          });
-        },
-        onError: (error) => showToast({ tone: 'error', message: getMutationErrorMessage(error) }),
-      },
-    );
+    if (!(await runStatusMutation(request.requestId, nextStatus))) return;
+
+    showToast({
+      tone: 'success',
+      message:
+        nextStatus === 'PUBLISHED' ? '수합 요청을 공개했습니다.' : '수합 요청을 마감했습니다.',
+    });
+  };
+
+  const handleDelete = async (requestId: number) => {
+    if (!(await runStatusMutation(requestId, 'DELETED'))) return;
+
+    showToast({ tone: 'success', message: '수합 요청을 삭제했습니다.' });
+    setDeletingRequest(null);
   };
 
   const handleSave = (values: PortfolioRequestFormValues) => {
@@ -299,11 +406,20 @@ export function AdminPortfolioManagement() {
                   <>
                     <PortfolioRequestTable
                       requests={visibleItems}
-                      onShowSubmissions={(request) => setSelectedRequestId(request.requestId)}
+                      onShowSubmissions={(request) => {
+                        const params = buildAdminPortfolioSearchParams({
+                          page,
+                          query,
+                          requestId: request.requestId,
+                          status,
+                        });
+                        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+                        setSelectedRequestId(request.requestId);
+                      }}
                       onEdit={(request) => setEditingRequestId(request.requestId)}
                       onDelete={setDeletingRequest}
                       onStatusChange={handleStatusChange}
-                      isStatusUpdating={statusMutation.isPending}
+                      pendingRequestIds={pendingStatusRequestIds}
                     />
                     {totalPages > 1 ? (
                       <PortfolioPagination
@@ -359,21 +475,11 @@ export function AdminPortfolioManagement() {
       ) : null}
       <PortfolioRequestDeleteDialog
         request={deletingRequest}
-        isDeleting={statusMutation.isPending}
+        isDeleting={
+          deletingRequest !== null && pendingStatusRequestIds.has(deletingRequest.requestId)
+        }
         onCancel={() => setDeletingRequest(null)}
-        onConfirm={(requestId) => {
-          statusMutation.mutate(
-            { requestId, status: 'DELETED' },
-            {
-              onSuccess: () => {
-                showToast({ tone: 'success', message: '수합 요청을 삭제했습니다.' });
-                setDeletingRequest(null);
-              },
-              onError: (error) =>
-                showToast({ tone: 'error', message: getMutationErrorMessage(error) }),
-            },
-          );
-        }}
+        onConfirm={(requestId) => void handleDelete(requestId)}
       />
       <AppToaster />
     </div>
@@ -437,7 +543,7 @@ function PortfolioRequestTable({
   onEdit,
   onDelete,
   onStatusChange,
-  isStatusUpdating,
+  pendingRequestIds,
 }: {
   requests: PortfolioRequest[];
   onShowSubmissions: (request: PortfolioRequest) => void;
@@ -447,7 +553,7 @@ function PortfolioRequestTable({
     request: PortfolioRequest,
     status: Extract<PortfolioApiRequestStatus, 'CLOSED' | 'PUBLISHED'>,
   ) => void;
-  isStatusUpdating: boolean;
+  pendingRequestIds: ReadonlySet<number>;
 }) {
   return (
     <div
@@ -478,64 +584,72 @@ function PortfolioRequestTable({
           </tr>
         </thead>
         <tbody>
-          {requests.map((request) => (
-            <tr
-              key={request.requestId}
-              className="h-[60px] border-t border-neutral-200 text-neutral-900"
-            >
-              <td className="truncate pr-4 pl-6">{request.title}</td>
-              <td className="truncate pr-4 pl-6">{request.duePeriod}</td>
-              <td className="truncate pr-4 pl-6">{request.target}</td>
-              <td className="truncate pr-4 pl-6">
-                {request.submittedCount} / {request.targetCount}
-              </td>
-              <td className="truncate pr-4 pl-6">
-                {PORTFOLIO_REQUEST_STATUS_LABEL[request.status]}
-              </td>
-              <td className="truncate pr-4 pl-6">{request.createdAt}</td>
-              <td className="text-primary-700 truncate pr-4 pl-6 whitespace-nowrap">
-                <button type="button" onClick={() => onShowSubmissions(request)}>
-                  제출 현황
-                </button>
-                {request.status !== 'CLOSED' ? (
-                  <>
-                    <span className="px-1.5 text-neutral-300">·</span>
-                    <button type="button" onClick={() => onEdit(request)}>
-                      수정
-                    </button>
-                  </>
-                ) : null}
-                {request.status === 'DRAFT' ? (
-                  <>
-                    <span className="px-1.5 text-neutral-300">·</span>
-                    <button
-                      type="button"
-                      disabled={isStatusUpdating}
-                      onClick={() => onStatusChange(request, 'PUBLISHED')}
-                    >
-                      공개
-                    </button>
-                  </>
-                ) : null}
-                {request.status === 'OPEN' ? (
-                  <>
-                    <span className="px-1.5 text-neutral-300">·</span>
-                    <button
-                      type="button"
-                      disabled={isStatusUpdating}
-                      onClick={() => onStatusChange(request, 'CLOSED')}
-                    >
-                      마감
-                    </button>
-                  </>
-                ) : null}
-                <span className="px-1.5 text-neutral-300">·</span>
-                <button type="button" onClick={() => onDelete(request)}>
-                  삭제
-                </button>
-              </td>
-            </tr>
-          ))}
+          {requests.map((request) => {
+            const isPending = pendingRequestIds.has(request.requestId);
+
+            return (
+              <tr
+                key={request.requestId}
+                className="h-[60px] border-t border-neutral-200 text-neutral-900"
+              >
+                <td className="truncate pr-4 pl-6">{request.title}</td>
+                <td className="truncate pr-4 pl-6">{request.duePeriod}</td>
+                <td className="truncate pr-4 pl-6">{request.target}</td>
+                <td className="truncate pr-4 pl-6">
+                  {request.submittedCount} / {request.targetCount}
+                </td>
+                <td className="truncate pr-4 pl-6">
+                  {PORTFOLIO_REQUEST_STATUS_LABEL[request.status]}
+                </td>
+                <td className="truncate pr-4 pl-6">{request.createdAt}</td>
+                <td className="text-primary-700 truncate pr-4 pl-6 whitespace-nowrap">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onShowSubmissions(request)}
+                  >
+                    제출 현황
+                  </button>
+                  {request.status !== 'CLOSED' ? (
+                    <>
+                      <span className="px-1.5 text-neutral-300">·</span>
+                      <button type="button" disabled={isPending} onClick={() => onEdit(request)}>
+                        수정
+                      </button>
+                    </>
+                  ) : null}
+                  {request.status === 'DRAFT' ? (
+                    <>
+                      <span className="px-1.5 text-neutral-300">·</span>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => onStatusChange(request, 'PUBLISHED')}
+                      >
+                        공개
+                      </button>
+                    </>
+                  ) : null}
+                  {request.status === 'OPEN' ? (
+                    <>
+                      <span className="px-1.5 text-neutral-300">·</span>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => onStatusChange(request, 'CLOSED')}
+                      >
+                        마감
+                      </button>
+                    </>
+                  ) : null}
+                  <span className="px-1.5 text-neutral-300">·</span>
+                  <button type="button" disabled={isPending} onClick={() => onDelete(request)}>
+                    삭제
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -578,7 +692,7 @@ function PortfolioSubmissionStatus({
       ? 0
       : Math.round((request.submittedCount / request.targetCount) * 100);
   const status: AdminPortfolioListStatus =
-    submissionsQuery.isLoading || isPageOutOfRange
+    submissionsQuery.isLoading || submissionsQuery.isPlaceholderData || isPageOutOfRange
       ? 'loading'
       : submissionsQuery.isError
         ? 'error'
@@ -606,7 +720,11 @@ function PortfolioSubmissionStatus({
     downloadMutation.mutate(
       { requestId: request.requestId, submittedOnly: false },
       {
-        onSuccess: (blob) => savePortfolioArchive(blob, `${request.title}-포트폴리오.zip`),
+        onSuccess: (blob) =>
+          savePortfolioArchive(
+            blob,
+            `${sanitizeArchiveFilenamePart(request.title)}-포트폴리오.zip`,
+          ),
         onError: (error) => showToast({ tone: 'error', message: getDownloadErrorMessage(error) }),
       },
     );

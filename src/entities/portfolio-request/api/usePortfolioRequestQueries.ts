@@ -11,7 +11,6 @@ import {
 import type {
   CreateAdminPortfolioRequestRequest,
   DownloadAdminPortfolioSubmissionsVariables,
-  FetchAdminPortfolioRequestListParams,
   FetchAdminPortfolioSubmissionsParams,
   FetchPortfolioRequestListParams,
   PortfolioApiRequestStatus,
@@ -22,7 +21,6 @@ import type {
 import {
   createAdminPortfolioRequest,
   downloadAdminPortfolioSubmissions,
-  fetchAdminPortfolioRequestList,
   fetchAdminPortfolioSubmissions,
   fetchAllAdminPortfolioRequestList,
   fetchAllPortfolioRequestList,
@@ -42,9 +40,6 @@ export const portfolioRequestKeys = {
     [...portfolioRequestKeys.lists(), params] as const,
   catalogs: () => [...portfolioRequestKeys.all, 'catalog'] as const,
   catalog: (size: number) => [...portfolioRequestKeys.catalogs(), size] as const,
-  adminLists: () => [...portfolioRequestKeys.all, 'admin-list'] as const,
-  adminList: (params: FetchAdminPortfolioRequestListParams) =>
-    [...portfolioRequestKeys.adminLists(), params] as const,
   adminCatalogs: () => [...portfolioRequestKeys.all, 'admin-catalog'] as const,
   adminCatalog: (status: PortfolioApiRequestStatus | undefined, size: number) =>
     [...portfolioRequestKeys.adminCatalogs(), status, size] as const,
@@ -92,16 +87,6 @@ export function useUpsertPortfolioSubmissionMutation(requestId: number | null) {
   });
 }
 
-export function useAdminPortfolioRequestListQuery(
-  params: FetchAdminPortfolioRequestListParams = {},
-) {
-  return useQuery({
-    queryKey: portfolioRequestKeys.adminList(params),
-    queryFn: ({ signal }) => fetchAdminPortfolioRequestList(params, signal),
-    placeholderData: keepPreviousData,
-  });
-}
-
 export function useAllAdminPortfolioRequestListQuery(
   status?: PortfolioApiRequestStatus,
   size = 20,
@@ -109,6 +94,7 @@ export function useAllAdminPortfolioRequestListQuery(
   return useQuery({
     queryKey: portfolioRequestKeys.adminCatalog(status, size),
     queryFn: ({ signal }) => fetchAllAdminPortfolioRequestList(status, size, signal),
+    staleTime: 30_000,
   });
 }
 
@@ -117,7 +103,8 @@ export function useCreateAdminPortfolioRequestMutation() {
   return useMutation({
     mutationFn: (request: CreateAdminPortfolioRequestRequest) =>
       createAdminPortfolioRequest(request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.all }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.adminCatalogs() }),
   });
 }
 
@@ -126,7 +113,13 @@ export function useUpdateAdminPortfolioRequestMutation() {
   return useMutation({
     mutationFn: (variables: UpdateAdminPortfolioRequestVariables) =>
       updateAdminPortfolioRequest(variables),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.all }),
+    onSuccess: (_response, variables) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.adminCatalogs() }),
+        queryClient.invalidateQueries({
+          queryKey: portfolioRequestKeys.detail(variables.requestId),
+        }),
+      ]),
   });
 }
 
@@ -135,7 +128,15 @@ export function useUpdateAdminPortfolioRequestStatusMutation() {
   return useMutation({
     mutationFn: (variables: UpdateAdminPortfolioRequestStatusVariables) =>
       updateAdminPortfolioRequestStatus(variables),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.all }),
+    onSuccess: (_response, variables) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.adminCatalogs() }),
+        queryClient.invalidateQueries({
+          queryKey: portfolioRequestKeys.detail(variables.requestId),
+        }),
+        queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: portfolioRequestKeys.catalogs() }),
+      ]),
   });
 }
 
@@ -147,6 +148,7 @@ export function useAdminPortfolioSubmissionsQuery(
     queryKey: portfolioRequestKeys.adminSubmissionList(requestId ?? -1, params),
     queryFn:
       requestId === null ? skipToken : () => fetchAdminPortfolioSubmissions(requestId, params),
+    placeholderData: keepPreviousData,
   });
 }
 

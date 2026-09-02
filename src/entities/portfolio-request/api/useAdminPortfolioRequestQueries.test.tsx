@@ -5,24 +5,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   portfolioRequestKeys,
-  useAdminPortfolioRequestListQuery,
   useAllAdminPortfolioRequestListQuery,
   useCreateAdminPortfolioRequestMutation,
   useUpdateAdminPortfolioRequestStatusMutation,
 } from './usePortfolioRequestQueries';
 
-const { mockCreateRequest, mockFetchAllRequestList, mockFetchRequestList, mockUpdateStatus } =
-  vi.hoisted(() => ({
-    mockCreateRequest: vi.fn(),
-    mockFetchAllRequestList: vi.fn(),
-    mockFetchRequestList: vi.fn(),
-    mockUpdateStatus: vi.fn(),
-  }));
+const { mockCreateRequest, mockFetchAllRequestList, mockUpdateStatus } = vi.hoisted(() => ({
+  mockCreateRequest: vi.fn(),
+  mockFetchAllRequestList: vi.fn(),
+  mockUpdateStatus: vi.fn(),
+}));
 
 vi.mock('./portfolioRequestApi', () => ({
   createAdminPortfolioRequest: mockCreateRequest,
   fetchAllAdminPortfolioRequestList: mockFetchAllRequestList,
-  fetchAdminPortfolioRequestList: mockFetchRequestList,
   updateAdminPortfolioRequestStatus: mockUpdateStatus,
 }));
 
@@ -37,28 +33,10 @@ function setupQueryClient() {
 beforeEach(() => {
   mockCreateRequest.mockReset();
   mockFetchAllRequestList.mockReset();
-  mockFetchRequestList.mockReset();
   mockUpdateStatus.mockReset();
 });
 
 describe('admin portfolio request queries', () => {
-  it('관리자 목록 조회 조건을 API 함수에 전달한다', async () => {
-    const { queryClient, wrapper } = setupQueryClient();
-    mockFetchRequestList.mockResolvedValue({ content: [] });
-
-    const { result } = renderHook(
-      () => useAdminPortfolioRequestListQuery({ page: 1, size: 10, status: 'PUBLISHED' }),
-      { wrapper },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockFetchRequestList).toHaveBeenCalledWith(
-      { page: 1, size: 10, status: 'PUBLISHED' },
-      expect.any(AbortSignal),
-    );
-    queryClient.clear();
-  });
-
   it('관리자 전체 목록 조회에 Query 취소 신호를 전달한다', async () => {
     const { queryClient, wrapper } = setupQueryClient();
     mockFetchAllRequestList.mockResolvedValue([]);
@@ -85,7 +63,9 @@ describe('admin portfolio request queries', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: portfolioRequestKeys.all });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: portfolioRequestKeys.adminCatalogs(),
+    });
     queryClient.clear();
   });
 
@@ -98,7 +78,14 @@ describe('admin portfolio request queries', () => {
     result.current.mutate({ requestId: 1, status: 'DELETED' });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: portfolioRequestKeys.all });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: portfolioRequestKeys.adminCatalogs(),
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: portfolioRequestKeys.detail(1),
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: portfolioRequestKeys.lists() });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: portfolioRequestKeys.catalogs() });
     queryClient.clear();
   });
 });

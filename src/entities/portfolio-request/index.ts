@@ -34,7 +34,6 @@ export type {
 export {
   createAdminPortfolioRequest,
   downloadAdminPortfolioSubmissions,
-  fetchAdminPortfolioRequestList,
   fetchAdminPortfolioSubmissions,
   fetchAllAdminPortfolioRequestList,
   fetchAllPortfolioRequestList,
@@ -46,7 +45,6 @@ export {
 } from './api/portfolioRequestApi';
 export {
   portfolioRequestKeys,
-  useAdminPortfolioRequestListQuery,
   useAdminPortfolioSubmissionsQuery,
   useAllAdminPortfolioRequestListQuery,
   useAllPortfolioRequestListQuery,

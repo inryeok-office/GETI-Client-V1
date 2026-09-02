@@ -14,13 +14,14 @@ const mocks = vi.hoisted(() => ({
   detailRefetch: vi.fn(),
   downloadMutate: vi.fn(),
   listRefetch: vi.fn(),
+  routerPush: vi.fn(),
+  routerReplace: vi.fn(),
   scrollIntoView: vi.fn(),
-  statusMutate: vi.fn(),
+  statusMutateAsync: vi.fn(),
   studentRefetch: vi.fn(),
   submissionsRefetch: vi.fn(),
   showToast: vi.fn(),
   updateMutate: vi.fn(),
-  useAdminPortfolioRequestListQuery: vi.fn(),
   useAllAdminPortfolioRequestListQuery: vi.fn(),
   useAdminPortfolioSubmissionsQuery: vi.fn(),
   useCreateAdminPortfolioRequestMutation: vi.fn(),
@@ -31,11 +32,15 @@ const mocks = vi.hoisted(() => ({
   useUpdateAdminPortfolioRequestStatusMutation: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/admin/portfolios',
+  useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
+}));
+
 vi.mock('@/entities/portfolio-request', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/entities/portfolio-request')>();
   return {
     ...actual,
-    useAdminPortfolioRequestListQuery: mocks.useAdminPortfolioRequestListQuery,
     useAllAdminPortfolioRequestListQuery: mocks.useAllAdminPortfolioRequestListQuery,
     useAdminPortfolioSubmissionsQuery: mocks.useAdminPortfolioSubmissionsQuery,
     useCreateAdminPortfolioRequestMutation: mocks.useCreateAdminPortfolioRequestMutation,
@@ -121,6 +126,7 @@ function renderAdminPortfolioManagement() {
 describe('AdminPortfolioManagement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null, '', '/admin/portfolios');
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
       value: mocks.scrollIntoView,
@@ -128,9 +134,7 @@ describe('AdminPortfolioManagement', () => {
     mocks.createMutate.mockImplementation((_variables, options) => {
       options?.onSuccess?.(REQUEST_RESPONSE);
     });
-    mocks.statusMutate.mockImplementation((_variables, options) => {
-      options?.onSuccess?.(REQUEST_RESPONSE);
-    });
+    mocks.statusMutateAsync.mockResolvedValue(REQUEST_RESPONSE);
     mocks.updateMutate.mockImplementation((_variables, options) => {
       options?.onSuccess?.(REQUEST_RESPONSE);
     });
@@ -149,6 +153,7 @@ describe('AdminPortfolioManagement', () => {
       isError: false,
       isFetching: false,
       isLoading: false,
+      isPlaceholderData: false,
       refetch: mocks.submissionsRefetch,
     });
     mocks.useCreateAdminPortfolioRequestMutation.mockReturnValue({
@@ -191,7 +196,7 @@ describe('AdminPortfolioManagement', () => {
     });
     mocks.useUpdateAdminPortfolioRequestStatusMutation.mockReturnValue({
       isPending: false,
-      mutate: mocks.statusMutate,
+      mutateAsync: mocks.statusMutateAsync,
     });
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
@@ -211,9 +216,55 @@ describe('AdminPortfolioManagement', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '제출 현황' }));
 
+    expect(mocks.routerPush).toHaveBeenCalledWith('/admin/portfolios?requestId=1', {
+      scroll: false,
+    });
     expect(screen.getByRole('heading', { name: '포트폴리오 제출 현황' })).toBeInTheDocument();
     expect(screen.getByText('상반기 포트폴리오 · 대상 60명')).toBeInTheDocument();
     expect(screen.getByText('김민재')).toBeInTheDocument();
+  });
+
+  it('목록 검색·상태·페이지를 URL에서 복원하고 변경 사항을 다시 반영한다', () => {
+    const requests = Array.from({ length: 21 }, (_, index) => ({
+      ...REQUEST_LIST_RESPONSE.content[0],
+      requestId: index + 1,
+      title: index === 20 ? '찾는 요청' : `일반 요청 ${index + 1}`,
+    }));
+    mocks.useAllAdminPortfolioRequestListQuery.mockReturnValue({
+      data: requests,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: mocks.listRefetch,
+    });
+
+    render(
+      <AdminPortfolioManagement
+        initialSearchParams={{ page: '2', query: '요청', status: 'PUBLISHED' }}
+      />,
+    );
+
+    expect(mocks.useAllAdminPortfolioRequestListQuery).toHaveBeenLastCalledWith('PUBLISHED', 20);
+    expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-current', 'page');
+    fireEvent.change(screen.getByPlaceholderText('요청 제목으로 검색해 보세요.'), {
+      target: { value: '찾는' },
+    });
+
+    expect(mocks.routerReplace).toHaveBeenLastCalledWith(
+      '/admin/portfolios?query=%EC%B0%BE%EB%8A%94&status=PUBLISHED',
+      { scroll: false },
+    );
+  });
+
+  it('브라우저 뒤로가기로 상세 URL이 제거되면 요청 목록을 복원한다', () => {
+    render(<AdminPortfolioManagement initialSearchParams={{ requestId: '1' }} />);
+    expect(screen.getByRole('heading', { name: '포트폴리오 제출 현황' })).toBeInTheDocument();
+
+    window.history.replaceState(null, '', '/admin/portfolios?query=상반기');
+    fireEvent(window, new PopStateEvent('popstate'));
+
+    expect(screen.getByText('상반기 포트폴리오')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('요청 제목으로 검색해 보세요.')).toHaveValue('상반기');
   });
 
   it('필수값을 입력하고 등록하면 수합 요청 등록 API를 호출한다', () => {
@@ -305,20 +356,59 @@ describe('AdminPortfolioManagement', () => {
     renderAdminPortfolioManagement();
     fireEvent.click(screen.getByRole('button', { name: '공개' }));
 
-    expect(mocks.statusMutate).toHaveBeenCalledWith(
-      { requestId: 1, status: 'PUBLISHED' },
-      expect.any(Object),
+    expect(mocks.statusMutateAsync).toHaveBeenCalledWith({
+      requestId: 1,
+      status: 'PUBLISHED',
+    });
+  });
+
+  it('동시에 상태를 변경해도 요청별 관리 동작을 독립적으로 비활성화한다', async () => {
+    mocks.useAllAdminPortfolioRequestListQuery.mockReturnValue({
+      data: [
+        { ...REQUEST_LIST_RESPONSE.content[0], requestId: 1, status: 'DRAFT' },
+        { ...REQUEST_LIST_RESPONSE.content[0], requestId: 2, status: 'DRAFT' },
+      ],
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: mocks.listRefetch,
+    });
+    const resolvers = new Map<number, () => void>();
+    mocks.statusMutateAsync.mockImplementation(
+      ({ requestId }: { requestId: number }) =>
+        new Promise<void>((resolve) => resolvers.set(requestId, resolve)),
     );
+
+    renderAdminPortfolioManagement();
+
+    const publishButtons = screen.getAllByRole('button', { name: '공개' });
+    fireEvent.click(publishButtons[0]);
+    fireEvent.click(publishButtons[1]);
+
+    await waitFor(() => {
+      expect(publishButtons[0]).toBeDisabled();
+      expect(publishButtons[1]).toBeDisabled();
+    });
+
+    await act(async () => resolvers.get(2)?.());
+
+    expect(publishButtons[0]).toBeDisabled();
+    await waitFor(() => expect(publishButtons[1]).toBeEnabled());
+    const firstRow = publishButtons[0].closest('tr');
+    if (!firstRow) throw new Error('첫 번째 요청 행을 찾을 수 없습니다.');
+    expect(within(firstRow).getByRole('button', { name: '제출 현황' })).toBeDisabled();
+    expect(within(firstRow).getByRole('button', { name: '수정' })).toBeDisabled();
+    expect(within(firstRow).getByRole('button', { name: '삭제' })).toBeDisabled();
+
+    await act(async () => resolvers.get(1)?.());
+    await waitFor(() => expect(publishButtons[0]).toBeEnabled());
   });
 
   it('진행 중 요청을 마감한다', () => {
     renderAdminPortfolioManagement();
     fireEvent.click(screen.getByRole('button', { name: '마감' }));
 
-    expect(mocks.statusMutate).toHaveBeenCalledWith(
-      { requestId: 1, status: 'CLOSED' },
-      expect.any(Object),
-    );
+    expect(mocks.statusMutateAsync).toHaveBeenCalledWith({ requestId: 1, status: 'CLOSED' });
   });
 
   it('종료된 요청에는 수정 동작을 표시하지 않는다', () => {
@@ -410,6 +500,9 @@ describe('AdminPortfolioManagement', () => {
     fireEvent.click(screen.getByRole('button', { name: '수정' }));
 
     expect(screen.queryByRole('combobox', { name: '학생 검색 기수' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('대상 1명 · 수정 화면에서는 대상 학생을 변경할 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 
   it('수정 상세 조회 실패 시 다시 시도할 수 있다', () => {
@@ -780,10 +873,7 @@ describe('AdminPortfolioManagement', () => {
 
     fireEvent.click(within(deleteDialog).getByRole('button', { name: '삭제' }));
 
-    expect(mocks.statusMutate).toHaveBeenCalledWith(
-      { requestId: 1, status: 'DELETED' },
-      expect.any(Object),
-    );
+    expect(mocks.statusMutateAsync).toHaveBeenCalledWith({ requestId: 1, status: 'DELETED' });
   });
 
   it('네트워크 오류 상태에서 다시 시도할 수 있다', () => {
@@ -862,6 +952,33 @@ describe('AdminPortfolioManagement', () => {
     expect(downloadButton.querySelector('svg')).toBeNull();
   });
 
+  it('ZIP 파일명을 정리하고 다음 태스크에서 객체 URL을 해제한다', async () => {
+    vi.useFakeTimers();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    mocks.useAllAdminPortfolioRequestListQuery.mockReturnValue({
+      data: [{ ...REQUEST_LIST_RESPONSE.content[0], title: '상반기/포트폴리오:최종.' }],
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: mocks.listRefetch,
+    });
+
+    renderAdminPortfolioManagement();
+    fireEvent.click(screen.getByRole('button', { name: '제출 현황' }));
+    fireEvent.click(screen.getByRole('button', { name: '자료 일괄 다운로드' }));
+
+    const link = click.mock.instances[0] as HTMLAnchorElement;
+    expect(link.download).toBe('상반기_포트폴리오_최종-포트폴리오.zip');
+    expect(click).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    await vi.runAllTimersAsync();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:portfolio');
+
+    vi.useRealTimers();
+  });
+
   it('제출 현황 화면에서도 토스트 컨테이너를 렌더링한다', () => {
     renderAdminPortfolioManagement();
 
@@ -899,10 +1016,11 @@ describe('AdminPortfolioManagement', () => {
     mocks.useAdminPortfolioSubmissionsQuery.mockImplementation((_requestId, params) =>
       params.submitted === true
         ? {
-            data: undefined,
+            data: SUBMISSION_LIST_RESPONSE,
             isError: false,
             isFetching: true,
-            isLoading: true,
+            isLoading: false,
+            isPlaceholderData: true,
             refetch: mocks.submissionsRefetch,
           }
         : {
@@ -910,6 +1028,7 @@ describe('AdminPortfolioManagement', () => {
             isError: false,
             isFetching: false,
             isLoading: false,
+            isPlaceholderData: false,
             refetch: mocks.submissionsRefetch,
           },
     );

@@ -267,6 +267,18 @@ export function PortfolioRequestFormPanel({
               />
             ) : null}
 
+            {isEditing ? (
+              <div className="space-y-1.5">
+                <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+                  대상 학생
+                </p>
+                <p className="rounded-lg bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                  대상 {initialRequest.targetCount}명 · 수정 화면에서는 대상 학생을 변경할 수
+                  없습니다.
+                </p>
+              </div>
+            ) : null}
+
             <div ref={studentSelectRef} className={isEditing ? 'hidden' : 'space-y-1.5'}>
               <label
                 htmlFor="portfolio-student-search"
