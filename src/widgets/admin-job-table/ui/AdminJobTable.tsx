@@ -45,10 +45,10 @@ interface AdminJobTableProps {
 }
 
 /**
- * 공고 관리 목록 테이블. 표시만 담당한다 — 공고명은 `/admin/jobs/[jobId]` 상세 링크이고,
- * "마감"·"삭제"는 클릭만 호출부로 올린다(뮤테이션·확인 모달·토스트는 `AdminJobListPage`가 소유해
- * 목록이 빈 상태로 바뀌어도 성공 토스트가 유지된다, PR #208 코드리뷰 반영).
- * "수정"은 등록·수정 폼이 아직 없어 비활성으로 남긴다.
+ * 공고 관리 목록 테이블. 표시만 담당한다 — 공고명은 `/admin/jobs/[jobId]` 상세 링크,
+ * "수정"은 `/admin/jobs/[jobId]/edit`(Issue #205). "마감"·"삭제"는 클릭만 호출부로 올린다
+ * (뮤테이션·확인 모달·토스트는 `AdminJobListPage`가 소유해 목록이 빈 상태로 바뀌어도 성공
+ * 토스트가 유지된다, PR #208 코드리뷰 반영).
  *
  * 스크린리더가 머리글·셀 관계를 읽을 수 있도록 실제 `<table>` + `th scope="col"`로 구성하고,
  * 가로 스크롤 래퍼에는 `role="region"` · `aria-label` · `tabIndex={0}`을 줘 키보드로도 스크롤할 수
@@ -109,10 +109,12 @@ export function AdminJobTable({
               </td>
               <td className="px-[24px]">
                 <div className="flex items-center gap-[6px] text-[14px] leading-[1.4] tracking-[-0.14px]">
-                  <span className="text-neutral-400">
+                  <Link
+                    href={`/admin/jobs/${job.jobId}/edit`}
+                    className="text-primary-700 font-medium hover:underline"
+                  >
                     수정
-                    <span className="sr-only"> (준비 중)</span>
-                  </span>
+                  </Link>
                   {job.status === 'PUBLISHED' && (
                     <>
                       <span className="text-neutral-300" aria-hidden="true">

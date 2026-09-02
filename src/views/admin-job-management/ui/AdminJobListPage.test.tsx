@@ -169,10 +169,13 @@ describe('AdminJobListPage', () => {
     expect(mockUseJobListQuery).toHaveBeenCalledWith(expect.objectContaining({ status: 'CLOSED' }));
   });
 
-  it('"공고 등록" 버튼은 이번 범위에서 비활성이다', () => {
+  it('"공고 등록"은 등록 화면으로 가는 링크다', () => {
     render(<AdminJobListPage />);
 
-    expect(screen.getByRole('button', { name: '공고 등록' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: '공고 등록' })).toHaveAttribute(
+      'href',
+      '/admin/jobs/new',
+    );
   });
 
   it('URL page가 totalPages를 벗어나면 마지막 유효 페이지로 보정한다', () => {

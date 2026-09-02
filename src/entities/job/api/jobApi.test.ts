@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { changeAdminJobStatus, downloadJobAttachment, fetchAdminJobDetail } from './jobApi';
+import {
+  changeAdminJobStatus,
+  createAdminJob,
+  downloadJobAttachment,
+  fetchAdminJobDetail,
+  updateAdminJob,
+} from './jobApi';
 
 /**
  * `discordDeliveryApi.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 갈아 끼운다 —
@@ -116,6 +122,61 @@ describe('changeAdminJobStatus', () => {
       { url: '/api/v1/admin/jobs/7/status', method: 'patch', responseType: undefined },
     ]);
     expect(receivedBody).toEqual({ status: 'CLOSED' });
+    expect(result).toEqual(detail);
+  });
+});
+
+describe('createAdminJob', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('POST /api/v1/admin/jobs로 payload를 그대로 보낸다', async () => {
+    const detail = { jobId: 12, title: '새 공고', status: 'DRAFT' };
+    let receivedBody: unknown;
+    const stub = stubServer((config) => {
+      receivedBody = JSON.parse(config.data as string);
+      return { success: true, data: detail };
+    });
+    restore = stub.restore;
+
+    const payload = {
+      companyId: 1,
+      postingType: 'GENERAL' as const,
+      applicationMethod: 'EXTERNAL' as const,
+      title: '새 공고',
+      status: 'DRAFT' as const,
+    };
+    const result = await createAdminJob(payload);
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs', method: 'post', responseType: undefined },
+    ]);
+    expect(receivedBody).toEqual(payload);
+    expect(result).toEqual(detail);
+  });
+});
+
+describe('updateAdminJob', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('PATCH /api/v1/admin/jobs/{jobId}로 부분 payload를 보낸다', async () => {
+    const detail = { jobId: 12, title: '수정된 제목', status: 'PUBLISHED' };
+    let receivedBody: unknown;
+    const stub = stubServer((config) => {
+      receivedBody = JSON.parse(config.data as string);
+      return { success: true, data: detail };
+    });
+    restore = stub.restore;
+
+    const result = await updateAdminJob(12, { title: '수정된 제목' });
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs/12', method: 'patch', responseType: undefined },
+    ]);
+    expect(receivedBody).toEqual({ title: '수정된 제목' });
     expect(result).toEqual(detail);
   });
 });

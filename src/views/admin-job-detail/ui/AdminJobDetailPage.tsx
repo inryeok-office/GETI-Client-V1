@@ -16,6 +16,7 @@ import {
 } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
 import { PageState } from '@/shared/ui/page-state';
+import { AppToaster } from '@/shared/ui/toast';
 
 interface AdminJobDetailPageProps {
   jobId: string;
@@ -29,9 +30,10 @@ interface AdminJobDetailPageProps {
 /**
  * 어드민 공고 상세 화면(`/admin/jobs/[jobId]`). `GET /api/v1/admin/jobs/{jobId}`
  * (`entities/job`의 `useAdminJobDetailQuery`)로 모든 상태(임시저장·삭제 포함)의 공고를
- * 조회한다(Issue #202, 읽기 전용). 라우트 파라미터가 정수가 아니거나 조회가 실패하면
+ * 조회한다(Issue #202). 라우트 파라미터가 정수가 아니거나 조회가 실패하면
  * (404 공고 없음, 403 권한 없음 포함) 오류 상태를 보여준다 — `AdminCompanyDetailPage`와 같은 패턴.
- * "AI 재분석"·수정 등 쓰기 동작은 이번 범위 밖이라 버튼을 비활성으로 둔다.
+ * `AppToaster`는 등록·수정 후 이 화면으로 이동해 오는 성공 토스트를 그리기 위해 둔다(Issue #205).
+ * "AI 재분석"은 아직 범위 밖이라 버튼을 비활성으로 둔다.
  * 간격·색상은 Figma(node 586:12852)를 옮겼다.
  */
 export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJobDetailPageProps) {
@@ -45,6 +47,7 @@ export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJob
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AppToaster />
       <header className="flex h-[80px] items-center justify-between border-b border-neutral-200 bg-white px-[40px]">
         <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900">공고 상세</p>
         <div className="flex items-center gap-[12px]">

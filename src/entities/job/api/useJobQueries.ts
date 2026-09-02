@@ -10,13 +10,16 @@ import {
 
 import {
   changeAdminJobStatus,
+  createAdminJob,
   downloadJobAttachment,
   fetchAdminJobDetail,
   fetchJobDetail,
   fetchJobList,
   fetchJobSources,
+  updateAdminJob,
   type FetchJobListParams,
 } from './jobApi';
+import type { JobCreatePayload, JobUpdatePayload } from '../model/types';
 
 export const jobKeys = {
   all: ['jobs'] as const,
@@ -73,6 +76,31 @@ export function useChangeAdminJobStatusMutation() {
     mutationFn: ({ jobId, status }: { jobId: number; status: 'CLOSED' | 'DELETED' }) =>
       changeAdminJobStatus(jobId, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
+  });
+}
+
+/** 공고 등록·임시저장. 성공 시 목록 캐시를 무효화한다(새 공고가 목록에 반영되도록). */
+export function useCreateAdminJobMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: JobCreatePayload) => createAdminJob(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.all });
+    },
+  });
+}
+
+/** 공고 내용 수정. 성공 시 목록·상세 캐시를 모두 무효화한다. */
+export function useUpdateAdminJobMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ jobId, payload }: { jobId: number; payload: JobUpdatePayload }) =>
+      updateAdminJob(jobId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.all });
+    },
   });
 }
 
