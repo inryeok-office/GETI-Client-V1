@@ -4,12 +4,14 @@ import type { PortfolioRequest } from '@/entities/portfolio-request';
 import { Dialog } from '@/shared/ui/dialog';
 
 interface PortfolioRequestDeleteDialogProps {
+  isDeleting?: boolean;
   request: PortfolioRequest | null;
   onCancel: () => void;
   onConfirm: (requestId: number) => void;
 }
 
 export function PortfolioRequestDeleteDialog({
+  isDeleting = false,
   request,
   onCancel,
   onConfirm,
@@ -28,18 +30,20 @@ export function PortfolioRequestDeleteDialog({
           <button
             type="button"
             className="h-11 rounded-lg border border-neutral-200 bg-white px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600"
+            disabled={isDeleting}
             onClick={onCancel}
           >
             취소
           </button>
           <button
             type="button"
-            className="bg-status-error h-11 rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white"
+            className="bg-status-error h-11 rounded-lg px-6 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-white disabled:opacity-60"
+            disabled={isDeleting}
             onClick={() => {
               if (request) onConfirm(request.requestId);
             }}
           >
-            삭제
+            {isDeleting ? '삭제 중…' : '삭제'}
           </button>
         </>
       }

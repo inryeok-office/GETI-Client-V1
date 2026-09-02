@@ -3,13 +3,17 @@
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
+import type { PortfolioRequest } from '@/entities/portfolio-request';
+import {
+  STUDENT_DEPARTMENT_LABELS,
+  type StudentSearchItem,
+  useStudentListQuery,
+} from '@/entities/student';
 import { Button } from '@/shared/ui/button';
 import { DropdownField } from '@/shared/ui/dropdown-field';
 import { Icon } from '@/shared/ui/icon';
 import { TextareaField } from '@/shared/ui/textarea-field';
 import { TextField } from '@/shared/ui/text-field';
-
-const STUDENTS = ['박보검', '박지훈', '김민재', '차은우'] as const;
 
 function parseDateValue(value: string) {
   const match = /^(\d{4})\.(\d{2})\.(\d{2})$/.exec(value.replaceAll('-', '.'));
@@ -28,60 +32,80 @@ function parseDateValue(value: string) {
   return year * 10_000 + month * 100 + day;
 }
 
+function formatDateInputValue(value: string) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return '';
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
+function toDateTimeValue(value: string) {
+  return `${value.replaceAll('.', '-')}T23:59:59`;
+}
+
+function formatStudentOption(student: StudentSearchItem) {
+  const meta = [
+    student.cohort === null ? null : `${student.cohort}기`,
+    student.department === null
+      ? null
+      : (STUDENT_DEPARTMENT_LABELS[student.department] ?? student.department),
+  ].filter((value): value is string => value !== null);
+
+  return `${student.name}${meta.length > 0 ? ` · ${meta.join(' · ')}` : ''}`;
+}
+
+export interface PortfolioRequestFormValues {
+  description: string | null;
+  dueAt: string;
+  targetStudentIds?: number[];
+  title: string;
+}
+
 interface PortfolioRequestFormPanelProps {
-  initialTitle?: string;
+  initialRequest?: PortfolioRequest | null;
+  isSubmitting?: boolean;
   onClose: () => void;
-  onSubmit: (title: string) => void;
+  onSubmit: (values: PortfolioRequestFormValues) => void;
 }
 
 export function PortfolioRequestFormPanel({
-  initialTitle,
+  initialRequest = null,
+  isSubmitting = false,
   onClose,
   onSubmit,
 }: PortfolioRequestFormPanelProps) {
-  const isEditing = Boolean(initialTitle);
-  const [title, setTitle] = useState(initialTitle ?? '');
-  const [description, setDescription] = useState(
-    isEditing ? '학생에게 안내할 수합 내용입니다.' : '',
+  const isEditing = initialRequest !== null;
+  const [title, setTitle] = useState(initialRequest?.title ?? '');
+  const [description, setDescription] = useState(initialRequest?.description ?? '');
+  const [endDate, setEndDate] = useState(
+    isEditing && initialRequest ? formatDateInputValue(initialRequest.dueAt) : '',
   );
-  const [startDate, setStartDate] = useState(isEditing ? '2026-08-01' : '');
-  const [endDate, setEndDate] = useState(isEditing ? '2026-08-20' : '');
-  const [cohort, setCohort] = useState(isEditing ? '10' : '');
+  const [cohort, setCohort] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
-  const [selectedStudents, setSelectedStudents] = useState<string[]>(['박보검', '박지훈']);
+  const [studentPage, setStudentPage] = useState(0);
+  const [selectedStudents, setSelectedStudents] = useState<StudentSearchItem[]>([]);
   const [isStudentMenuOpen, setIsStudentMenuOpen] = useState(false);
+  const [activeStudentIndex, setActiveStudentIndex] = useState(-1);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const studentSelectRef = useRef<HTMLDivElement>(null);
-  const parsedStartDate = parseDateValue(startDate);
+  const studentInputRef = useRef<HTMLInputElement>(null);
+  const activeStudentOptionRef = useRef<HTMLButtonElement>(null);
+  const studentListboxId = useId();
   const parsedEndDate = parseDateValue(endDate);
-  const isDateOrderInvalid =
-    parsedStartDate !== null && parsedEndDate !== null && parsedEndDate < parsedStartDate;
   const hasValidationError =
     isSubmitted &&
     (title.trim().length === 0 ||
-      description.trim().length === 0 ||
-      parsedStartDate === null ||
       parsedEndDate === null ||
-      isDateOrderInvalid ||
-      !cohort ||
-      selectedStudents.length === 0);
+      (!isEditing && selectedStudents.length === 0));
 
-  const startDateError = !startDate
-    ? '시작일을 선택해 주세요.'
-    : parsedStartDate === null
-      ? '올바른 시작일을 입력해 주세요.'
-      : undefined;
   const endDateError = !endDate
     ? '종료일을 선택해 주세요.'
     : parsedEndDate === null
       ? '올바른 종료일을 입력해 주세요.'
-      : isDateOrderInvalid
-        ? '제출 종료일은 시작일보다 빠를 수 없습니다.'
-        : undefined;
-
-  const visibleStudents = STUDENTS.filter(
-    (student) => student.includes(studentQuery) && !selectedStudents.includes(student),
-  );
+      : undefined;
 
   useEffect(() => {
     if (!isStudentMenuOpen) return;
@@ -90,7 +114,10 @@ export function PortfolioRequestFormPanel({
       if (!studentSelectRef.current?.contains(event.target as Node)) setIsStudentMenuOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsStudentMenuOpen(false);
+      if (event.key === 'Escape') {
+        setIsStudentMenuOpen(false);
+        setActiveStudentIndex(-1);
+      }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -101,30 +128,81 @@ export function PortfolioRequestFormPanel({
     };
   }, [isStudentMenuOpen]);
 
+  useEffect(() => {
+    if (activeStudentIndex < 0) return;
+    activeStudentOptionRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeStudentIndex]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitted(true);
 
     if (
       title.trim().length === 0 ||
-      description.trim().length === 0 ||
-      parsedStartDate === null ||
       parsedEndDate === null ||
-      isDateOrderInvalid ||
-      !cohort ||
-      selectedStudents.length === 0
+      (!isEditing && selectedStudents.length === 0)
     )
       return;
-    onSubmit(title.trim());
+    onSubmit({
+      description: isEditing ? description.trim() : description.trim() || null,
+      dueAt: toDateTimeValue(endDate),
+      targetStudentIds: isEditing
+        ? selectedStudents.length > 0
+          ? selectedStudents.map((student) => student.memberId)
+          : undefined
+        : selectedStudents.map((student) => student.memberId),
+      title: title.trim(),
+    });
   };
 
-  const handleSelectStudent = (student: string) => {
+  const trimmedStudentQuery = studentQuery.trim();
+  const studentQueryResult = useStudentListQuery(
+    trimmedStudentQuery
+      ? {
+          academicStatus: 'ENROLLED',
+          cohort: cohort ? Number(cohort) : undefined,
+          name: trimmedStudentQuery,
+          page: studentPage,
+          size: 20,
+        }
+      : null,
+  );
+  const visibleStudents = studentQueryResult.isPlaceholderData
+    ? []
+    : (studentQueryResult.data?.content.filter(
+        (student) =>
+          !selectedStudents.some(
+            (selectedStudent) => selectedStudent.memberId === student.memberId,
+          ),
+      ) ?? []);
+  const studentTotalPages = studentQueryResult.data?.totalPages ?? 0;
+  const hasStudentResults = visibleStudents.length > 0;
+  const hasStudentPagination = studentPage > 0 || studentTotalPages > 1;
+  const canGoToPreviousStudentPage = studentPage > 0 && !studentQueryResult.isFetching;
+  const canGoToNextStudentPage =
+    !studentQueryResult.isFetching &&
+    !studentQueryResult.isError &&
+    studentTotalPages > 0 &&
+    studentPage < studentTotalPages - 1;
+
+  const handleSelectStudent = (student: StudentSearchItem) => {
     setSelectedStudents((current) =>
-      current.includes(student)
-        ? current.filter((item) => item !== student)
+      current.some((item) => item.memberId === student.memberId)
+        ? current.filter((item) => item.memberId !== student.memberId)
         : [...current, student],
     );
     setStudentQuery('');
+    setStudentPage(0);
+    setActiveStudentIndex(-1);
+  };
+
+  const handleStudentPageChange = (nextPage: number) => {
+    if (studentQueryResult.isFetching || nextPage < 0) return;
+    if (studentTotalPages > 0 && nextPage >= studentTotalPages) return;
+
+    setStudentPage(nextPage);
+    setActiveStudentIndex(-1);
+    studentInputRef.current?.focus();
   };
 
   return (
@@ -159,18 +237,9 @@ export function PortfolioRequestFormPanel({
               className="h-[180px]"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              errorMessage={
-                isSubmitted && description.trim().length === 0 ? '설명을 입력해 주세요.' : undefined
-              }
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <DateField
-                label="제출 시작일"
-                value={startDate}
-                onChange={setStartDate}
-                errorMessage={isSubmitted ? startDateError : undefined}
-              />
+            <div>
               <DateField
                 label="제출 종료일"
                 value={endDate}
@@ -179,21 +248,38 @@ export function PortfolioRequestFormPanel({
               />
             </div>
 
-            <DropdownField
-              label="대상 기수"
-              isLargeText
-              placeholder="기수를 선택해 주세요."
-              value={cohort}
-              onChange={setCohort}
-              errorMessage={isSubmitted && !cohort ? '대상 기수를 선택해 주세요.' : undefined}
-              options={[
-                { value: '8', label: '8기' },
-                { value: '9', label: '9기' },
-                { value: '10', label: '10기' },
-              ]}
-            />
+            {!isEditing ? (
+              <DropdownField
+                label="학생 검색 기수"
+                isLargeText
+                placeholder="검색할 기수를 선택해 주세요."
+                value={cohort}
+                onChange={(value) => {
+                  setCohort(value);
+                  setStudentPage(0);
+                  setActiveStudentIndex(-1);
+                }}
+                options={[
+                  { value: '8', label: '8기' },
+                  { value: '9', label: '9기' },
+                  { value: '10', label: '10기' },
+                ]}
+              />
+            ) : null}
 
-            <div ref={studentSelectRef} className="space-y-1.5">
+            {isEditing ? (
+              <div className="space-y-1.5">
+                <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
+                  대상 학생
+                </p>
+                <p className="rounded-lg bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                  대상 {initialRequest.targetCount}명 · 수정 화면에서는 대상 학생을 변경할 수
+                  없습니다.
+                </p>
+              </div>
+            ) : null}
+
+            <div ref={studentSelectRef} className={isEditing ? 'hidden' : 'space-y-1.5'}>
               <label
                 htmlFor="portfolio-student-search"
                 className="block text-base leading-[1.6] font-normal tracking-[-0.16px] text-neutral-900"
@@ -202,17 +288,59 @@ export function PortfolioRequestFormPanel({
               </label>
               <div className="relative">
                 <input
+                  ref={studentInputRef}
                   id="portfolio-student-search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls={
+                    isStudentMenuOpen && hasStudentResults ? studentListboxId : undefined
+                  }
+                  aria-expanded={isStudentMenuOpen}
+                  aria-activedescendant={
+                    activeStudentIndex >= 0 && visibleStudents[activeStudentIndex]
+                      ? `${studentListboxId}-option-${visibleStudents[activeStudentIndex].memberId}`
+                      : undefined
+                  }
                   value={studentQuery}
-                  onChange={(event) => setStudentQuery(event.target.value)}
+                  onChange={(event) => {
+                    setStudentQuery(event.target.value);
+                    setStudentPage(0);
+                    setActiveStudentIndex(-1);
+                  }}
                   onFocus={() => setIsStudentMenuOpen(true)}
                   onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return;
-                    event.preventDefault();
-                    const student = visibleStudents[0];
-                    if (student) handleSelectStudent(student);
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      setIsStudentMenuOpen(true);
+                      setActiveStudentIndex((current) =>
+                        Math.min(current + 1, visibleStudents.length - 1),
+                      );
+                      return;
+                    }
+                    if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      setIsStudentMenuOpen(true);
+                      setActiveStudentIndex((current) =>
+                        visibleStudents.length === 0
+                          ? -1
+                          : current <= 0
+                            ? visibleStudents.length - 1
+                            : current - 1,
+                      );
+                      return;
+                    }
+                    if (event.key === 'Escape') {
+                      setIsStudentMenuOpen(false);
+                      setActiveStudentIndex(-1);
+                      return;
+                    }
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      const student = visibleStudents[activeStudentIndex] ?? visibleStudents[0];
+                      if (student) handleSelectStudent(student);
+                    }
                   }}
-                  placeholder="이름 또는 학번으로 학생을 선택해 주세요."
+                  placeholder="이름으로 학생을 선택해 주세요."
                   className="focus:border-primary-300 h-14 w-full rounded-lg border border-neutral-200 bg-white px-4 pr-12 text-base leading-[1.6] tracking-[-0.16px] outline-none placeholder:text-neutral-900"
                 />
                 <span className="pointer-events-none absolute top-[22px] right-4 flex h-3 w-6 items-center justify-center overflow-hidden">
@@ -225,56 +353,124 @@ export function PortfolioRequestFormPanel({
                   />
                 </span>
                 {isStudentMenuOpen ? (
-                  <ul
-                    role="listbox"
-                    aria-label="개별 학생 선택"
-                    className="absolute top-16 z-20 flex w-full flex-col gap-[2px] overflow-hidden rounded-lg border border-neutral-200 bg-white p-2 shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
-                  >
-                    <li className="bg-primary-50 border-b border-neutral-100">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedStudents(
-                            selectedStudents.length === STUDENTS.length ? [] : [...STUDENTS],
-                          )
-                        }
-                        className="text-primary-700 flex h-11 w-full items-center gap-2 rounded-lg px-4 text-left text-sm"
-                      >
-                        <span aria-hidden="true">
-                          {selectedStudents.length === STUDENTS.length ? '✓' : '□'}
-                        </span>
-                        10기 전체 선택
-                      </button>
-                    </li>
-                    {(studentQuery ? visibleStudents : STUDENTS).map((student) => (
-                      <li key={student}>
+                  <div className="absolute top-16 z-20 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
+                    {studentQueryResult.isFetching ? (
+                      <p role="status" className="px-4 py-3 text-sm text-neutral-600">
+                        학생 검색 중…
+                      </p>
+                    ) : null}
+                    {!studentQueryResult.isFetching &&
+                    studentQueryResult.isError &&
+                    trimmedStudentQuery ? (
+                      <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-neutral-600">
+                        <span>학생을 검색할 수 없습니다.</span>
                         <button
                           type="button"
-                          onClick={() => handleSelectStudent(student)}
-                          className={`hover:bg-primary-50 flex h-11 w-full items-center gap-2 rounded-lg px-4 text-left text-sm transition-colors ${selectedStudents.includes(student) ? 'bg-primary-50 text-primary-700' : 'bg-white text-neutral-900'}`}
+                          className="text-primary-700 shrink-0 font-medium"
+                          onClick={() => studentQueryResult.refetch()}
                         >
-                          <span aria-hidden="true">
-                            {selectedStudents.includes(student) ? '✓' : '□'}
-                          </span>
-                          13{STUDENTS.indexOf(student) + 19} {student}
+                          다시 시도
                         </button>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                    ) : null}
+                    {!studentQueryResult.isFetching &&
+                    !studentQueryResult.isError &&
+                    trimmedStudentQuery &&
+                    !hasStudentResults ? (
+                      <p className="px-4 py-3 text-sm text-neutral-600">검색 결과가 없습니다.</p>
+                    ) : null}
+                    {!trimmedStudentQuery ? (
+                      <p className="px-4 py-3 text-sm text-neutral-600">
+                        이름을 입력하면 학생을 검색할 수 있습니다.
+                      </p>
+                    ) : null}
+                    {hasStudentResults ? (
+                      <ul
+                        id={studentListboxId}
+                        role="listbox"
+                        aria-label="개별 학생 선택"
+                        className="flex max-h-72 flex-col gap-[2px] overflow-y-auto p-2"
+                      >
+                        {visibleStudents.map((student, index) => (
+                          <li key={student.memberId} role="presentation">
+                            <button
+                              ref={
+                                index === activeStudentIndex ? activeStudentOptionRef : undefined
+                              }
+                              id={`${studentListboxId}-option-${student.memberId}`}
+                              type="button"
+                              role="option"
+                              aria-selected={index === activeStudentIndex}
+                              tabIndex={-1}
+                              onClick={() => handleSelectStudent(student)}
+                              onMouseEnter={() => setActiveStudentIndex(index)}
+                              className={`hover:bg-primary-50 flex h-11 w-full items-center gap-2 rounded-lg px-4 text-left text-sm transition-colors ${
+                                index === activeStudentIndex
+                                  ? 'bg-primary-50 text-primary-700'
+                                  : 'bg-white text-neutral-900'
+                              }`}
+                            >
+                              <span aria-hidden="true">□</span>
+                              {formatStudentOption(student)}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {hasStudentPagination ? (
+                      <div className="flex items-center justify-between border-t border-neutral-200 px-3 py-2 text-xs text-neutral-600">
+                        <button
+                          type="button"
+                          aria-label="이전 학생 검색 결과"
+                          aria-disabled={!canGoToPreviousStudentPage}
+                          className={
+                            canGoToPreviousStudentPage ? 'text-primary-700' : 'text-neutral-400'
+                          }
+                          onClick={() => {
+                            if (canGoToPreviousStudentPage) {
+                              handleStudentPageChange(studentPage - 1);
+                            }
+                          }}
+                        >
+                          이전
+                        </button>
+                        <span>
+                          {studentPage + 1} / {studentTotalPages || '—'}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="다음 학생 검색 결과"
+                          aria-disabled={!canGoToNextStudentPage}
+                          className={
+                            canGoToNextStudentPage ? 'text-primary-700' : 'text-neutral-400'
+                          }
+                          onClick={() => {
+                            if (canGoToNextStudentPage) {
+                              handleStudentPageChange(studentPage + 1);
+                            }
+                          }}
+                        >
+                          다음
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 {selectedStudents.map((student) => (
                   <span
-                    key={student}
+                    key={student.memberId}
                     className="bg-primary-100 text-primary-700 inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs leading-[1.5] font-semibold tracking-[-0.12px]"
                   >
-                    {student}
+                    {student.name}
                     <button
                       type="button"
-                      aria-label={`${student} 선택 해제`}
+                      aria-label={`${student.name} 선택 해제`}
                       onClick={() =>
-                        setSelectedStudents((current) => current.filter((item) => item !== student))
+                        setSelectedStudents((current) =>
+                          current.filter((item) => item.memberId !== student.memberId),
+                        )
                       }
                       className="text-primary-700 flex size-5 items-center justify-center"
                     >
@@ -289,14 +485,16 @@ export function PortfolioRequestFormPanel({
           <div className="flex flex-col items-end gap-2 px-8 py-6">
             {hasValidationError ? (
               <p className="text-status-error text-sm leading-[1.5] tracking-[-0.14px]">
-                제출 기간과 대상 학생을 확인해 주세요.
+                필수 입력값을 확인해 주세요.
               </p>
             ) : null}
             <div className="flex gap-4">
               <Button type="button" variant="neutral" onClick={onClose}>
                 취소
               </Button>
-              <Button type="submit">{isEditing ? '수정하기' : '등록하기'}</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? '처리 중…' : isEditing ? '수정하기' : '등록하기'}
+              </Button>
             </div>
           </div>
         </form>

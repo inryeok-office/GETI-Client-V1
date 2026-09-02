@@ -1,9 +1,9 @@
 import { AdminPortfolioManagementPage } from '@/views/admin-portfolio-management';
 
-interface AdminPortfolioRouteProps {
-  searchParams: Promise<{ variant?: string }>;
-}
-
-export default function AdminPortfolioRoute({ searchParams }: AdminPortfolioRouteProps) {
-  return <AdminPortfolioManagementPage searchParams={searchParams} />;
+export default async function AdminPortfolioRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; query?: string; requestId?: string; status?: string }>;
+}) {
+  return <AdminPortfolioManagementPage searchParams={await searchParams} />;
 }
