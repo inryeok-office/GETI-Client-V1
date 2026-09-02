@@ -19,7 +19,24 @@ vi.mock('@/features/session-guard', () => ({
 }));
 
 vi.mock('@/widgets/admin-navigation', () => ({
-  AdminNavigation: () => <nav>관리자 내비게이션</nav>,
+  AdminNavigation: ({
+    sections,
+  }: {
+    sections: Array<{
+      items: Array<{ allowedRoles?: readonly string[]; href: string; label: string }>;
+    }>;
+  }) => (
+    <nav>
+      <span>관리자 내비게이션</span>
+      {sections
+        .flatMap((section) => section.items)
+        .map((item) => (
+          <span key={item.href} data-allowed-roles={item.allowedRoles?.join(',')}>
+            {item.label}
+          </span>
+        ))}
+    </nav>
+  ),
 }));
 
 describe('AdminLayout', () => {
@@ -32,5 +49,6 @@ describe('AdminLayout', () => {
     );
     expect(screen.getByText('관리자 내비게이션')).toBeInTheDocument();
     expect(screen.getByText('관리자 화면')).toBeInTheDocument();
+    expect(screen.getByText('정기 작업')).toHaveAttribute('data-allowed-roles', 'DEVELOPER');
   });
 });

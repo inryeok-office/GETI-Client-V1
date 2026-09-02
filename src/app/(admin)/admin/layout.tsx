@@ -32,7 +32,7 @@ const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { href: '/admin/files', label: '공통 파일' },
       { href: '/admin/collector', label: '외부 공고 수집' },
-      { href: '/admin/scheduler', label: '정기 작업' },
+      { allowedRoles: ['DEVELOPER'], href: '/admin/scheduler', label: '정기 작업' },
       { href: '/admin/audit-logs', label: '감사 로그' },
     ],
   },

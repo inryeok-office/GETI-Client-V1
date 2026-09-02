@@ -1,9 +1,12 @@
+import { SessionGuard } from '@/features/session-guard';
 import { AdminSchedulerManagementPage } from '@/views/admin-scheduler-management';
 
-interface AdminSchedulerRouteProps {
-  searchParams: Promise<{ variant?: string }>;
-}
+const SCHEDULER_ROLES = ['DEVELOPER'] as const;
 
-export default function AdminSchedulerRoute({ searchParams }: AdminSchedulerRouteProps) {
-  return <AdminSchedulerManagementPage searchParams={searchParams} />;
+export default function AdminSchedulerRoute() {
+  return (
+    <SessionGuard allowedRoles={SCHEDULER_ROLES}>
+      <AdminSchedulerManagementPage />
+    </SessionGuard>
+  );
 }

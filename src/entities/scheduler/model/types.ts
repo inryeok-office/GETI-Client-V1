@@ -1,22 +1,6 @@
-export type ScheduledTaskStatus = 'FAILED' | 'SUCCESS';
-
-export type ScheduledTaskActionStatus = 'AVAILABLE' | 'REQUESTED' | 'UNAVAILABLE';
-
-export interface ScheduledTask {
-  actionStatus: ScheduledTaskActionStatus;
-  description: string;
-  lastRunAt: string;
-  name: string;
-  nextRunAt: string;
-  schedule: string;
-  status: ScheduledTaskStatus;
-  taskId: string;
-}
-
 /**
- * `GET /api/v1/admin/system/jobs`(GETI-Server-V1 #239) 응답 항목. DEVELOPER 전용, 실제 등록된
- * 정기 작업 6종 고정. 위 `ScheduledTask`(정기 작업 관리 화면 Mock 모델)와 겹치는 부분이 있는데,
- * 그 화면을 실 API에 연동할 때 하나로 합치는 걸 검토한다 — 지금은 대시보드가 쓰는 실 응답만 담는다.
+ * `GET /api/v1/admin/system/jobs`(GETI-Server-V1 #239) 응답 항목. DEVELOPER 전용이며
+ * 실제 등록된 정기 작업 6종을 안정적인 업무 식별자로 노출한다.
  */
 export type OperationJobType =
   | 'JOB_COLLECTION'
