@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  AdminJobDetail,
   JobApplicationMethod,
   JobDetail,
   JobPostingType,
@@ -12,6 +13,7 @@ import type {
 } from '../model/types';
 
 const BASE_PATH = '/api/v1/jobs';
+const ADMIN_BASE_PATH = '/api/v1/admin/jobs';
 
 export interface FetchJobListParams {
   query?: string;
@@ -42,6 +44,16 @@ export async function fetchJobList(params: FetchJobListParams = {}): Promise<Job
  */
 export async function fetchJobDetail(jobId: number): Promise<JobDetail> {
   const { data } = await api.get<ApiResponse<JobDetail>>(`${BASE_PATH}/${jobId}`);
+  return data.data;
+}
+
+/**
+ * `GET /api/v1/admin/jobs/{jobId}`(GETI-Server `JobAdminController`) — 관리자 공고 상세 조회.
+ * 임시저장·삭제 공고까지 모든 상태를 조회하고, 공개 상세와 달리 조회수를 올리지 않는다.
+ * 교사·개발자 권한이 필요하다.
+ */
+export async function fetchAdminJobDetail(jobId: number): Promise<AdminJobDetail> {
+  const { data } = await api.get<ApiResponse<AdminJobDetail>>(`${ADMIN_BASE_PATH}/${jobId}`);
   return data.data;
 }
 

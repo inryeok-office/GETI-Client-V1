@@ -11,6 +11,7 @@ export { JobDetailContent } from './ui/JobDetailContent';
 
 export {
   jobKeys,
+  useAdminJobDetailQuery,
   useDownloadJobAttachmentMutation,
   useJobDetailQuery,
   useJobListQuery,
@@ -20,10 +21,21 @@ export type { FetchJobListParams } from './api/jobApi';
 
 export { mapJobSummaryToListItem } from './model/mapJobListItem';
 export { formatDateOnly, formatDeadline } from './model/formatJobDate';
+export {
+  AI_DIFFICULTY_LABEL,
+  AI_FIT_SHORT_LABEL,
+  EMPTY_CELL,
+  formatAiAnalysisSummary,
+  formatDateTimeMinute,
+  formatJobDeadlineState,
+  formatJobPublicState,
+} from './model/adminJobLabels';
 export { buildJobSourceFilterOptions } from './model/buildJobSourceFilterOptions';
 export type { JobSourceFilterOption } from './model/buildJobSourceFilterOptions';
 
 export type {
+  AdminJobDetail,
+  AdminJobStatus,
   JobListItem,
   JobAttachment,
   JobPostingType,
