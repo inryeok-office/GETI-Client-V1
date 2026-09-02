@@ -61,6 +61,9 @@ export function AdminDashboardPage({ content, navSections }: AdminDashboardPageP
               title={content.notificationTitle}
               titleColor={content.notificationTitleColor}
               notifications={content.notifications}
+              loadState={content.notificationsLoadState}
+              onRetry={content.onNotificationsRetry}
+              emptyLabel={content.notificationsEmptyLabel}
             />
           </div>
         </main>

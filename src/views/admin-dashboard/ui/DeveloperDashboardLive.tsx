@@ -2,11 +2,13 @@
 
 import { useDiscordDeliveryListQuery } from '@/entities/discord-delivery';
 import { useAdminInquiryListQuery } from '@/entities/inquiry';
+import { useNotificationListQuery } from '@/entities/notification';
 import { useOperationJobsQuery } from '@/entities/scheduler';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildDeveloperDashboardContent } from '../model/buildDeveloperDashboardContent';
 import { toMetric } from '../model/dashboardMetric';
+import { NOTIFICATION_FEED_SIZE } from '../model/mapDashboardNotification';
 import { DASHBOARD_CONTENT } from '../model/mock';
 
 import { AdminDashboardPage } from './AdminDashboardPage';
@@ -39,6 +41,7 @@ export function DeveloperDashboardLive({
     answered: false,
     size: 1,
   });
+  const notificationsQuery = useNotificationListQuery({ size: NOTIFICATION_FEED_SIZE });
 
   const content = buildDeveloperDashboardContent(DASHBOARD_CONTENT.developer, {
     discordFailures: toMetric(discordFailuresQuery, (list) => ({
@@ -54,6 +57,7 @@ export function DeveloperDashboardLive({
       (list) => list.content[0]?.failureCount ?? 0,
     ),
     errorInquiries: toMetric(errorInquiriesQuery, (list) => list.totalElements),
+    notifications: toMetric(notificationsQuery, (list) => list.content),
   });
 
   return <AdminDashboardPage content={content} navSections={navSections} />;

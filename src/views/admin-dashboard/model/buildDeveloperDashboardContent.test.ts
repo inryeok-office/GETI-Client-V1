@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DiscordDelivery } from '@/entities/discord-delivery';
+import type { NotificationApiItem } from '@/entities/notification';
 import type { OperationJob } from '@/entities/scheduler';
 
 import {
@@ -66,6 +67,24 @@ function job(overrides: Partial<OperationJob> = {}): OperationJob {
   };
 }
 
+function notificationItem(overrides: Partial<NotificationApiItem> = {}): NotificationApiItem {
+  return {
+    notificationId: 9,
+    notificationType: 'SYSTEM',
+    title: '정기 작업이 실패했습니다.',
+    content: '프로그램 마감',
+    targetType: null,
+    targetId: null,
+    targetAvailable: false,
+    targetUnavailableReason: null,
+    deepLink: null,
+    read: false,
+    readAt: null,
+    createdAt: '2026-08-27T09:58:00',
+    ...overrides,
+  };
+}
+
 function fullMetrics(
   overrides: Partial<DeveloperDashboardMetrics> = {},
 ): DeveloperDashboardMetrics {
@@ -74,6 +93,7 @@ function fullMetrics(
     failedJobs: metric<FailureFeed<OperationJob>>({ data: feed(5, [job()]) }),
     collectorFailureCount: metric<number>({ data: 4 }),
     errorInquiries: metric<number>({ data: 5 }),
+    notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
     ...overrides,
   };
 }
@@ -176,5 +196,21 @@ describe('buildDeveloperDashboardContent', () => {
 
     expect(card(content.kpiCards, 'discord').loadState).toBe('error');
     expect(card(content.kpiCards, 'scheduler').loadState).toBeUndefined();
+  });
+
+  it('알림 사이드바를 실데이터로 채우고, 조회 실패는 사이드바만 에러로 둔다', () => {
+    const onRetry = vi.fn();
+
+    const success = buildDeveloperDashboardContent(BASE, fullMetrics());
+    expect(success.notificationsLoadState).toBeUndefined();
+    expect(success.notifications[0]).toMatchObject({ id: '9', tone: 'neutral' });
+
+    const errored = buildDeveloperDashboardContent(
+      BASE,
+      fullMetrics({ notifications: metric<NotificationApiItem[]>({ isError: true, onRetry }) }),
+    );
+    expect(errored.notificationsLoadState).toBe('error');
+    expect(errored.onNotificationsRetry).toBe(onRetry);
+    expect(errored.table.hasError).toBe(false);
   });
 });

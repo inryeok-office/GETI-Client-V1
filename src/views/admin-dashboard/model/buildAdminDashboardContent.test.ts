@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApplicationStatusCounts } from '@/entities/applicant';
+import type { NotificationApiItem } from '@/entities/notification';
 
 import {
   buildAdminDashboardContent,
@@ -20,12 +21,31 @@ function metric<T>(overrides: Partial<DashboardMetric<T>> = {}): DashboardMetric
   };
 }
 
+function notificationItem(overrides: Partial<NotificationApiItem> = {}): NotificationApiItem {
+  return {
+    notificationId: 1,
+    notificationType: 'INQUIRY_ANSWERED',
+    title: '문의에 답변이 등록되었습니다.',
+    content: '오류 신고 · 서버 500',
+    targetType: 'INQUIRY',
+    targetId: 7,
+    targetAvailable: true,
+    targetUnavailableReason: null,
+    deepLink: '/inquiries/7',
+    read: false,
+    readAt: null,
+    createdAt: '2026-09-01T09:00:00',
+    ...overrides,
+  };
+}
+
 function loadedMetrics(counts: ApplicationStatusCounts): AdminDashboardMetrics {
   return {
     pendingSignups: metric<number>({ data: 8 }),
     unansweredInquiries: metric<number>({ data: 15 }),
     jobPostings: metric<number>({ data: 35 }),
     applicationStatusCounts: metric<ApplicationStatusCounts>({ data: counts }),
+    notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
   };
 }
 
@@ -44,6 +64,7 @@ describe('buildAdminDashboardContent', () => {
       unansweredInquiries: metric<number>({ isLoading: true }),
       jobPostings: metric<number>({ isLoading: true }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isLoading: true }),
+      notifications: metric<NotificationApiItem[]>({ isLoading: true }),
     });
 
     expect(card(content.kpiCards, 'signup').loadState).toBe('loading');
@@ -51,6 +72,7 @@ describe('buildAdminDashboardContent', () => {
     expect(card(content.kpiCards, 'inquiries').loadState).toBe('loading');
     expect(card(content.kpiCards, 'jobs').loadState).toBe('loading');
     expect(content.table.rows.every((row) => row.cells[1].label === '—')).toBe(true);
+    expect(content.notificationsLoadState).toBe('loading');
   });
 
   it('프로그램 KPI만 미지원으로 두고 공고 KPI는 실데이터로 채운다', () => {
@@ -66,7 +88,7 @@ describe('buildAdminDashboardContent', () => {
     expect(card(content.kpiCards, 'inquiries').unsupported).toBeUndefined();
   });
 
-  it('조회 성공 시 KPI · 처리 현황 표 · 알림 문구를 실데이터로 채운다', () => {
+  it('조회 성공 시 KPI · 처리 현황 표 · 알림 사이드바를 실데이터로 채운다', () => {
     const content = buildAdminDashboardContent(
       BASE,
       loadedMetrics({
@@ -86,8 +108,26 @@ describe('buildAdminDashboardContent', () => {
       ['승인 완료', '28건', '33%', '목록 보기'],
     ]);
 
-    const inquiryNotification = content.notifications.find((item) => item.id === 'inquiries');
-    expect(inquiryNotification?.subtitle).toBe('관리자 확인 필요 15건');
+    expect(content.notificationsLoadState).toBeUndefined();
+    expect(content.notifications).toHaveLength(1);
+    expect(content.notifications[0]).toMatchObject({
+      id: '1',
+      tone: 'warning',
+      title: '문의에 답변이 등록되었습니다.',
+    });
+    expect(content.notifications[0].subtitle).toContain('오류 신고 · 서버 500');
+  });
+
+  it('알림 조회가 실패하면 사이드바만 에러를 표시한다', () => {
+    const onRetry = vi.fn();
+    const content = buildAdminDashboardContent(BASE, {
+      ...loadedMetrics({ totalCount: 10, counts: {} }),
+      notifications: metric<NotificationApiItem[]>({ isError: true, onRetry }),
+    });
+
+    expect(content.notificationsLoadState).toBe('error');
+    expect(content.onNotificationsRetry).toBe(onRetry);
+    expect(card(content.kpiCards, 'signup').loadState).toBeUndefined();
   });
 
   it('상태별 건수 조회가 실패하면 전체 지원서 카드와 표에 에러를 표시한다', () => {
@@ -97,6 +137,7 @@ describe('buildAdminDashboardContent', () => {
       unansweredInquiries: metric<number>({ data: 15 }),
       jobPostings: metric<number>({ data: 35 }),
       applicationStatusCounts: metric<ApplicationStatusCounts>({ isError: true, onRetry }),
+      notifications: metric<NotificationApiItem[]>({ data: [] }),
     });
 
     expect(card(content.kpiCards, 'applications').loadState).toBe('error');
@@ -114,6 +155,7 @@ describe('buildAdminDashboardContent', () => {
       applicationStatusCounts: metric<ApplicationStatusCounts>({
         data: { totalCount: 10, counts: {} },
       }),
+      notifications: metric<NotificationApiItem[]>({ data: [] }),
     });
 
     expect(card(content.kpiCards, 'jobs').loadState).toBe('error');

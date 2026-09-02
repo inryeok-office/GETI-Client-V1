@@ -62,4 +62,10 @@ export interface DashboardContent {
   /** Figma 원본에서 관리자만 시맨틱 토큰(#111)을, 교직원·개발자는 하드코딩된 #1f2933을 썼다. */
   notificationTitleColor: string;
   notifications: DashboardNotification[];
+  /** 알림 사이드바 조회 상태. 지정하지 않으면 정적(Mock) 사이드바다. */
+  notificationsLoadState?: 'loading' | 'error';
+  /** `notificationsLoadState`가 'error'일 때 재시도 콜백. */
+  onNotificationsRetry?: () => void;
+  /** 로딩·에러가 아닌데 `notifications`가 비었을 때 보여줄 문구. */
+  notificationsEmptyLabel?: string;
 }
