@@ -3,9 +3,6 @@ export type {
   OperationJobActionStatus,
   OperationJobListResponse,
   OperationJobType,
-  ScheduledTask,
-  ScheduledTaskActionStatus,
-  ScheduledTaskStatus,
 } from './model/types';
 
 export { schedulerKeys, useOperationJobsQuery } from './api/useSchedulerQueries';

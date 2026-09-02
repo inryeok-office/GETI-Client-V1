@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminNavigation, type AdminNavSection } from './AdminNavigation';
 
-const { mockUsePathname } = vi.hoisted(() => ({
+const { mockUsePathname, mockUseSessionQuery } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
+  mockUseSessionQuery: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   usePathname: mockUsePathname,
+}));
+
+vi.mock('@/entities/session', () => ({
+  useSessionQuery: mockUseSessionQuery,
 }));
 
 const SECTIONS: AdminNavSection[] = [
@@ -26,13 +31,17 @@ const SECTIONS: AdminNavSection[] = [
   },
   {
     label: '운영 관리',
-    items: [{ href: '/admin/audit-logs', label: '감사 로그' }],
+    items: [
+      { href: '/admin/audit-logs', label: '감사 로그' },
+      { allowedRoles: ['DEVELOPER'], href: '/admin/scheduler', label: '정기 작업' },
+    ],
   },
 ];
 
 describe('AdminNavigation', () => {
   beforeEach(() => {
     mockUsePathname.mockReturnValue('/admin');
+    mockUseSessionQuery.mockReturnValue({ data: { memberId: 1, roles: ['DEVELOPER'] } });
   });
 
   it('관리 그룹을 토글해 하위 페이지를 표시하고 숨긴다', () => {
@@ -87,5 +96,20 @@ describe('AdminNavigation', () => {
 
     const activeLink = screen.getByRole('link', { name: '감사 로그' });
     expect(activeLink).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('허용된 역할에는 제한된 메뉴를 표시한다', () => {
+    render(<AdminNavigation sections={SECTIONS} />);
+
+    expect(screen.getByRole('link', { name: '정기 작업' })).toBeInTheDocument();
+  });
+
+  it('허용되지 않은 역할에는 제한된 메뉴를 숨긴다', () => {
+    mockUseSessionQuery.mockReturnValue({ data: { memberId: 2, roles: ['TEACHER'] } });
+
+    render(<AdminNavigation sections={SECTIONS} />);
+
+    expect(screen.queryByRole('link', { name: '정기 작업' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '감사 로그' })).toBeInTheDocument();
   });
 });

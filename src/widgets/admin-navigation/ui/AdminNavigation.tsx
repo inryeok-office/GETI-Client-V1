@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 
+import { useSessionQuery, type SessionRole } from '@/entities/session';
 import { Icon } from '@/shared/ui/icon';
 
 interface AdminNavLink {
+  allowedRoles?: readonly SessionRole[];
   href: string;
   label: string;
 }
@@ -22,6 +24,7 @@ interface AdminNavigationProps {
 
 export function AdminNavigation({ sections }: AdminNavigationProps) {
   const pathname = usePathname();
+  const sessionQuery = useSessionQuery();
   const navigationId = useId();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -38,11 +41,22 @@ export function AdminNavigation({ sections }: AdminNavigationProps) {
     }));
   };
 
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          !item.allowedRoles ||
+          (sessionQuery.data?.roles.some((role) => item.allowedRoles?.includes(role)) ?? false),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <aside className="bg-primary-700 min-h-screen w-[220px] shrink-0 px-4 py-6 text-white">
       <p className="mb-6 text-xl leading-[1.4] font-semibold tracking-[-0.2px]">GETI Admin</p>
       <nav aria-label="관리자 메뉴">
-        {sections.map((section, index) => {
+        {visibleSections.map((section, index) => {
           if (!section.label) {
             return (
               <div key={`section-${index}`}>
