@@ -58,36 +58,21 @@ describe('AdminSchedulerManagement', () => {
     expect(screen.getByRole('region', { name: '정기 작업 목록' })).toHaveClass('overflow-x-auto');
   });
 
-  it('알 수 없는 서버 상태는 원본 값을 표시한다', () => {
+  it.each([
+    ['PARTIAL_SUCCESS', '일부 실패', 'text-status-error'],
+    ['SENDING', '전송 중', 'text-neutral-700'],
+    ['DELIVERED', '성공', 'text-status-success'],
+    ['CUSTOM_STATUS', 'CUSTOM_STATUS', 'text-neutral-700'],
+  ])('%s 상태를 %s 라벨과 지정된 톤으로 표시한다', (status, label, toneClassName) => {
     render(
       <AdminSchedulerManagement
         listStatus="success"
-        tasks={[createTask({ status: 'CUSTOM_STATUS' })]}
+        tasks={[createTask({ status })]}
         onRetry={vi.fn()}
       />,
     );
 
-    expect(screen.getByText('CUSTOM_STATUS')).toBeInTheDocument();
-  });
-
-  it('Discord 전송 상태를 한글 라벨로 표시한다', () => {
-    render(
-      <AdminSchedulerManagement
-        listStatus="success"
-        tasks={[
-          createTask({ status: 'SENDING' }),
-          createTask({
-            jobType: 'DISCORD_DELIVERY_RETRY',
-            status: 'DELIVERED',
-            taskId: 'DISCORD_DELIVERY_RETRY',
-          }),
-        ]}
-        onRetry={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('전송 중')).toBeInTheDocument();
-    expect(screen.getByText('성공')).toHaveClass('text-status-success');
+    expect(screen.getByText(label)).toHaveClass(toneClassName);
   });
 
   it('오류 상태에서 다시 시도를 전달한다', () => {

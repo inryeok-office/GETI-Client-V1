@@ -1,6 +1,12 @@
 'use client';
 
-import type { OperationJob } from '@/entities/scheduler';
+import {
+  formatOperationJobDateTime,
+  getOperationJobActionStatusLabel,
+  getOperationJobStatusPresentation,
+  type OperationJob,
+  type OperationJobStatusTone,
+} from '@/entities/scheduler';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 
@@ -21,20 +27,10 @@ const COLUMN_WIDTHS = [
   'w-[220px]',
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  CANCELED: '취소',
-  COMPLETED: '성공',
-  DEAD: '실패',
-  DELIVERED: '성공',
-  FAILED: '실패',
-  NO_HISTORY: '이력 없음',
-  PARTIAL_SUCCESS: '일부 실패',
-  PENDING: '대기 중',
-  PROCESSING: '실행 중',
-  RUNNING: '실행 중',
-  SENDING: '전송 중',
-  SENT: '성공',
-  SUCCESS: '성공',
+const STATUS_TONE_CLASS_NAMES: Record<OperationJobStatusTone, string> = {
+  error: 'bg-status-error-subtle text-status-error',
+  neutral: 'bg-neutral-100 text-neutral-700',
+  success: 'bg-status-success-subtle text-status-success',
 };
 
 export function AdminSchedulerManagement({
@@ -48,8 +44,10 @@ export function AdminSchedulerManagement({
       <div className="px-4 py-8 xl:px-6 xl:py-10 2xl:px-10">
         <div className="w-full max-w-[1620px]">
           <header>
-            <h1 className="text-[32px] leading-[1.3] font-semibold text-neutral-900">정기 작업</h1>
-            <p className="mt-2 text-base leading-[1.6] text-neutral-700">
+            <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-neutral-900">
+              정기 작업
+            </h1>
+            <p className="mt-2 text-base leading-[1.6] tracking-[-0.16px] text-neutral-700">
               자동으로 실행되는 시스템 작업의 상태와 최근 실행 내역을 확인합니다.
             </p>
           </header>
@@ -57,7 +55,7 @@ export function AdminSchedulerManagement({
           <section className="mt-6" aria-labelledby="scheduler-list-heading">
             <h2
               id="scheduler-list-heading"
-              className="mb-4 text-base leading-[26px] text-neutral-900"
+              className="mb-4 text-base leading-[26px] tracking-[-0.16px] text-neutral-900"
             >
               작업 목록
             </h2>
@@ -75,7 +73,7 @@ export function AdminSchedulerManagement({
             </div>
           </section>
 
-          <div className="bg-primary-50 text-primary-800 mt-6 rounded-lg px-4 py-3 text-xs leading-[1.5]">
+          <div className="bg-primary-50 text-primary-800 mt-6 rounded-lg px-4 py-3 text-xs leading-[1.5] tracking-[-0.12px]">
             수동 실행 지원 여부는 작업별 API 계약을 기준으로 표시합니다. 실행 결과와 관리자 작업
             기록은 감사 로그에서 확인할 수 있습니다.
           </div>
@@ -88,10 +86,12 @@ export function AdminSchedulerManagement({
 function AdminSchedulerHeader() {
   return (
     <header className="flex h-20 items-center justify-between border-b border-neutral-200 bg-white px-4 xl:px-6 2xl:px-10">
-      <p className="text-base leading-[1.6] text-neutral-900">정기 작업</p>
+      <p className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">정기 작업</p>
       <div className="flex items-center gap-3" aria-label="관리자 정보">
         <span className="bg-primary-100 size-8 rounded-full" aria-hidden="true" />
-        <span className="text-sm leading-[1.5] text-neutral-600">개발자 · 외 1개</span>
+        <span className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-600">
+          개발자 · 외 1개
+        </span>
         <Icon name="chevronRight" className="h-6 w-3 rotate-90 text-neutral-500" />
       </div>
     </header>
@@ -118,7 +118,7 @@ function SchedulerTable({ tasks }: SchedulerTableProps) {
               <th
                 key={`${label}-${index}`}
                 scope="col"
-                className="px-5 text-sm leading-[1.4] font-medium text-neutral-600"
+                className="px-5 text-sm leading-[1.4] font-medium tracking-[-0.14px] text-neutral-600"
               >
                 {label}
               </th>
@@ -130,12 +130,20 @@ function SchedulerTable({ tasks }: SchedulerTableProps) {
         {tasks.map((task) => (
           <tr key={task.taskId} className="h-[66px] bg-white">
             <td className="px-5">
-              <p className="text-sm leading-[1.5] text-neutral-800">{task.name}</p>
-              <p className="text-xs leading-[1.5] text-neutral-600">{task.description}</p>
+              <p className="text-sm leading-[1.5] tracking-[-0.14px] text-neutral-800">
+                {task.name}
+              </p>
+              <p className="text-xs leading-[1.5] tracking-[-0.12px] text-neutral-600">
+                {task.description}
+              </p>
             </td>
-            <td className="px-5 text-sm text-neutral-800">{task.schedule}</td>
-            <td className="px-5 text-sm text-neutral-800">{formatDateTime(task.lastRunAt)}</td>
-            <td className="px-5 text-sm text-neutral-800">{formatDateTime(task.nextRunAt)}</td>
+            <td className="px-5 text-sm tracking-[-0.14px] text-neutral-800">{task.schedule}</td>
+            <td className="px-5 text-sm tracking-[-0.14px] text-neutral-800">
+              {formatOperationJobDateTime(task.lastRunAt)}
+            </td>
+            <td className="px-5 text-sm tracking-[-0.14px] text-neutral-800">
+              {formatOperationJobDateTime(task.nextRunAt)}
+            </td>
             <td className="px-5">
               <SchedulerStatus status={task.status} />
             </td>
@@ -153,39 +161,26 @@ function SchedulerAction({ actionStatus }: Pick<OperationJob, 'actionStatus'>) {
   return (
     <span
       className={
-        actionStatus === 'SUPPORTED' ? 'text-primary-700 text-sm' : 'text-sm text-neutral-500'
+        actionStatus === 'SUPPORTED'
+          ? 'text-primary-700 text-sm tracking-[-0.14px]'
+          : 'text-sm tracking-[-0.14px] text-neutral-500'
       }
     >
-      {actionStatus === 'SUPPORTED' ? '지원됨' : '미지원'}
+      {getOperationJobActionStatusLabel(actionStatus)}
     </span>
   );
 }
 
 function SchedulerStatus({ status }: Pick<OperationJob, 'status'>) {
-  const isFailure = status === 'DEAD' || status === 'FAILED' || status === 'PARTIAL_SUCCESS';
-  const isSuccess =
-    status === 'COMPLETED' || status === 'DELIVERED' || status === 'SENT' || status === 'SUCCESS';
-  const toneClassName = isFailure
-    ? 'bg-status-error-subtle text-status-error'
-    : isSuccess
-      ? 'bg-status-success-subtle text-status-success'
-      : 'bg-neutral-100 text-neutral-700';
+  const presentation = getOperationJobStatusPresentation(status);
 
   return (
-    <span className={`inline-flex min-h-7 items-center rounded px-2 text-xs ${toneClassName}`}>
-      {STATUS_LABELS[status] ?? status}
+    <span
+      className={`inline-flex min-h-7 items-center rounded px-2 text-xs tracking-[-0.12px] ${STATUS_TONE_CLASS_NAMES[presentation.tone]}`}
+    >
+      {presentation.label}
     </span>
   );
-}
-
-function formatDateTime(value: string | null): string {
-  if (!value) return '-';
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
-  if (!match) return value;
-
-  const [, year, month, day, hours, minutes] = match;
-  return `${year}.${month}.${day} ${hours}:${minutes}`;
 }
 
 function SchedulerTableSkeleton() {
@@ -215,10 +210,12 @@ function SchedulerError({ onRetry }: { onRetry: () => void }) {
       className="flex min-h-[396px] flex-col items-center justify-center px-6 py-12"
     >
       <Icon name="alertCircleLarge" className="size-12 text-neutral-400" />
-      <p className="mt-4 text-xl leading-[1.4] font-semibold text-neutral-900">
+      <p className="mt-4 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
         정기 작업을 불러올 수 없습니다.
       </p>
-      <p className="mt-2 text-sm text-neutral-600">잠시 후 다시 시도해 주세요.</p>
+      <p className="mt-2 text-sm tracking-[-0.14px] text-neutral-600">
+        잠시 후 다시 시도해 주세요.
+      </p>
       <Button className="mt-6" onClick={onRetry}>
         다시 시도
       </Button>
@@ -230,10 +227,10 @@ function SchedulerEmpty() {
   return (
     <div className="flex min-h-[396px] flex-col items-center justify-center px-6 py-12 text-center">
       <Icon name="clock" className="size-[72px] text-neutral-400" />
-      <p className="mt-4 text-xl leading-[1.4] font-semibold text-neutral-900">
+      <p className="mt-4 text-xl leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
         등록된 정기 작업이 없습니다.
       </p>
-      <p className="mt-2 text-sm text-neutral-600">
+      <p className="mt-2 text-sm tracking-[-0.14px] text-neutral-600">
         실행할 정기 작업이 등록되면 이곳에 표시됩니다.
       </p>
     </div>
