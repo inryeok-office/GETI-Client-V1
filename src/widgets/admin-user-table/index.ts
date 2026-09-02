@@ -1,1 +1,1 @@
-export { AdminUserTable, type AdminUserManagementVariant } from './ui/AdminUserTable';
+export { AdminUserTable, type AdminUserManagementSearchParams } from './ui/AdminUserTable';

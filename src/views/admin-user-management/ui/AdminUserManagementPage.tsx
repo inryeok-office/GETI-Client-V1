@@ -1,39 +1,11 @@
-import { AdminUserTable, type AdminUserManagementVariant } from '@/widgets/admin-user-table';
-
-import { MOCK_MANAGED_MEMBERS } from '../model/mock';
-
-const VARIANTS: AdminUserManagementVariant[] = [
-  'conflict',
-  'confirm-roles',
-  'confirm-status',
-  'deactivate',
-  'detail',
-  'empty',
-  'error',
-  'forbidden',
-  'loading',
-  'save-error',
-  'saving',
-  'self-protection',
-  'success',
-  'saved',
-];
+import { AdminUserTable, type AdminUserManagementSearchParams } from '@/widgets/admin-user-table';
 
 interface AdminUserManagementPageProps {
-  searchParams: Promise<{ memberId?: string; variant?: string }>;
+  searchParams: Promise<AdminUserManagementSearchParams>;
 }
 
 export async function AdminUserManagementPage({ searchParams }: AdminUserManagementPageProps) {
-  const { memberId, variant: requestedVariant = 'success' } = await searchParams;
-  const variant = VARIANTS.includes(requestedVariant as AdminUserManagementVariant)
-    ? (requestedVariant as AdminUserManagementVariant)
-    : 'success';
+  const initialSearchParams = await searchParams;
 
-  return (
-    <AdminUserTable
-      initialSelectedMemberId={memberId}
-      initialVariant={variant}
-      members={variant === 'empty' ? [] : MOCK_MANAGED_MEMBERS}
-    />
-  );
+  return <AdminUserTable initialSearchParams={initialSearchParams} />;
 }

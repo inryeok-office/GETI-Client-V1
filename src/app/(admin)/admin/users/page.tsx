@@ -1,7 +1,10 @@
-import { AdminUserManagementPage } from '@/views/admin-user-management';
+import {
+  AdminUserManagementPage,
+  type AdminUserManagementSearchParams,
+} from '@/views/admin-user-management';
 
 interface AdminUsersRouteProps {
-  searchParams: Promise<{ memberId?: string; variant?: string }>;
+  searchParams: Promise<AdminUserManagementSearchParams>;
 }
 
 export default function AdminUsersRoute({ searchParams }: AdminUsersRouteProps) {
