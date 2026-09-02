@@ -148,4 +148,49 @@ describe('AdminJobListPage', () => {
 
     expect(screen.getByRole('button', { name: '공고 등록' })).toBeDisabled();
   });
+
+  it('URL page가 totalPages를 벗어나면 마지막 유효 페이지로 보정한다', () => {
+    mockUseJobListQuery.mockReturnValue(
+      listResult({
+        data: {
+          content: [],
+          page: 998,
+          size: 20,
+          totalElements: 25,
+          totalPages: 2,
+          first: false,
+          last: true,
+        },
+      }),
+    );
+
+    render(<AdminJobListPage initialSearchParams={{ page: '999' }} />);
+
+    // 보정 effect가 setPage(1)을 호출해 page: 1로 재조회한다.
+    const lastCall = mockUseJobListQuery.mock.calls.at(-1)?.[0];
+    expect(lastCall).toMatchObject({ page: 1 });
+  });
+
+  it('결과가 없고 페이지가 0이 아니면 "첫 페이지로" 버튼을 제공한다', () => {
+    mockUseJobListQuery.mockReturnValue(
+      listResult({
+        data: {
+          content: [],
+          page: 1,
+          size: 20,
+          totalElements: 60,
+          totalPages: 3,
+          first: false,
+          last: false,
+        },
+      }),
+    );
+
+    render(<AdminJobListPage initialSearchParams={{ page: '2' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '첫 페이지로' }));
+
+    const lastCall = mockUseJobListQuery.mock.calls.at(-1)?.[0];
+    expect(lastCall).toMatchObject({ page: 0 });
+  });
 });

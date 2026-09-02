@@ -85,19 +85,32 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const filterQueryString = buildSearchParams({ searchQuery, deadline, page }).toString();
-
-  useEffect(() => {
-    const queryString = buildSearchParams({ searchQuery, deadline, page }).toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [searchQuery, deadline, page, pathname, router]);
-
   const listQuery = useJobListQuery({
     page,
     size: PAGE_SIZE,
     query: searchQuery.trim() || undefined,
     status: DEADLINE_TO_STATUS[deadline],
   });
+
+  /**
+   * URL의 `page`는 상한이 없어 `?page=999`나 데이터 감소로 현재 페이지가 사라지면 빈 응답이 온다.
+   * `totalPages`를 알게 되면 렌더 중에 마지막 유효 페이지(결과가 없으면 0)로 잘라 다시 렌더한다
+   * — 잘못된 페이지로도 곧바로 유효한 데이터를 보여주고 URL도 그 값으로 맞춘다(PR #203 코드리뷰
+   * 반영, React "Adjusting state when a prop changes" 패턴).
+   */
+  const maxPage = listQuery.data
+    ? Math.max(0, listQuery.data.totalPages - 1)
+    : Number.POSITIVE_INFINITY;
+  if (page > maxPage) {
+    setPage(maxPage);
+  }
+
+  const filterQueryString = buildSearchParams({ searchQuery, deadline, page }).toString();
+
+  useEffect(() => {
+    const queryString = buildSearchParams({ searchQuery, deadline, page }).toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [searchQuery, deadline, page, pathname, router]);
 
   const jobs = listQuery.data?.content ?? [];
   const totalCount = listQuery.data?.totalElements ?? 0;
@@ -194,7 +207,7 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
             </button>
           </div>
         ) : jobs.length === 0 ? (
-          <div className="min-h-[360px] rounded-[8px] border border-neutral-200 bg-white">
+          <div className="flex min-h-[360px] flex-col items-center justify-center gap-[16px] rounded-[8px] border border-neutral-200 bg-white">
             <PageState
               variant="empty"
               title={hasActiveFilters ? '조건에 맞는 공고가 없습니다.' : '등록된 공고가 없습니다.'}
@@ -204,6 +217,15 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
                   : '게시되었거나 마감된 공고가 아직 없습니다.'
               }
             />
+            {page > 0 && (
+              <button
+                type="button"
+                onClick={() => setPage(0)}
+                className="rounded-[8px] border border-neutral-200 px-[24px] py-[12px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-700"
+              >
+                첫 페이지로
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-[24px]">

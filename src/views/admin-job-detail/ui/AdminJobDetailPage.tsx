@@ -19,6 +19,11 @@ import { PageState } from '@/shared/ui/page-state';
 
 interface AdminJobDetailPageProps {
   jobId: string;
+  /**
+   * "← 공고 관리" 브레드크럼이 돌아갈 경로. Server Component가 현재 URL의 검색·필터·페이지
+   * 쿼리스트링을 이어 붙여 넘겨줘, 목록에서 들어온 조회 조건이 복귀 시 유지된다(PR #203 코드리뷰 반영).
+   */
+  backHref?: string;
 }
 
 /**
@@ -29,7 +34,7 @@ interface AdminJobDetailPageProps {
  * "AI 재분석"·수정 등 쓰기 동작은 이번 범위 밖이라 버튼을 비활성으로 둔다.
  * 간격·색상은 Figma(node 586:12852)를 옮겼다.
  */
-export function AdminJobDetailPage({ jobId }: AdminJobDetailPageProps) {
+export function AdminJobDetailPage({ jobId, backHref = '/admin/jobs' }: AdminJobDetailPageProps) {
   const numericId = Number(jobId);
   const isValidId = Number.isInteger(numericId);
 
@@ -53,7 +58,7 @@ export function AdminJobDetailPage({ jobId }: AdminJobDetailPageProps) {
 
       <main className="flex flex-col gap-[24px] px-[40px] py-[40px]">
         <Link
-          href="/admin/jobs"
+          href={backHref}
           className="text-primary-700 flex w-fit items-center gap-[4px] text-[14px] leading-[1.5] tracking-[-0.14px]"
         >
           <Icon name="chevronRight" className="size-[16px] rotate-180" />

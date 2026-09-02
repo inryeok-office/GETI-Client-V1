@@ -66,4 +66,15 @@ describe('AdminJobTable', () => {
     // 담당자 · 기업 · 등록일 세 자리가 모두 'ㅡ'
     expect(screen.getAllByText('ㅡ')).toHaveLength(3);
   });
+
+  it('표 시맨틱(table · columnheader)과 스크롤 영역 접근 수단을 갖춘다', () => {
+    render(<AdminJobTable jobs={[jobSummary()]} queryString="" />);
+
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '공고명' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '게시일' })).toBeInTheDocument();
+
+    const region = screen.getByRole('region', { name: '공고 목록' });
+    expect(region).toHaveAttribute('tabindex', '0');
+  });
 });

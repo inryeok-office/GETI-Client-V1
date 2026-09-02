@@ -9,7 +9,7 @@ import {
 } from '@/entities/job';
 
 /**
- * Figma(node 586:12572) 공고 관리 테이블 컬럼 폭을 그대로 옮겼다.
+ * Figma(node 586:12572) 공고 관리 테이블 컬럼. 폭을 그대로 옮겼다(합 1570px).
  * "등록일" 자리는 목록 API에 생성일이 없어 게시일(`publishedAt`)을 쓰므로 헤더도 "게시일"로 둔다.
  */
 const TABLE_COLUMNS = [
@@ -21,6 +21,8 @@ const TABLE_COLUMNS = [
   { label: '게시일', widthClass: 'w-[200px]' },
   { label: '관리', widthClass: 'w-[240px]' },
 ];
+
+const CELL_CLASS = 'px-[24px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900';
 
 interface AdminJobTableProps {
   jobs: JobSummary[];
@@ -36,64 +38,66 @@ interface AdminJobTableProps {
  * 공고 관리 목록 테이블. 공고명을 누르면 `/admin/jobs/[jobId]` 상세로 이동한다.
  * "수정 · 마감 · 삭제"는 이번 범위(Issue #202, 읽기 전용)에서 동작을 붙이지 않아, 눌러도 아무
  * 일이 없는 링크로 오해되지 않도록 회색 안내 텍스트로만 둔다(후속 이슈에서 연동).
- * 화면이 좁을 땐 이 박스 안에서만 가로로 스크롤된다(반응형은 Figma에 없음).
+ *
+ * 스크린리더가 머리글·셀 관계를 읽을 수 있도록 실제 `<table>` + `th scope="col"`로 구성하고,
+ * 가로 스크롤 래퍼에는 `role="region"` · `aria-label` · `tabIndex={0}`을 줘 키보드로도 스크롤할 수
+ * 있게 한다(`AdminUserList` 패턴, PR #203 코드리뷰 반영).
  */
 export function AdminJobTable({ jobs, queryString }: AdminJobTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[8px] border border-neutral-200 bg-white">
-      <div className="flex min-w-[1570px] flex-col">
-        <div className="flex h-[52px] items-center bg-neutral-50">
+    <div
+      role="region"
+      aria-label="공고 목록"
+      tabIndex={0}
+      className="overflow-x-auto rounded-[8px] border border-neutral-200 bg-white"
+    >
+      <table className="w-[1570px] min-w-[1570px] table-fixed text-left">
+        <colgroup>
           {TABLE_COLUMNS.map((column) => (
-            <div key={column.label} className={`${column.widthClass} shrink-0 pr-[16px] pl-[24px]`}>
-              <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-700">
-                {column.label}
-              </p>
-            </div>
+            <col key={column.label} className={column.widthClass} />
           ))}
-        </div>
-
-        {jobs.map((job) => (
-          <div key={job.jobId} className="flex h-[60px] items-center border-t border-neutral-200">
-            <div className="w-[350px] shrink-0 pr-[16px] pl-[24px]">
-              <Link
-                href={`/admin/jobs/${job.jobId}${queryString ? `?${queryString}` : ''}`}
-                className="text-primary-700 text-[14px] leading-[1.5] font-medium tracking-[-0.14px] hover:underline"
+        </colgroup>
+        <thead className="h-[52px] bg-neutral-50">
+          <tr>
+            {TABLE_COLUMNS.map((column) => (
+              <th
+                key={column.label}
+                scope="col"
+                className="px-[24px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-neutral-700"
               >
-                {job.title}
-              </Link>
-            </div>
-            <div className="w-[190px] shrink-0 pr-[16px] pl-[24px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
-                {job.company?.name ?? EMPTY_CELL}
-              </p>
-            </div>
-            <div className="w-[210px] shrink-0 pr-[16px] pl-[24px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
-                {EMPTY_CELL}
-              </p>
-            </div>
-            <div className="w-[180px] shrink-0 pr-[16px] pl-[24px]">
-              <PublicStateBadge status={job.status} />
-            </div>
-            <div className="w-[200px] shrink-0 pr-[16px] pl-[24px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
-                {formatJobDeadlineState(job.status) ?? EMPTY_CELL}
-              </p>
-            </div>
-            <div className="w-[200px] shrink-0 pr-[16px] pl-[24px]">
-              <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900">
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => (
+            <tr key={job.jobId} className="h-[60px] border-t border-neutral-200">
+              <td className="px-[24px]">
+                <Link
+                  href={`/admin/jobs/${job.jobId}${queryString ? `?${queryString}` : ''}`}
+                  className="text-primary-700 text-[14px] leading-[1.5] font-medium tracking-[-0.14px] hover:underline"
+                >
+                  {job.title}
+                </Link>
+              </td>
+              <td className={CELL_CLASS}>{job.company?.name ?? EMPTY_CELL}</td>
+              <td className={CELL_CLASS}>{EMPTY_CELL}</td>
+              <td className="px-[24px]">
+                <PublicStateBadge status={job.status} />
+              </td>
+              <td className={CELL_CLASS}>{formatJobDeadlineState(job.status) ?? EMPTY_CELL}</td>
+              <td className={CELL_CLASS}>
                 {job.publishedAt ? formatDateOnly(job.publishedAt) : EMPTY_CELL}
-              </p>
-            </div>
-            <div className="w-[240px] shrink-0 pr-[16px] pl-[24px]">
-              <p className="text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-400">
+              </td>
+              <td className="px-[24px] text-[14px] leading-[1.4] tracking-[-0.14px] text-neutral-400">
                 {job.status === 'PUBLISHED' ? '수정 · 마감 · 삭제' : '수정 · 삭제'}
                 <span className="sr-only"> (준비 중)</span>
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

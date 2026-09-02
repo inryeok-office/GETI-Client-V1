@@ -147,4 +147,19 @@ describe('AdminJobDetailPage', () => {
 
     expect(screen.getByRole('button', { name: 'AI 재분석' })).toBeDisabled();
   });
+
+  it('브레드크럼은 backHref로 이동한다(목록 조회 조건 유지)', () => {
+    render(<AdminJobDetailPage jobId="1" backHref="/admin/jobs?q=백엔드&deadline=closed&page=2" />);
+
+    expect(screen.getByRole('link', { name: '공고 관리' })).toHaveAttribute(
+      'href',
+      '/admin/jobs?q=백엔드&deadline=closed&page=2',
+    );
+  });
+
+  it('backHref가 없으면 기본 목록 경로로 이동한다', () => {
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.getByRole('link', { name: '공고 관리' })).toHaveAttribute('href', '/admin/jobs');
+  });
 });
