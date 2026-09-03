@@ -5,10 +5,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import {
+  useAdminJobListQuery,
   useChangeAdminJobStatusMutation,
-  useJobListQuery,
-  type JobSummary,
-  type PublicJobStatus,
+  type AdminJobStatus,
+  type AdminJobSummary,
 } from '@/entities/job';
 import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
@@ -25,8 +25,8 @@ import { AdminJobTable } from '@/widgets/admin-job-table';
 export interface AdminJobListSearchParams {
   q?: string;
   page?: string;
-  /** 마감 상태 필터. 'open' → 모집 중(PUBLISHED), 'closed' → 마감(CLOSED). */
-  deadline?: string;
+  /** 공고 상태 필터. `AdminJobStatus` 값(DRAFT·PUBLISHED·CLOSED·DELETED). */
+  status?: string;
 }
 
 interface AdminJobListPageProps {
@@ -36,49 +36,41 @@ interface AdminJobListPageProps {
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
-/**
- * "마감 상태" 필터 값 → `GET /api/v1/jobs`의 `status` 파라미터.
- * 어드민 전용 목록 API가 없어 공개 검색 API를 그대로 쓴다 — 임시저장(DRAFT)·삭제(DELETED)
- * 공고는 이 API로 조회되지 않는다. Figma에는 "공개 상태" 필터도 있으나, 이 API로는 모든 결과가
- * "공개"라 무의미해 이번 범위에서는 넣지 않는다(어드민 목록 API가 생기면 추가, Issue #202).
- */
-const DEADLINE_TO_STATUS: Record<string, PublicJobStatus | undefined> = {
-  open: 'PUBLISHED',
-  closed: 'CLOSED',
-};
+const STATUS_VALUES: AdminJobStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED', 'DELETED'];
 
-const DEADLINE_OPTIONS: readonly DropdownOption[] = [
+const STATUS_OPTIONS: readonly DropdownOption[] = [
   { label: '전체', value: '' },
-  { label: '모집 중', value: 'open' },
-  { label: '마감', value: 'closed' },
+  { label: '임시저장', value: 'DRAFT' },
+  { label: '게시', value: 'PUBLISHED' },
+  { label: '마감', value: 'CLOSED' },
+  { label: '삭제', value: 'DELETED' },
 ];
 
-function parseDeadline(value?: string): string {
-  return value === 'open' || value === 'closed' ? value : '';
+function parseStatus(value?: string): AdminJobStatus | '' {
+  return value && (STATUS_VALUES as string[]).includes(value) ? (value as AdminJobStatus) : '';
 }
 
 function buildSearchParams(state: {
   searchQuery: string;
-  deadline: string;
+  status: AdminJobStatus | '';
   page: number;
 }): URLSearchParams {
   const params = new URLSearchParams();
   if (state.searchQuery) params.set('q', state.searchQuery);
-  if (state.deadline) params.set('deadline', state.deadline);
+  if (state.status) params.set('status', state.status);
   if (state.page > 0) params.set('page', String(state.page + 1));
   return params;
 }
 
 /**
- * 어드민 공고 관리 목록 화면(`/admin/jobs`). `GET /api/v1/jobs`(공개 검색 API)로 목록을 불러온다 —
- * 어드민 전용 공고 목록 API가 없어 게시(PUBLISHED)·마감(CLOSED) 공고만 나오고, 담당자 정보도
- * 응답에 없어 "ㅡ"로 표시한다(Issue #202). 공고명을 누르면 `/admin/jobs/[jobId]` 상세로 간다.
- * "공고 등록"은 `/admin/jobs/new`, 표의 "수정"은 `/admin/jobs/[jobId]/edit`로 이동한다.
+ * 어드민 공고 관리 목록 화면(`/admin/jobs`). `GET /api/v1/admin/jobs`(관리자 전용, GETI-Server-V1
+ * #304)로 목록을 불러온다 — 공개 검색과 달리 임시저장(DRAFT)·삭제(DELETED)까지 나오고, "공고 상태"
+ * 필터로 상태별 조회가 된다. 담당자 정보는 이 응답에도 없어 "ㅡ"로 표시한다.
+ * 공고명을 누르면 `/admin/jobs/[jobId]` 상세로, "공고 등록"은 `/admin/jobs/new`,
+ * 표의 "수정"은 `/admin/jobs/[jobId]/edit`로 이동한다.
  * "마감"·"삭제"는 이 화면이 상태 변경 API에 연동한다 — 뮤테이션·확인 모달·토스터를 여기서 소유해,
- * 마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도(표가 언마운트돼도) 성공 토스트가 유지된다
- * (PR #208 코드리뷰 반영).
- * 검색·필터·페이지는 URL 쿼리스트링과 동기화한다(`AdminApplicantPage`와 동일).
- * 간격·색상은 Figma(node 586:12549)를 옮겼다.
+ * 마지막 공고를 삭제해 목록이 빈 상태로 바뀌어도 성공 토스트가 유지된다(PR #208 코드리뷰 반영).
+ * 검색·필터·페이지는 URL 쿼리스트링과 동기화한다. 간격·색상은 Figma(node 586:12549)를 옮겼다.
  */
 export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps) {
   const router = useRouter();
@@ -86,7 +78,9 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
 
   const [searchInput, setSearchInput] = useState(() => initialSearchParams?.q ?? '');
   const [searchQuery, setSearchQuery] = useState(() => initialSearchParams?.q ?? '');
-  const [deadline, setDeadline] = useState(() => parseDeadline(initialSearchParams?.deadline));
+  const [status, setStatus] = useState<AdminJobStatus | ''>(() =>
+    parseStatus(initialSearchParams?.status),
+  );
   const [page, setPage] = useState(() => {
     const raw = Number(initialSearchParams?.page);
     return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
@@ -97,51 +91,53 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const listQuery = useJobListQuery({
+  const listQuery = useAdminJobListQuery({
     page,
     size: PAGE_SIZE,
     query: searchQuery.trim() || undefined,
-    status: DEADLINE_TO_STATUS[deadline],
+    status: status || undefined,
   });
 
   const statusMutation = useChangeAdminJobStatusMutation();
-  const [deleteTarget, setDeleteTarget] = useState<JobSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminJobSummary | null>(null);
 
   /**
    * URL의 `page`는 상한이 없어 `?page=999`나 데이터 감소로 현재 페이지가 사라지면 빈 응답이 온다.
-   * `totalPages`를 알게 되면 렌더 중에 마지막 유효 페이지(결과가 없으면 0)로 잘라 다시 렌더한다
-   * — 잘못된 페이지로도 곧바로 유효한 데이터를 보여주고 URL도 그 값으로 맞춘다(PR #203 코드리뷰
-   * 반영, React "Adjusting state when a prop changes" 패턴).
+   * 새 응답의 `totalPages`를 알게 되면 렌더 중에 마지막 유효 페이지로 잘라 다시 렌더한다(PR #203
+   * 코드리뷰 반영). `keepPreviousData`로 조건이 바뀐 직후 오는 이전 응답(placeholder)의 작은
+   * `totalPages`로 새 URL의 유효 page를 덮어쓰지 않도록, placeholder인 동안은 보정하지 않는다.
    */
-  const maxPage = listQuery.data
-    ? Math.max(0, listQuery.data.totalPages - 1)
-    : Number.POSITIVE_INFINITY;
+  const maxPage =
+    listQuery.data && !listQuery.isPlaceholderData
+      ? Math.max(0, listQuery.data.totalPages - 1)
+      : Number.POSITIVE_INFINITY;
   if (page > maxPage) {
     setPage(maxPage);
   }
 
-  const filterQueryString = buildSearchParams({ searchQuery, deadline, page }).toString();
+  const filterQueryString = buildSearchParams({ searchQuery, status, page }).toString();
 
   useEffect(() => {
-    const queryString = buildSearchParams({ searchQuery, deadline, page }).toString();
+    const queryString = buildSearchParams({ searchQuery, status, page }).toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [searchQuery, deadline, page, pathname, router]);
+  }, [searchQuery, status, page, pathname, router]);
 
+  const isTransitioning = listQuery.isFetching && listQuery.isPlaceholderData;
   const jobs = listQuery.data?.content ?? [];
   const totalCount = listQuery.data?.totalElements ?? 0;
-  const hasActiveFilters = Boolean(searchQuery.trim() || deadline);
+  const hasActiveFilters = Boolean(searchQuery.trim() || status);
 
   function handleSearchInputChange(value: string) {
     setSearchInput(value);
     setPage(0);
   }
 
-  function handleDeadlineChange(value: string) {
-    setDeadline(value);
+  function handleStatusChange(value: string) {
+    setStatus(parseStatus(value));
     setPage(0);
   }
 
-  function handleCloseJob(job: JobSummary) {
+  function handleCloseJob(job: AdminJobSummary) {
     statusMutation.mutate(
       { jobId: job.jobId, status: 'CLOSED' },
       {
@@ -199,18 +195,18 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
               type="search"
               value={searchInput}
               onChange={(event) => handleSearchInputChange(event.target.value)}
-              placeholder="공고명 또는 기업명으로 검색해 보세요."
+              placeholder="공고명으로 검색해 보세요."
               aria-label="공고 검색"
               className="min-w-0 flex-1 text-[16px] leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-600"
             />
           </label>
 
           <DropdownField
-            ariaLabel="마감 상태 필터"
-            placeholder="마감 상태"
-            options={DEADLINE_OPTIONS}
-            value={deadline}
-            onChange={handleDeadlineChange}
+            ariaLabel="공고 상태 필터"
+            placeholder="공고 상태"
+            options={STATUS_OPTIONS}
+            value={status}
+            onChange={handleStatusChange}
             controlClassName="h-[56px]"
             className="w-[232px] shrink-0"
           />
@@ -224,7 +220,7 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
           </Link>
         </div>
 
-        {listQuery.isLoading ? (
+        {listQuery.isLoading || isTransitioning ? (
           <div className="min-h-[360px] rounded-[8px] border border-neutral-200 bg-white">
             <PageState
               variant="loading"
@@ -253,9 +249,7 @@ export function AdminJobListPage({ initialSearchParams }: AdminJobListPageProps)
               variant="empty"
               title={hasActiveFilters ? '조건에 맞는 공고가 없습니다.' : '등록된 공고가 없습니다.'}
               description={
-                hasActiveFilters
-                  ? '검색어나 필터를 바꿔 보세요.'
-                  : '게시되었거나 마감된 공고가 아직 없습니다.'
+                hasActiveFilters ? '검색어나 필터를 바꿔 보세요.' : '등록된 공고가 아직 없습니다.'
               }
             />
             {page > 0 && (
