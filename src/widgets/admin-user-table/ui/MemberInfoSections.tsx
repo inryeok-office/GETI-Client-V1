@@ -1,8 +1,6 @@
 import {
   ADMIN_MEMBER_ACADEMIC_STATUS_LABELS,
   ADMIN_MEMBER_DEPARTMENT_LABELS,
-  ADMIN_MEMBER_ROLE_LABELS,
-  ADMIN_MEMBER_STATUS_LABELS,
   formatMemberDateTime,
   formatOAuthProvider,
   type AdminMemberDetail,
@@ -10,7 +8,7 @@ import {
 
 import { DetailGroup, DetailRow, isHttpUrl } from './detailLayout';
 
-/** 회원 상세의 읽기 전용 정보(계정·학적·연락처·이력). 학생만 학적 그룹이 나온다. */
+/** 회원 상세의 읽기 전용 정보(계정 정보·학적·연락처·이력). 학생만 학적 그룹이 나온다. */
 export function MemberInfoSections({ member }: { member: AdminMemberDetail }) {
   const hasAcademicRows =
     member.cohort !== null ||
@@ -20,13 +18,7 @@ export function MemberInfoSections({ member }: { member: AdminMemberDetail }) {
 
   return (
     <>
-      <DetailGroup title="계정">
-        <DetailRow label="역할">
-          {member.roles.length > 0
-            ? member.roles.map((role) => ADMIN_MEMBER_ROLE_LABELS[role]).join(', ')
-            : '역할 없음'}
-        </DetailRow>
-        <DetailRow label="계정 상태">{ADMIN_MEMBER_STATUS_LABELS[member.status]}</DetailRow>
+      <DetailGroup title="계정 정보">
         <DetailRow label="로그인 방식">{formatOAuthProvider(member.oauthProvider)}</DetailRow>
         {member.status === 'REJECTED' && member.rejectionReason ? (
           <DetailRow label="거절 사유">{member.rejectionReason}</DetailRow>

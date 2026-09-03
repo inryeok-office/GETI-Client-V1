@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchAdminMemberDetail, fetchAdminMemberList } from './adminMemberApi';
+import {
+  fetchAdminMemberDetail,
+  fetchAdminMemberList,
+  updateAdminMemberRoles,
+  updateAdminMemberStatus,
+} from './adminMemberApi';
 
-const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
+const { mockGet, mockPatch } = vi.hoisted(() => ({ mockGet: vi.fn(), mockPatch: vi.fn() }));
 
 vi.mock('@/shared/api', () => ({
-  api: { get: mockGet },
+  api: { get: mockGet, patch: mockPatch },
 }));
 
 describe('adminMemberApi', () => {
@@ -35,5 +40,25 @@ describe('adminMemberApi', () => {
 
     await expect(fetchAdminMemberDetail(42)).resolves.toBe(detail);
     expect(mockGet).toHaveBeenCalledWith('/api/v1/admin/members/42');
+  });
+
+  it('PATCH /roles로 Role 집합을 Body에 담아 보내고 갱신된 상세를 돌려준다', async () => {
+    const updated = { memberId: 42, roles: ['STUDENT', 'TEACHER'] };
+    mockPatch.mockResolvedValue({ data: { success: true, data: updated } });
+
+    await expect(updateAdminMemberRoles(42, ['STUDENT', 'TEACHER'])).resolves.toBe(updated);
+    expect(mockPatch).toHaveBeenCalledWith('/api/v1/admin/members/42/roles', {
+      roles: ['STUDENT', 'TEACHER'],
+    });
+  });
+
+  it('PATCH /status로 상태를 Body에 담아 보낸다', async () => {
+    const updated = { memberId: 42, status: 'SUSPENDED' };
+    mockPatch.mockResolvedValue({ data: { success: true, data: updated } });
+
+    await expect(updateAdminMemberStatus(42, 'SUSPENDED')).resolves.toBe(updated);
+    expect(mockPatch).toHaveBeenCalledWith('/api/v1/admin/members/42/status', {
+      status: 'SUSPENDED',
+    });
   });
 });
