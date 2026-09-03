@@ -1,12 +1,22 @@
 export {
-  MEMBER_ACCOUNT_LABELS,
-  MEMBER_AFFILIATION_LABELS,
-  MEMBER_ROLE_LABELS,
-  type ManagedMember,
-  type MemberAccountStatus,
-  type MemberAffiliationStatus,
-  type MemberRole,
-} from './model/types';
+  ADMIN_MEMBER_ACADEMIC_STATUS_LABELS,
+  ADMIN_MEMBER_DEPARTMENT_LABELS,
+  ADMIN_MEMBER_DEPARTMENTS,
+  ADMIN_MEMBER_OAUTH_PROVIDER_LABELS,
+  ADMIN_MEMBER_ROLE_LABELS,
+  ADMIN_MEMBER_ROLES,
+  ADMIN_MEMBER_STATUS_LABELS,
+  ADMIN_MEMBER_STATUSES,
+  formatOAuthProvider,
+  type AdminMemberAcademicStatus,
+  type AdminMemberDetail,
+  type AdminMemberOAuthProvider,
+  type AdminMemberRole,
+  type AdminMemberSearchResponse,
+  type AdminMemberStatus,
+  type AdminMemberSummary,
+} from './model/adminMember';
+export { formatMemberDate, formatMemberDateTime } from './model/formatMemberDate';
 export type {
   MyProfile,
   MyProfileAcademicStatus,
@@ -24,6 +34,11 @@ export type {
 } from './model/profileSetup';
 export { fetchMyProfile } from './api/meApi';
 export {
+  fetchAdminMemberDetail,
+  fetchAdminMemberList,
+  type FetchAdminMemberListParams,
+} from './api/adminMemberApi';
+export {
   fetchMajorMetadata,
   fetchTechStackMetadata,
   replaceMyMajors,
@@ -31,4 +46,9 @@ export {
   updateMyProfile,
 } from './api/profileSetupApi';
 export { memberKeys, useMyProfileQuery } from './api/useMyProfileQuery';
+export {
+  adminMemberKeys,
+  useAdminMemberDetailQuery,
+  useAdminMemberListQuery,
+} from './api/useAdminMemberQueries';
 export { useMajorMetadataQuery, useTechStackMetadataQuery } from './api/useProfileSetupQueries';

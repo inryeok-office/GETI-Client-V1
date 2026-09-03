@@ -1,209 +1,69 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 
 import {
-  type ManagedMember,
-  type MemberAccountStatus,
-  type MemberAffiliationStatus,
-  type MemberRole,
+  useAdminMemberDetailQuery,
+  useAdminMemberListQuery,
+  useMyProfileQuery,
 } from '@/entities/member';
-import { Button } from '@/shared/ui/button';
-import { PageState } from '@/shared/ui/page-state';
+import { ApiError } from '@/shared/api';
 
-import { areSameRoles } from '../model/memberChanges';
-import { AdminUserHeader, MemberTable, UserFilters } from './AdminUserList';
-import {
-  ChangeConfirmationDialog,
-  DeactivateDialog,
-  SaveResultDialog,
-  SelfProtectionDialog,
-  type SaveResult,
-} from './MemberDialogs';
+import { toListParams } from '../model/adminUserSearchParams';
+import { useAdminUserFilters } from '../model/useAdminUserFilters';
+import { AdminUserHeader, UserFilters } from './AdminUserList';
 import { MemberDetailPanel } from './MemberDetailPanel';
+import { MemberListSection } from './MemberListSection';
 
-export type AdminUserManagementVariant =
-  | 'conflict'
-  | 'confirm-roles'
-  | 'confirm-status'
-  | 'deactivate'
-  | 'detail'
-  | 'empty'
-  | 'error'
-  | 'forbidden'
-  | 'loading'
-  | 'save-error'
-  | 'saved'
-  | 'saving'
-  | 'self-protection'
-  | 'success';
+/**
+ * 어드민 사용자 관리 화면(`/admin/users`). `GET /api/v1/admin/members/search`·`/{id}`로 실데이터를
+ * 불러온다(GETI-Server-V1 #216). 이번 범위(#212)는 조회 전용 — 역할·계정 상태 변경은 #59.
+ *
+ * 검색·필터·페이지·선택 회원은 `useAdminUserFilters`가 **URL을 source of truth로** 동기화하고,
+ * 목록 렌더는 `MemberListSection`, 상세는 `MemberDetailPanel`이 맡는다. `useSearchParams`를 쓰므로
+ * 호출부에서 `<Suspense>`로 감싼다.
+ */
+export function AdminUserTable() {
+  const {
+    filters,
+    searchInput,
+    hasActiveFilters,
+    changeSearch,
+    changeStatus,
+    changeRole,
+    changeDepartment,
+    changeCohort,
+    goToPage,
+    selectMember,
+  } = useAdminUserFilters();
 
-interface AdminUserTableProps {
-  initialSelectedMemberId?: string;
-  initialVariant: AdminUserManagementVariant;
-  members: ManagedMember[];
-}
+  const listQuery = useAdminMemberListQuery(toListParams(filters));
+  const detailQuery = useAdminMemberDetailQuery(filters.memberId);
+  const myMemberId = useMyProfileQuery().data?.memberId ?? null;
 
-type ListStatus = 'empty' | 'error' | 'loading' | 'success';
-type OpenDialog = 'confirm' | 'deactivate' | 'self-protection' | null;
+  // `keepPreviousData` 때문에 조건이 바뀐 직후 `data`는 이전 조건의 placeholder다 — 이 동안은
+  // 옛 목록을 새 조건 아래 노출하지 말고 로딩으로 처리하고, 페이지 보정도 새 응답이 올 때까지 미룬다.
+  const isTransitioning = listQuery.isFetching && listQuery.isPlaceholderData;
 
-function getListStatus(variant: AdminUserManagementVariant): ListStatus {
-  return ['empty', 'error', 'loading'].includes(variant) ? (variant as ListStatus) : 'success';
-}
-
-function getInitialResult(variant: AdminUserManagementVariant): SaveResult {
-  if (variant === 'conflict') return 'conflict';
-  if (variant === 'save-error') return 'error';
-  if (variant === 'forbidden') return 'forbidden';
-  if (variant === 'saving') return 'processing';
-  if (variant === 'saved') return 'success';
-  return null;
-}
-
-function needsInitialDetail(variant: AdminUserManagementVariant) {
-  return !['empty', 'error', 'loading', 'success'].includes(variant);
-}
-
-export function AdminUserTable({
-  initialSelectedMemberId,
-  initialVariant,
-  members: initialMembers,
-}: AdminUserTableProps) {
-  const fallbackMember =
-    initialVariant === 'deactivate' || initialVariant === 'confirm-status'
-      ? initialMembers.find((member) => member.accountStatus === 'ACTIVE')
-      : initialVariant === 'self-protection'
-        ? initialMembers.find((member) => member.isCurrentUser)
-        : initialMembers[0];
-  const requestedMember = initialMembers.find(
-    (member) => member.memberId === initialSelectedMemberId,
-  );
-  const initialMember = requestedMember ?? fallbackMember;
-  const [accountFilter, setAccountFilter] = useState<MemberAccountStatus | ''>('');
-  const [affiliationFilter, setAffiliationFilter] = useState<MemberAffiliationStatus | ''>('');
-  const [draftAccountStatus, setDraftAccountStatus] = useState<MemberAccountStatus>(
-    initialVariant === 'deactivate' || initialVariant === 'confirm-status'
-      ? 'INACTIVE'
-      : (initialMember?.accountStatus ?? 'ACTIVE'),
-  );
-  const [draftAffiliationStatus, setDraftAffiliationStatus] = useState<MemberAffiliationStatus>(
-    initialMember?.affiliationStatus ?? 'ENROLLED',
-  );
-  const [draftRoles, setDraftRoles] = useState<MemberRole[]>(() => {
-    const roles = initialMember?.roles ?? [];
-    return initialVariant === 'confirm-roles' && !roles.includes('DEVELOPER')
-      ? [...roles, 'DEVELOPER']
-      : roles;
-  });
-  const [listStatus, setListStatus] = useState<ListStatus>(getListStatus(initialVariant));
-  const [members, setMembers] = useState(initialMembers);
-  const [openDialog, setOpenDialog] = useState<OpenDialog>(() => {
-    if (initialVariant === 'deactivate') return 'deactivate';
-    if (initialVariant === 'self-protection') return 'self-protection';
-    if (initialVariant === 'confirm-roles' || initialVariant === 'confirm-status') return 'confirm';
-    return null;
-  });
-  const [query, setQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<MemberRole | ''>('');
-  const [saveResult, setSaveResult] = useState<SaveResult>(getInitialResult(initialVariant));
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
-    requestedMember || needsInitialDetail(initialVariant)
-      ? (initialMember?.memberId ?? null)
-      : null,
-  );
-
-  const selectedMember = members.find((member) => member.memberId === selectedMemberId);
-  const hasRoleChanges = selectedMember ? !areSameRoles(selectedMember.roles, draftRoles) : false;
-  const hasChanges = selectedMember
-    ? hasRoleChanges ||
-      selectedMember.affiliationStatus !== draftAffiliationStatus ||
-      selectedMember.accountStatus !== draftAccountStatus
-    : false;
-  const hasPrivilegedRoleChanges = selectedMember
-    ? ['ADMIN', 'DEVELOPER'].some(
-        (role) =>
-          selectedMember.roles.includes(role as MemberRole) !==
-          draftRoles.includes(role as MemberRole),
-      )
-    : false;
-
-  const filteredMembers = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
-
-    return members.filter((member) => {
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        `${member.name} ${member.email}`.toLocaleLowerCase('ko-KR').includes(normalizedQuery);
-      const matchesRole = roleFilter === '' || member.roles.includes(roleFilter);
-      const matchesAffiliation =
-        affiliationFilter === '' || member.affiliationStatus === affiliationFilter;
-      const matchesAccount = accountFilter === '' || member.accountStatus === accountFilter;
-
-      return matchesQuery && matchesRole && matchesAffiliation && matchesAccount;
-    });
-  }, [accountFilter, affiliationFilter, members, query, roleFilter]);
+  // URL의 page가 실제 totalPages를 벗어나면(데이터 감소·직접 입력) 마지막 유효 페이지로 보정한다.
+  const totalPages = listQuery.isPlaceholderData ? undefined : listQuery.data?.totalPages;
+  useEffect(() => {
+    if (totalPages !== undefined && filters.page > Math.max(0, totalPages - 1)) {
+      goToPage(Math.max(0, totalPages - 1));
+    }
+  }, [totalPages, filters.page, goToPage]);
 
   useEffect(() => {
-    if (!selectedMemberId || openDialog || saveResult) return;
+    if (filters.memberId === null) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelectedMemberId(null);
+      if (event.key === 'Escape') selectMember(null);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openDialog, saveResult, selectedMemberId]);
+  }, [filters.memberId, selectMember]);
 
-  const openMember = (member: ManagedMember) => {
-    setSelectedMemberId(member.memberId);
-    setDraftRoles(member.roles);
-    setDraftAffiliationStatus(member.affiliationStatus);
-    setDraftAccountStatus(member.accountStatus);
-  };
-
-  const closeDetail = () => {
-    setSelectedMemberId(null);
-    setOpenDialog(null);
-    setSaveResult(null);
-  };
-
-  const requestSave = () => {
-    if (!selectedMember || !hasChanges) return;
-
-    const removesExistingRole = selectedMember.roles.some((role) => !draftRoles.includes(role));
-    if (
-      selectedMember.isCurrentUser &&
-      (draftAccountStatus === 'INACTIVE' || removesExistingRole)
-    ) {
-      setOpenDialog('self-protection');
-      return;
-    }
-
-    setOpenDialog(
-      selectedMember.accountStatus !== draftAccountStatus && draftAccountStatus === 'INACTIVE'
-        ? 'deactivate'
-        : 'confirm',
-    );
-  };
-
-  const saveChanges = () => {
-    if (!selectedMember) return;
-
-    setMembers((currentMembers) =>
-      currentMembers.map((member) =>
-        member.memberId === selectedMember.memberId
-          ? {
-              ...member,
-              accountStatus: draftAccountStatus,
-              affiliationStatus: draftAffiliationStatus,
-              roles: draftRoles,
-            }
-          : member,
-      ),
-    );
-    setOpenDialog(null);
-    setSaveResult('success');
-  };
+  const isForbidden = listQuery.error instanceof ApiError && listQuery.error.status === 403;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -216,118 +76,47 @@ export function AdminUserTable({
               사용자 관리
             </h1>
             <p className="mt-2 text-base leading-[1.6] tracking-[-0.16px] text-neutral-700">
-              회원의 역할과 계정 상태를 관리합니다.
+              회원의 역할과 계정 상태를 조회합니다.
             </p>
           </header>
 
           <UserFilters
-            accountFilter={accountFilter}
-            affiliationFilter={affiliationFilter}
-            query={query}
-            roleFilter={roleFilter}
-            onAccountChange={(value) =>
-              setAccountFilter(value === 'ALL' ? '' : (value as MemberAccountStatus))
-            }
-            onAffiliationChange={(value) =>
-              setAffiliationFilter(value === 'ALL' ? '' : (value as MemberAffiliationStatus))
-            }
-            onQueryChange={setQuery}
-            onRoleChange={(value) => setRoleFilter(value === 'ALL' ? '' : (value as MemberRole))}
+            cohort={filters.cohort}
+            department={filters.department}
+            query={searchInput}
+            role={filters.role}
+            status={filters.status}
+            onCohortChange={changeCohort}
+            onDepartmentChange={changeDepartment}
+            onQueryChange={changeSearch}
+            onRoleChange={changeRole}
+            onStatusChange={changeStatus}
           />
 
-          <section className="mt-6" aria-labelledby="member-count">
-            <h2
-              id="member-count"
-              className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900"
-            >
-              총 {listStatus === 'success' ? filteredMembers.length : members.length}명
-            </h2>
-            <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-              {listStatus === 'loading' ? (
-                <PageState
-                  variant="loading"
-                  title="사용자 정보를 불러오고 있습니다."
-                  description="잠시만 기다려 주세요."
-                />
-              ) : null}
-              {listStatus === 'error' ? (
-                <div>
-                  <PageState
-                    variant="error"
-                    title="사용자 정보를 불러오지 못했습니다."
-                    description="일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                  />
-                  <div className="flex justify-center pb-10">
-                    <Button onClick={() => setListStatus('success')}>다시 시도</Button>
-                  </div>
-                </div>
-              ) : null}
-              {listStatus === 'empty' ||
-              (listStatus === 'success' && filteredMembers.length === 0) ? (
-                <PageState
-                  variant="empty"
-                  title={
-                    listStatus === 'empty' ? '등록된 사용자가 없습니다.' : '검색 결과가 없습니다.'
-                  }
-                  description={
-                    listStatus === 'empty'
-                      ? '사용자가 등록되면 이 화면에서 역할과 계정 상태를 관리할 수 있습니다.'
-                      : '검색어 또는 필터 조건을 변경해 보세요.'
-                  }
-                />
-              ) : null}
-              {listStatus === 'success' && filteredMembers.length > 0 ? (
-                <MemberTable members={filteredMembers} onSelectMember={openMember} />
-              ) : null}
-            </div>
-          </section>
+          <MemberListSection
+            data={listQuery.data}
+            hasActiveFilters={hasActiveFilters}
+            isError={listQuery.isError}
+            isForbidden={isForbidden}
+            isLoading={listQuery.isLoading || isTransitioning}
+            myMemberId={myMemberId}
+            page={filters.page}
+            onGoToPage={goToPage}
+            onRetry={() => listQuery.refetch()}
+            onSelectMember={(member) => selectMember(member.memberId)}
+          />
         </div>
       </main>
 
-      {selectedMember ? (
+      {filters.memberId !== null ? (
         <MemberDetailPanel
-          draftAccountStatus={draftAccountStatus}
-          draftAffiliationStatus={draftAffiliationStatus}
-          draftRoles={draftRoles}
-          hasChanges={hasChanges}
-          member={selectedMember}
-          onAccountStatusChange={(value) => setDraftAccountStatus(value as MemberAccountStatus)}
-          onAffiliationStatusChange={(value) =>
-            setDraftAffiliationStatus(value as MemberAffiliationStatus)
-          }
-          onClose={closeDetail}
-          onRequestSave={requestSave}
-          onRoleToggle={(role) =>
-            setDraftRoles((currentRoles) =>
-              currentRoles.includes(role)
-                ? currentRoles.filter((currentRole) => currentRole !== role)
-                : [...currentRoles, role],
-            )
-          }
+          isError={detailQuery.isError}
+          isLoading={detailQuery.isLoading}
+          isSelf={filters.memberId === myMemberId}
+          member={detailQuery.data}
+          onClose={() => selectMember(null)}
+          onRetry={() => detailQuery.refetch()}
         />
-      ) : null}
-
-      <ChangeConfirmationDialog
-        draftAccountStatus={draftAccountStatus}
-        draftAffiliationStatus={draftAffiliationStatus}
-        draftRoles={draftRoles}
-        hasPrivilegedRoleChanges={hasPrivilegedRoleChanges}
-        isOpen={openDialog === 'confirm'}
-        member={selectedMember}
-        onClose={() => setOpenDialog(null)}
-        onConfirm={saveChanges}
-      />
-      <DeactivateDialog
-        isOpen={openDialog === 'deactivate'}
-        onClose={() => setOpenDialog(null)}
-        onConfirm={saveChanges}
-      />
-      <SelfProtectionDialog
-        isOpen={openDialog === 'self-protection'}
-        onClose={() => setOpenDialog(null)}
-      />
-      {saveResult ? (
-        <SaveResultDialog result={saveResult} onClose={() => setSaveResult(null)} />
       ) : null}
     </div>
   );

@@ -1,1 +1,1 @@
-export { AdminUserTable, type AdminUserManagementVariant } from './ui/AdminUserTable';
+export { AdminUserTable } from './ui/AdminUserTable';

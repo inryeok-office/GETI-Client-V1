@@ -1,39 +1,15 @@
-import { AdminUserTable, type AdminUserManagementVariant } from '@/widgets/admin-user-table';
+import { Suspense } from 'react';
 
-import { MOCK_MANAGED_MEMBERS } from '../model/mock';
+import { AdminUserTable } from '@/widgets/admin-user-table';
 
-const VARIANTS: AdminUserManagementVariant[] = [
-  'conflict',
-  'confirm-roles',
-  'confirm-status',
-  'deactivate',
-  'detail',
-  'empty',
-  'error',
-  'forbidden',
-  'loading',
-  'save-error',
-  'saving',
-  'self-protection',
-  'success',
-  'saved',
-];
-
-interface AdminUserManagementPageProps {
-  searchParams: Promise<{ memberId?: string; variant?: string }>;
-}
-
-export async function AdminUserManagementPage({ searchParams }: AdminUserManagementPageProps) {
-  const { memberId, variant: requestedVariant = 'success' } = await searchParams;
-  const variant = VARIANTS.includes(requestedVariant as AdminUserManagementVariant)
-    ? (requestedVariant as AdminUserManagementVariant)
-    : 'success';
-
+/**
+ * `AdminUserTable`이 `useSearchParams`로 URL을 읽으므로 `<Suspense>`로 감싼다
+ * (Next App Router 요구사항). 이 화면은 인증 뒤라 어차피 동적 렌더링이다.
+ */
+export function AdminUserManagementPage() {
   return (
-    <AdminUserTable
-      initialSelectedMemberId={memberId}
-      initialVariant={variant}
-      members={variant === 'empty' ? [] : MOCK_MANAGED_MEMBERS}
-    />
+    <Suspense fallback={null}>
+      <AdminUserTable />
+    </Suspense>
   );
 }
