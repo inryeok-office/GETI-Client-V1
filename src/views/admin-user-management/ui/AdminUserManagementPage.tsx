@@ -1,11 +1,15 @@
-import { AdminUserTable, type AdminUserManagementSearchParams } from '@/widgets/admin-user-table';
+import { Suspense } from 'react';
 
-interface AdminUserManagementPageProps {
-  searchParams: Promise<AdminUserManagementSearchParams>;
-}
+import { AdminUserTable } from '@/widgets/admin-user-table';
 
-export async function AdminUserManagementPage({ searchParams }: AdminUserManagementPageProps) {
-  const initialSearchParams = await searchParams;
-
-  return <AdminUserTable initialSearchParams={initialSearchParams} />;
+/**
+ * `AdminUserTable`이 `useSearchParams`로 URL을 읽으므로 `<Suspense>`로 감싼다
+ * (Next App Router 요구사항). 이 화면은 인증 뒤라 어차피 동적 렌더링이다.
+ */
+export function AdminUserManagementPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminUserTable />
+    </Suspense>
+  );
 }

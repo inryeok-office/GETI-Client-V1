@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/shared/api';
@@ -15,9 +15,13 @@ const { mockUseListQuery, mockUseDetailQuery, mockUseMyProfileQuery, mockReplace
     mockRefetch: vi.fn(),
   }));
 
+/** 현재 URL 쿼리스트링. `mockReplace`가 갱신하고 `useSearchParams` 목이 읽는다. */
+let currentSearch = '';
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
   usePathname: () => '/admin/users',
+  useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 
 vi.mock('@/entities/member', async () => {
@@ -91,7 +95,17 @@ function detailResult(overrides: Record<string, unknown> = {}) {
   return { data: undefined, isLoading: false, isError: false, refetch: mockRefetch, ...overrides };
 }
 
+/** `mockReplace`에 마지막으로 넘어온 URL의 쿼리스트링. */
+function lastReplacedQuery(): URLSearchParams {
+  const url = mockReplace.mock.calls.at(-1)?.[0] as string | undefined;
+  return new URLSearchParams(url?.split('?')[1] ?? '');
+}
+
 beforeEach(() => {
+  currentSearch = '';
+  mockReplace.mockImplementation((url: string) => {
+    currentSearch = url.split('?')[1] ?? '';
+  });
   mockUseListQuery.mockReturnValue(listResult());
   mockUseDetailQuery.mockReturnValue(detailResult());
   mockUseMyProfileQuery.mockReturnValue({ data: { memberId: 99 } });
@@ -99,6 +113,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 describe('AdminUserTable', () => {
@@ -109,6 +124,7 @@ describe('AdminUserTable', () => {
     expect(screen.getByText('총 1명')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('이름으로 검색해 보세요.')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '역할 필터' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('기수')).toBeInTheDocument();
     expect(screen.getByText('김민재')).toBeInTheDocument();
     expect(screen.getByText('5기 · 소프트웨어개발과')).toBeInTheDocument();
 
@@ -116,28 +132,128 @@ describe('AdminUserTable', () => {
     expect(within(list).getByRole('table')).toHaveClass('w-[1620px]', 'min-w-[1620px]');
   });
 
-  it('초기 검색어·필터를 그 값으로 목록 조회에 넘긴다', () => {
-    render(
-      <AdminUserTable initialSearchParams={{ q: '보검', role: 'TEACHER', status: 'SUSPENDED' }} />,
-    );
+  it('URL 쿼리를 읽어 그 값으로 목록을 조회한다', () => {
+    currentSearch = 'q=보검&role=TEACHER&status=SUSPENDED&cohort=4&page=2';
 
-    expect(mockUseListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ name: '보검', role: 'TEACHER', status: 'SUSPENDED', page: 0 }),
+    render(<AdminUserTable />);
+
+    expect(mockUseListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: '보검',
+        role: 'TEACHER',
+        status: 'SUSPENDED',
+        cohort: 4,
+        page: 1,
+      }),
     );
   });
 
-  it('역할 필터를 바꾸면 그 값으로 다시 조회한다', () => {
+  it('검색어는 300ms 디바운스 후 q로 URL에 반영하고 page를 지운다', () => {
+    vi.useFakeTimers();
+    currentSearch = 'page=2';
+    mockUseListQuery.mockReturnValue(
+      listResult({ data: { ...listResult().data, totalPages: 5, last: false } }),
+    );
+    render(<AdminUserTable />);
+
+    fireEvent.change(screen.getByPlaceholderText('이름으로 검색해 보세요.'), {
+      target: { value: '민재' },
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(300));
+
+    const query = lastReplacedQuery();
+    expect(query.get('q')).toBe('민재');
+    expect(query.get('page')).toBeNull();
+  });
+
+  it('역할 필터를 바꾸면 즉시 role을 URL에 반영하고 page를 지운다', () => {
+    currentSearch = 'page=2';
     render(<AdminUserTable />);
 
     fireEvent.click(screen.getByRole('combobox', { name: '역할 필터' }));
     fireEvent.click(screen.getByRole('option', { name: '개발자' }));
 
-    expect(mockUseListQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({ role: 'DEVELOPER', page: 0 }),
+    const query = lastReplacedQuery();
+    expect(query.get('role')).toBe('DEVELOPER');
+    expect(query.get('page')).toBeNull();
+  });
+
+  it('기수 필터에 값을 넣으면 cohort를 URL에 반영한다', () => {
+    render(<AdminUserTable />);
+
+    fireEvent.change(screen.getByPlaceholderText('기수'), { target: { value: '7' } });
+
+    expect(lastReplacedQuery().get('cohort')).toBe('7');
+  });
+
+  it('페이지 이동은 page 파라미터로 URL에 반영한다', () => {
+    mockUseListQuery.mockReturnValue(
+      listResult({ data: { ...listResult().data, totalPages: 3, last: false } }),
+    );
+    render(<AdminUserTable />);
+
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(lastReplacedQuery().get('page')).toBe('2');
+  });
+
+  it('URL page가 totalPages를 벗어나면 마지막 유효 페이지로 보정한다', () => {
+    currentSearch = 'page=99';
+    mockUseListQuery.mockReturnValue(
+      listResult({
+        data: { ...listResult().data, content: [], totalElements: 25, totalPages: 2, first: false },
+      }),
+    );
+
+    render(<AdminUserTable />);
+
+    expect(lastReplacedQuery().get('page')).toBe('2');
+  });
+
+  it('상세보기를 누르면 memberId를 URL에 반영하고 패널에 정보를 표시한다', () => {
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail() }));
+
+    const { rerender } = render(<AdminUserTable />);
+    fireEvent.click(screen.getByRole('button', { name: '김민재 상세보기' }));
+    expect(lastReplacedQuery().get('memberId')).toBe('1');
+
+    // 실제 Next는 router.replace 후 useSearchParams가 새 값을 내며 리렌더한다.
+    rerender(<AdminUserTable />);
+
+    expect(mockUseDetailQuery).toHaveBeenLastCalledWith(1);
+    const panel = screen.getByRole('dialog', { name: '회원 상세' });
+    expect(within(panel).getByText('010-1234-5678')).toBeInTheDocument();
+    expect(within(panel).getByRole('link', { name: 'https://github.com/minjae' })).toHaveAttribute(
+      'href',
+      'https://github.com/minjae',
     );
   });
 
-  it('로딩·빈·오류 상태를 각각 보여준다', () => {
+  it('URL에 memberId가 있으면 상세를 조회한다(뒤로/앞으로 이동 대응)', () => {
+    currentSearch = 'memberId=1';
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail() }));
+
+    render(<AdminUserTable />);
+
+    expect(mockUseDetailQuery).toHaveBeenLastCalledWith(1);
+    expect(screen.getByRole('dialog', { name: '회원 상세' })).toBeInTheDocument();
+  });
+
+  it('본인 계정 상세에는 변경 불가 안내를 띄운다', () => {
+    currentSearch = 'memberId=1';
+    mockUseMyProfileQuery.mockReturnValue({ data: { memberId: 1 } });
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ memberId: 1 }) }));
+
+    render(<AdminUserTable />);
+
+    expect(
+      screen.getByText('본인 계정의 역할·계정 상태는 관리자 본인이 변경할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('로딩·빈·403 상태를 각각 보여준다', () => {
     mockUseListQuery.mockReturnValue(listResult({ isLoading: true, data: undefined }));
     const { rerender } = render(<AdminUserTable />);
     expect(screen.getByText('사용자 정보를 불러오고 있습니다.')).toBeInTheDocument();
@@ -149,58 +265,19 @@ describe('AdminUserTable', () => {
     expect(screen.getByText('등록된 사용자가 없습니다.')).toBeInTheDocument();
 
     mockUseListQuery.mockReturnValue(
-      listResult({ isError: true, data: undefined, error: new Error('fail') }),
-    );
-    rerender(<AdminUserTable key="error" />);
-    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-    expect(mockRefetch).toHaveBeenCalled();
-  });
-
-  it('403이면 권한 없음 안내를 보여준다', () => {
-    mockUseListQuery.mockReturnValue(
       listResult({ isError: true, data: undefined, error: new ApiError('forbidden', 403) }),
     );
-
-    render(<AdminUserTable />);
-
+    rerender(<AdminUserTable key="forbidden" />);
     expect(screen.getByText('접근 권한이 없습니다.')).toBeInTheDocument();
   });
 
-  it('상세보기를 누르면 memberId로 상세를 조회하고 패널에 정보를 표시한다', () => {
-    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail() }));
-
-    render(<AdminUserTable />);
-    fireEvent.click(screen.getByRole('button', { name: '김민재 상세보기' }));
-
-    expect(mockUseDetailQuery).toHaveBeenLastCalledWith(1);
-    const panel = screen.getByRole('dialog', { name: '회원 상세' });
-    expect(within(panel).getByText('010-1234-5678')).toBeInTheDocument();
-    expect(within(panel).getByRole('link', { name: 'https://github.com/minjae' })).toHaveAttribute(
-      'href',
-      'https://github.com/minjae',
+  it('조회 실패 시 다시 시도로 refetch한다', () => {
+    mockUseListQuery.mockReturnValue(
+      listResult({ isError: true, data: undefined, error: new Error('fail') }),
     );
-  });
-
-  it('본인 계정 상세에는 변경 불가 안내를 띄운다', () => {
-    mockUseMyProfileQuery.mockReturnValue({ data: { memberId: 1 } });
-    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ memberId: 1 }) }));
 
     render(<AdminUserTable />);
-    fireEvent.click(screen.getByRole('button', { name: '김민재 상세보기' }));
-
-    expect(
-      screen.getByText('본인 계정의 역할·계정 상태는 관리자 본인이 변경할 수 없습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  it('상세 조회 실패 시 패널에서 다시 시도할 수 있다', () => {
-    mockUseDetailQuery.mockReturnValue(detailResult({ isError: true }));
-
-    render(<AdminUserTable />);
-    fireEvent.click(screen.getByRole('button', { name: '김민재 상세보기' }));
-
-    const panel = screen.getByRole('dialog', { name: '회원 상세' });
-    fireEvent.click(within(panel).getByRole('button', { name: '다시 시도' }));
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(mockRefetch).toHaveBeenCalled();
   });
 });

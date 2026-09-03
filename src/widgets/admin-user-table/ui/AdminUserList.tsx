@@ -51,7 +51,9 @@ export function AdminUserHeader() {
 }
 
 interface UserFiltersProps {
+  cohort: number | null;
   department: DepartmentCode | '';
+  onCohortChange: (value: number | null) => void;
   onDepartmentChange: (value: string) => void;
   onQueryChange: (value: string) => void;
   onRoleChange: (value: string) => void;
@@ -62,7 +64,9 @@ interface UserFiltersProps {
 }
 
 export function UserFilters({
+  cohort,
   department,
+  onCohortChange,
   onDepartmentChange,
   onQueryChange,
   onRoleChange,
@@ -74,7 +78,7 @@ export function UserFilters({
   return (
     <section
       aria-label="사용자 검색 및 필터"
-      className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(320px,1fr)_200px_200px_200px] lg:gap-4"
+      className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,1fr)_180px_180px_180px_120px] lg:gap-4"
     >
       <label className="relative min-w-0">
         <span className="sr-only">이름 검색</span>
@@ -117,6 +121,21 @@ export function UserFilters({
         placeholder="학과"
         value={department}
       />
+      <label className="min-w-0">
+        <span className="sr-only">기수 필터</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={cohort ?? ''}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            onCohortChange(Number.isInteger(next) && next > 0 ? next : null);
+          }}
+          placeholder="기수"
+          className="focus:border-primary-300 h-14 w-full rounded-lg border border-neutral-200 bg-white px-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-500"
+        />
+      </label>
     </section>
   );
 }
