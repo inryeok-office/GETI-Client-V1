@@ -101,10 +101,19 @@ function lastReplacedQuery(): URLSearchParams {
   return new URLSearchParams(url?.split('?')[1] ?? '');
 }
 
+/** 초기 URL을 세팅한다 — `useSearchParams` 목과 `window.location` 둘 다 맞춘다. */
+function setUrl(queryString: string) {
+  currentSearch = queryString;
+  window.history.replaceState({}, '', queryString ? `/admin/users?${queryString}` : '/admin/users');
+}
+
 beforeEach(() => {
   currentSearch = '';
+  window.history.replaceState({}, '', '/admin/users');
   mockReplace.mockImplementation((url: string) => {
     currentSearch = url.split('?')[1] ?? '';
+    // 실제 Next router.replace처럼 window.location도 갱신한다(디바운스가 이 값을 읽는다).
+    window.history.replaceState({}, '', url);
   });
   mockUseListQuery.mockReturnValue(listResult());
   mockUseDetailQuery.mockReturnValue(detailResult());
@@ -133,7 +142,7 @@ describe('AdminUserTable', () => {
   });
 
   it('URL 쿼리를 읽어 그 값으로 목록을 조회한다', () => {
-    currentSearch = 'q=보검&role=TEACHER&status=SUSPENDED&cohort=4&page=2';
+    setUrl('q=보검&role=TEACHER&status=SUSPENDED&cohort=4&page=2');
 
     render(<AdminUserTable />);
 
@@ -150,7 +159,7 @@ describe('AdminUserTable', () => {
 
   it('검색어는 300ms 디바운스 후 q로 URL에 반영하고 page를 지운다', () => {
     vi.useFakeTimers();
-    currentSearch = 'page=2';
+    setUrl('page=2');
     mockUseListQuery.mockReturnValue(
       listResult({ data: { ...listResult().data, totalPages: 5, last: false } }),
     );
@@ -169,7 +178,7 @@ describe('AdminUserTable', () => {
   });
 
   it('역할 필터를 바꾸면 즉시 role을 URL에 반영하고 page를 지운다', () => {
-    currentSearch = 'page=2';
+    setUrl('page=2');
     render(<AdminUserTable />);
 
     fireEvent.click(screen.getByRole('combobox', { name: '역할 필터' }));
@@ -178,6 +187,26 @@ describe('AdminUserTable', () => {
     const query = lastReplacedQuery();
     expect(query.get('role')).toBe('DEVELOPER');
     expect(query.get('page')).toBeNull();
+  });
+
+  it('검색 입력 직후 필터를 바꿔도, 늦게 실행되는 디바운스가 그 필터를 덮어쓰지 않는다', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<AdminUserTable />);
+
+    // 검색어 입력(디바운스 대기 중) → 즉시 역할 필터 변경
+    fireEvent.change(screen.getByPlaceholderText('이름으로 검색해 보세요.'), {
+      target: { value: '민재' },
+    });
+    fireEvent.click(screen.getByRole('combobox', { name: '역할 필터' }));
+    fireEvent.click(screen.getByRole('option', { name: '개발자' }));
+    rerender(<AdminUserTable />); // router.replace(role) 반영
+
+    // 이제 디바운스가 뒤늦게 실행돼도 role을 잃으면 안 된다.
+    act(() => vi.advanceTimersByTime(300));
+
+    const query = lastReplacedQuery();
+    expect(query.get('q')).toBe('민재');
+    expect(query.get('role')).toBe('DEVELOPER');
   });
 
   it('기수 필터에 값을 넣으면 cohort를 URL에 반영한다', () => {
@@ -200,7 +229,7 @@ describe('AdminUserTable', () => {
   });
 
   it('URL page가 totalPages를 벗어나면 마지막 유효 페이지로 보정한다', () => {
-    currentSearch = 'page=99';
+    setUrl('page=99');
     mockUseListQuery.mockReturnValue(
       listResult({
         data: { ...listResult().data, content: [], totalElements: 25, totalPages: 2, first: false },
@@ -232,7 +261,7 @@ describe('AdminUserTable', () => {
   });
 
   it('URL에 memberId가 있으면 상세를 조회한다(뒤로/앞으로 이동 대응)', () => {
-    currentSearch = 'memberId=1';
+    setUrl('memberId=1');
     mockUseDetailQuery.mockReturnValue(detailResult({ data: detail() }));
 
     render(<AdminUserTable />);
@@ -242,7 +271,7 @@ describe('AdminUserTable', () => {
   });
 
   it('본인 계정 상세에는 변경 불가 안내를 띄운다', () => {
-    currentSearch = 'memberId=1';
+    setUrl('memberId=1');
     mockUseMyProfileQuery.mockReturnValue({ data: { memberId: 1 } });
     mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ memberId: 1 }) }));
 
