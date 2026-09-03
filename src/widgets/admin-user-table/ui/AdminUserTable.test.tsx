@@ -209,6 +209,20 @@ describe('AdminUserTable', () => {
     expect(query.get('role')).toBe('DEVELOPER');
   });
 
+  it('리렌더 전에 서로 다른 필터를 연속 변경해도 둘 다 URL에 남는다', () => {
+    render(<AdminUserTable />);
+
+    // rerender 없이 역할 → 계정 상태를 연달아 바꾼다(둘 다 같은 렌더의 searchParams를 봄).
+    fireEvent.click(screen.getByRole('combobox', { name: '역할 필터' }));
+    fireEvent.click(screen.getByRole('option', { name: '개발자' }));
+    fireEvent.click(screen.getByRole('combobox', { name: '계정 상태 필터' }));
+    fireEvent.click(screen.getByRole('option', { name: '정지' }));
+
+    const query = lastReplacedQuery();
+    expect(query.get('role')).toBe('DEVELOPER');
+    expect(query.get('status')).toBe('SUSPENDED');
+  });
+
   it('기수 필터에 값을 넣으면 cohort를 URL에 반영한다', () => {
     render(<AdminUserTable />);
 

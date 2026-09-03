@@ -29,11 +29,22 @@ export function useAdminUserFilters() {
   const [searchInput, setSearchInput] = useState(filters.query);
   // 방금 우리가 만든 검색어 변경인지 표시해, URL→입력 동기화 effect가 되돌리지 않게 한다.
   const pendingSearchRef = useRef<string | null>(null);
+  /**
+   * "지금까지 의도한" URLSearchParams. `router.replace`가 리렌더로 반영되기 전에 필터를 연속으로
+   * 바꿔도(역할→상태 등) 각 patch가 이 값 위에 **동기적으로 누적**돼 앞선 변경이 사라지지 않는다.
+   * 외부 내비게이션(뒤로/앞으로)으로 URL이 바뀌면 아래 effect가 이 값을 실제 URL로 되돌린다.
+   */
+  const intendedParamsRef = useRef<URLSearchParams>(new URLSearchParams(searchParams.toString()));
+  useEffect(() => {
+    intendedParamsRef.current = new URLSearchParams(searchParams.toString());
+  }, [searchParams]);
 
-  /** 지금 URL 위에 `patch`를 덮어써 이동한다. 클릭 핸들러는 렌더 시점 `params`가 곧 현재 URL이라 그대로 쓴다. */
-  function pushPatch(patch: QueryPatch, params: URLSearchParams = searchParams) {
-    const queryString = patchQueryString(params, patch);
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  function pushPatch(patch: QueryPatch) {
+    const nextQueryString = patchQueryString(intendedParamsRef.current, patch);
+    intendedParamsRef.current = new URLSearchParams(nextQueryString);
+    router.replace(nextQueryString ? `${pathname}?${nextQueryString}` : pathname, {
+      scroll: false,
+    });
   }
 
   // 디바운스: 입력이 멎고 committed 검색어와 다르면 URL에 반영하고 페이지를 0으로.
@@ -41,11 +52,7 @@ export function useAdminUserFilters() {
     if (searchInput === filters.query) return;
     const timer = setTimeout(() => {
       pendingSearchRef.current = searchInput;
-      // 타임아웃이 늦게 실행돼 그 사이 필터가 바뀌었을 수 있으니, 캡처한 params가 아니라 지금 URL 위에 얹는다.
-      pushPatch(
-        { q: searchInput || null, page: null },
-        new URLSearchParams(window.location.search),
-      );
+      pushPatch({ q: searchInput || null, page: null });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
