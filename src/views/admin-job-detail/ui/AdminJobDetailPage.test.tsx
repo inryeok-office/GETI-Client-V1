@@ -1,9 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/shared/api';
 import type { AdminJobDetail } from '@/entities/job';
 
 import { AdminJobDetailPage } from './AdminJobDetailPage';
+
+/** `mockReanalyzeMutate`가 마지막으로 받은 콜백. onSuccess/onError를 직접 실행해 토스트를 검증한다. */
+function lastReanalyzeCallbacks() {
+  return mockReanalyzeMutate.mock.calls.at(-1)?.[1] as {
+    onSuccess: () => void;
+    onError: (error: unknown) => void;
+  };
+}
 
 const {
   mockUseAdminJobDetailQuery,
@@ -157,17 +166,32 @@ describe('AdminJobDetailPage', () => {
     expect(screen.getByText(/삭제된 공고입니다/)).toBeInTheDocument();
   });
 
-  it('canReanalyze면 "AI 재분석" 버튼을 눌러 jobId로 뮤테이션을 호출한다', () => {
+  it('canReanalyze면 "AI 재분석" 버튼을 눌러 jobId로 뮤테이션을 호출하고, 성공 시 토스트를 띄운다', () => {
     render(<AdminJobDetailPage jobId="1" />);
 
     const button = screen.getByRole('button', { name: 'AI 재분석' });
     expect(button).toBeEnabled();
 
     fireEvent.click(button);
-    expect(mockReanalyzeMutate).toHaveBeenCalledWith(
-      1,
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
-    );
+    expect(mockReanalyzeMutate).toHaveBeenCalledWith(1, expect.anything());
+
+    act(() => lastReanalyzeCallbacks().onSuccess());
+    expect(
+      screen.getByText('AI 재분석을 요청했습니다. 잠시 후 결과가 갱신됩니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    [409, '이미 분석이 진행 중입니다.'],
+    [429, '재분석 횟수를 모두 사용했습니다.'],
+    [503, 'AI 분석 서비스를 일시적으로 사용할 수 없습니다.'],
+  ])('재분석 실패(%s) 시 서버 메시지를 오류 토스트로 띄운다', (statusCode, message) => {
+    render(<AdminJobDetailPage jobId="1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI 재분석' }));
+    act(() => lastReanalyzeCallbacks().onError(new ApiError(message, statusCode)));
+
+    expect(screen.getByText(message)).toBeInTheDocument();
   });
 
   it('canReanalyze가 false면 "AI 재분석" 버튼이 비활성이다', () => {
