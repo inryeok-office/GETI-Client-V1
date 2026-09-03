@@ -36,6 +36,8 @@ export { fetchMyProfile } from './api/meApi';
 export {
   fetchAdminMemberDetail,
   fetchAdminMemberList,
+  updateAdminMemberRoles,
+  updateAdminMemberStatus,
   type FetchAdminMemberListParams,
 } from './api/adminMemberApi';
 export {
@@ -50,5 +52,7 @@ export {
   adminMemberKeys,
   useAdminMemberDetailQuery,
   useAdminMemberListQuery,
+  useUpdateAdminMemberRolesMutation,
+  useUpdateAdminMemberStatusMutation,
 } from './api/useAdminMemberQueries';
 export { useMajorMetadataQuery, useTechStackMetadataQuery } from './api/useProfileSetupQueries';
