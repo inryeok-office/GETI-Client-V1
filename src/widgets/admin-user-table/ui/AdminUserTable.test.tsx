@@ -84,6 +84,8 @@ function listResult(overrides: Record<string, unknown> = {}) {
       last: true,
     },
     isLoading: false,
+    isFetching: false,
+    isPlaceholderData: false,
     isError: false,
     error: null,
     refetch: mockRefetch,
@@ -253,6 +255,37 @@ describe('AdminUserTable', () => {
     render(<AdminUserTable />);
 
     expect(lastReplacedQuery().get('page')).toBe('2');
+  });
+
+  it('전환 중(placeholder)에는 이전 totalPages 기준으로 page를 보정하지 않는다', () => {
+    setUrl('page=5');
+    mockUseListQuery.mockReturnValue(
+      // 이전 조건의 placeholder — totalPages가 1로 작지만, 새 응답이 아니므로 page=5를 덮어쓰면 안 된다.
+      listResult({
+        isFetching: true,
+        isPlaceholderData: true,
+        data: { ...listResult().data, totalPages: 1 },
+      }),
+    );
+
+    render(<AdminUserTable />);
+
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('전환 중(isFetching && isPlaceholderData)에는 이전 목록 대신 로딩 상태를 보여준다', () => {
+    mockUseListQuery.mockReturnValue(
+      listResult({
+        isFetching: true,
+        isPlaceholderData: true,
+        data: { ...listResult().data, content: [summary({ name: '옛조건회원' })] },
+      }),
+    );
+
+    render(<AdminUserTable />);
+
+    expect(screen.getByText('사용자 정보를 불러오고 있습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('옛조건회원')).not.toBeInTheDocument();
   });
 
   it('상세보기를 누르면 memberId를 URL에 반영하고 패널에 정보를 표시한다', () => {

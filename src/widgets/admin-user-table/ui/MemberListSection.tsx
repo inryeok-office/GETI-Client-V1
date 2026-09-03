@@ -36,7 +36,8 @@ export function MemberListSection({
   return (
     <section className="mt-6">
       <h2 className="text-base leading-[1.6] tracking-[-0.16px] text-neutral-900">
-        {data ? `총 ${data.totalElements}명` : '사용자 목록'}
+        {/* 전환 중(isLoading)에는 placeholder의 옛 개수를 보여주지 않는다. */}
+        {data && !isLoading ? `총 ${data.totalElements}명` : '사용자 목록'}
       </h2>
       <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         {isLoading ? (
@@ -75,7 +76,7 @@ export function MemberListSection({
         )}
       </div>
 
-      {data && data.totalPages > 1 ? (
+      {data && !isLoading && data.totalPages > 1 ? (
         <div className="mt-4 flex items-center justify-center gap-3">
           <button
             type="button"

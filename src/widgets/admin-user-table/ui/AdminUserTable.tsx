@@ -41,8 +41,12 @@ export function AdminUserTable() {
   const detailQuery = useAdminMemberDetailQuery(filters.memberId);
   const myMemberId = useMyProfileQuery().data?.memberId ?? null;
 
+  // `keepPreviousData` 때문에 조건이 바뀐 직후 `data`는 이전 조건의 placeholder다 — 이 동안은
+  // 옛 목록을 새 조건 아래 노출하지 말고 로딩으로 처리하고, 페이지 보정도 새 응답이 올 때까지 미룬다.
+  const isTransitioning = listQuery.isFetching && listQuery.isPlaceholderData;
+
   // URL의 page가 실제 totalPages를 벗어나면(데이터 감소·직접 입력) 마지막 유효 페이지로 보정한다.
-  const totalPages = listQuery.data?.totalPages;
+  const totalPages = listQuery.isPlaceholderData ? undefined : listQuery.data?.totalPages;
   useEffect(() => {
     if (totalPages !== undefined && filters.page > Math.max(0, totalPages - 1)) {
       goToPage(Math.max(0, totalPages - 1));
@@ -94,7 +98,7 @@ export function AdminUserTable() {
             hasActiveFilters={hasActiveFilters}
             isError={listQuery.isError}
             isForbidden={isForbidden}
-            isLoading={listQuery.isLoading}
+            isLoading={listQuery.isLoading || isTransitioning}
             myMemberId={myMemberId}
             page={filters.page}
             onGoToPage={goToPage}
