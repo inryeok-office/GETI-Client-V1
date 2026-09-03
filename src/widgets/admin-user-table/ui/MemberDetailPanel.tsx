@@ -1,30 +1,40 @@
-import type { AdminMemberDetail } from '@/entities/member';
+import type { AdminMemberDetail, AdminMemberRole, AdminMemberStatus } from '@/entities/member';
 import { Button } from '@/shared/ui/button';
 import { PageState } from '@/shared/ui/page-state';
 
 import { MemberInfoSections } from './MemberInfoSections';
+import { MemberRoleEditor } from './MemberRoleEditor';
+import { MemberStatusEditor } from './MemberStatusEditor';
 
 interface MemberDetailPanelProps {
   isError: boolean;
   isLoading: boolean;
-  /** 선택한 회원이 로그인 본인인지. 본인 계정에는 안내 문구를 띄운다(변경은 #59). */
+  /** 선택한 회원이 로그인 본인인지. 자기 자신은 서버가 403으로 막으므로 편집 UI도 잠근다. */
   isSelf: boolean;
+  isSavingRoles: boolean;
+  isSavingStatus: boolean;
   member: AdminMemberDetail | undefined;
   onClose: () => void;
   onRetry: () => void;
+  onUpdateRoles: (roles: AdminMemberRole[]) => void;
+  onUpdateStatus: (status: AdminMemberStatus) => void;
 }
 
 /**
- * 회원 상세 패널의 껍데기 — 슬라이드 패널·로딩/에러 분기만 담당한다.
- * 이번 범위(#212)에서는 조회 전용이라 본문은 `MemberInfoSections`뿐이고, 역할·계정 상태 편집 UI는 #59에서 붙인다.
+ * 회원 상세 패널의 껍데기 — 슬라이드 패널·로딩/에러 분기만 담당한다. 본문은 역할 편집
+ * (`MemberRoleEditor`)·계정 상태 편집(`MemberStatusEditor`)·읽기 전용 정보(`MemberInfoSections`)로 나뉜다.
  */
 export function MemberDetailPanel({
   isError,
   isLoading,
   isSelf,
+  isSavingRoles,
+  isSavingStatus,
   member,
   onClose,
   onRetry,
+  onUpdateRoles,
+  onUpdateStatus,
 }: MemberDetailPanelProps) {
   return (
     <div className="fixed inset-y-0 right-0 left-[220px] z-40">
@@ -93,6 +103,19 @@ export function MemberDetailPanel({
                 </div>
               ) : null}
 
+              <MemberRoleEditor
+                key={member.memberId}
+                disabled={isSelf || isSavingRoles}
+                isSaving={isSavingRoles}
+                member={member}
+                onUpdate={onUpdateRoles}
+              />
+              <MemberStatusEditor
+                isSaving={isSavingStatus}
+                isSelf={isSelf}
+                member={member}
+                onUpdate={onUpdateStatus}
+              />
               <MemberInfoSections member={member} />
             </>
           ) : null}

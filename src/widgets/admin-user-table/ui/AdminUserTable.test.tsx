@@ -6,14 +6,31 @@ import type { AdminMemberDetail, AdminMemberSummary } from '@/entities/member';
 
 import { AdminUserTable } from './AdminUserTable';
 
-const { mockUseListQuery, mockUseDetailQuery, mockUseMyProfileQuery, mockReplace, mockRefetch } =
-  vi.hoisted(() => ({
-    mockUseListQuery: vi.fn(),
-    mockUseDetailQuery: vi.fn(),
-    mockUseMyProfileQuery: vi.fn(),
-    mockReplace: vi.fn(),
-    mockRefetch: vi.fn(),
-  }));
+const {
+  mockUseListQuery,
+  mockUseDetailQuery,
+  mockUseMyProfileQuery,
+  mockRolesMutate,
+  mockStatusMutate,
+  mockReplace,
+  mockRefetch,
+} = vi.hoisted(() => ({
+  mockUseListQuery: vi.fn(),
+  mockUseDetailQuery: vi.fn(),
+  mockUseMyProfileQuery: vi.fn(),
+  mockRolesMutate: vi.fn(),
+  mockStatusMutate: vi.fn(),
+  mockReplace: vi.fn(),
+  mockRefetch: vi.fn(),
+}));
+
+/** 마지막 mutate 호출의 콜백. onSuccess/onError를 직접 실행해 토스트를 검증한다. */
+function lastCallbacks(mock: typeof mockRolesMutate) {
+  return mock.mock.calls.at(-1)?.[1] as {
+    onSuccess: () => void;
+    onError: (error: unknown) => void;
+  };
+}
 
 /** 현재 URL 쿼리스트링. `mockReplace`가 갱신하고 `useSearchParams` 목이 읽는다. */
 let currentSearch = '';
@@ -31,6 +48,8 @@ vi.mock('@/entities/member', async () => {
     useAdminMemberListQuery: mockUseListQuery,
     useAdminMemberDetailQuery: mockUseDetailQuery,
     useMyProfileQuery: mockUseMyProfileQuery,
+    useUpdateAdminMemberRolesMutation: () => ({ mutate: mockRolesMutate, isPending: false }),
+    useUpdateAdminMemberStatusMutation: () => ({ mutate: mockStatusMutate, isPending: false }),
   };
 });
 
@@ -355,5 +374,63 @@ describe('AdminUserTable', () => {
     render(<AdminUserTable />);
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('역할 체크박스를 바꾸고 확인하면 roles 뮤테이션을 호출하고 성공 토스트를 띄운다', () => {
+    currentSearch = 'memberId=1';
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ roles: ['STUDENT'] }) }));
+
+    render(<AdminUserTable />);
+    fireEvent.click(screen.getByRole('checkbox', { name: '교사 역할' }));
+    fireEvent.click(screen.getByRole('button', { name: '역할 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '변경' }));
+
+    expect(mockRolesMutate).toHaveBeenCalledWith(
+      { memberId: 1, roles: ['STUDENT', 'TEACHER'] },
+      expect.anything(),
+    );
+    act(() => lastCallbacks(mockRolesMutate).onSuccess());
+    expect(screen.getByText('역할을 변경했습니다.')).toBeInTheDocument();
+  });
+
+  it('ACTIVE 계정은 "계정 정지"로 SUSPENDED 상태 뮤테이션을 호출한다', () => {
+    currentSearch = 'memberId=1';
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ status: 'ACTIVE' }) }));
+
+    render(<AdminUserTable />);
+    fireEvent.click(screen.getByRole('button', { name: '계정 정지' }));
+    fireEvent.click(screen.getByRole('button', { name: '정지' }));
+
+    expect(mockStatusMutate).toHaveBeenCalledWith(
+      { memberId: 1, status: 'SUSPENDED' },
+      expect.anything(),
+    );
+  });
+
+  it('변경 실패(409) 시 서버 계약에 맞는 오류 토스트를 띄운다', () => {
+    currentSearch = 'memberId=1';
+    mockUseDetailQuery.mockReturnValue(detailResult({ data: detail({ status: 'ACTIVE' }) }));
+
+    render(<AdminUserTable />);
+    fireEvent.click(screen.getByRole('button', { name: '계정 정지' }));
+    fireEvent.click(screen.getByRole('button', { name: '정지' }));
+    act(() => lastCallbacks(mockStatusMutate).onError(new ApiError('conflict', 409)));
+
+    expect(
+      screen.getByText('계정 상태가 이미 변경되어 있습니다. 최신 정보를 확인해 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('본인 계정 상세에서는 역할·상태 컨트롤이 잠긴다', () => {
+    currentSearch = 'memberId=1';
+    mockUseMyProfileQuery.mockReturnValue({ data: { memberId: 1 } });
+    mockUseDetailQuery.mockReturnValue(
+      detailResult({ data: detail({ memberId: 1, status: 'ACTIVE' }) }),
+    );
+
+    render(<AdminUserTable />);
+
+    expect(screen.getByRole('checkbox', { name: '학생 역할' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '계정 정지' })).toBeDisabled();
   });
 });

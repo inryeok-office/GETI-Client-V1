@@ -43,3 +43,35 @@ export async function fetchAdminMemberDetail(memberId: number): Promise<AdminMem
   const { data } = await api.get<ApiResponse<AdminMemberDetail>>(`${ADMIN_BASE_PATH}/${memberId}`);
   return data.data;
 }
+
+/**
+ * `PATCH /api/v1/admin/members/{memberId}/roles`(GETI-Server-V1 #216) — Role Set 전체 교체.
+ * 넘긴 집합에 없는 기존 Role은 회수되고, 있는데 없던 Role은 새로 부여된다.
+ * 자기 자신 대상이면 403(`MEMBER_SELF_MODIFICATION_FORBIDDEN`).
+ */
+export async function updateAdminMemberRoles(
+  memberId: number,
+  roles: AdminMemberRole[],
+): Promise<AdminMemberDetail> {
+  const { data } = await api.patch<ApiResponse<AdminMemberDetail>>(
+    `${ADMIN_BASE_PATH}/${memberId}/roles`,
+    { roles },
+  );
+  return data.data;
+}
+
+/**
+ * `PATCH /api/v1/admin/members/{memberId}/status`(GETI-Server-V1 #216) — 계정 상태 변경.
+ * 관리자 수동 전이는 `ACTIVE ↔ SUSPENDED`만 허용하고, 그 외 값은 409
+ * (`MEMBER_STATUS_TRANSITION_NOT_ALLOWED`). 자기 자신 대상이면 403.
+ */
+export async function updateAdminMemberStatus(
+  memberId: number,
+  status: AdminMemberStatus,
+): Promise<AdminMemberDetail> {
+  const { data } = await api.patch<ApiResponse<AdminMemberDetail>>(
+    `${ADMIN_BASE_PATH}/${memberId}/status`,
+    { status },
+  );
+  return data.data;
+}
