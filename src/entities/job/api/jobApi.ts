@@ -77,6 +77,16 @@ export async function changeAdminJobStatus(
 }
 
 /**
+ * `POST /api/v1/jobs/{jobId}/ai-reanalysis`(`JobAiReanalysisController`) — AI 공고 분석 수동
+ * 재요청. 202로 즉시 접수만 되고, 실제 결과는 이후 `GET /api/v1/admin/jobs/{jobId}`의
+ * `aiAnalysis`로 확인한다. 게시 전 공고면 404, 이미 분석 중이면 409, 3회 소진이면 429,
+ * AI 연동 미설정이면 503.
+ */
+export async function reanalyzeAdminJob(jobId: number): Promise<void> {
+  await api.post(`${BASE_PATH}/${jobId}/ai-reanalysis`);
+}
+
+/**
  * `POST /api/v1/admin/jobs`(`JobAdminController`) — 공고 등록·임시저장. `status = PUBLISHED`면
  * 서버가 게시 필수값(본문·외부 URL 등)을 검증해 `JOB_VALIDATION_FAILED`/`JOB_FORM_REQUIRED`로
  * 거부할 수 있다. 응답은 방금 만든 공고의 관리자 상세다(201).
