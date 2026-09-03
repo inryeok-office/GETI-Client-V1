@@ -5,27 +5,24 @@ import {
   formatDateOnly,
   formatJobDeadlineState,
   formatJobPublicState,
-  type JobSummary,
+  type AdminJobSummary,
 } from '@/entities/job';
 
-/**
- * Figma(node 586:12572) 공고 관리 테이블 컬럼. 폭을 그대로 옮겼다(합 1570px).
- * "등록일" 자리는 목록 API에 생성일이 없어 게시일(`publishedAt`)을 쓰므로 헤더도 "게시일"로 둔다.
- */
+/** Figma(node 586:12572) 공고 관리 테이블 컬럼. 폭을 그대로 옮겼다(합 1570px). */
 const TABLE_COLUMNS = [
   { label: '공고명', widthClass: 'w-[350px]' },
   { label: '기업', widthClass: 'w-[190px]' },
   { label: '담당자', widthClass: 'w-[210px]' },
   { label: '공개 상태', widthClass: 'w-[180px]' },
   { label: '마감 상태', widthClass: 'w-[200px]' },
-  { label: '게시일', widthClass: 'w-[200px]' },
+  { label: '등록일', widthClass: 'w-[200px]' },
   { label: '관리', widthClass: 'w-[240px]' },
 ];
 
 const CELL_CLASS = 'px-[24px] text-[14px] leading-[1.5] tracking-[-0.14px] text-neutral-900';
 
 interface AdminJobTableProps {
-  jobs: JobSummary[];
+  jobs: AdminJobSummary[];
   /**
    * 현재 검색 · 필터 · 페이지 쿼리스트링(`&` 없이 이어 붙일 형태, 없으면 빈 문자열). 공고명
    * 링크에 붙여, 상세(`/admin/jobs/[jobId]`)에서 목록으로 돌아왔을 때 조회 조건이 유지되게 한다
@@ -33,9 +30,9 @@ interface AdminJobTableProps {
    */
   queryString: string;
   /** 마감 클릭. 즉시 상태 변경 뮤테이션을 호출하는 건 호출부(`AdminJobListPage`)가 담당한다. */
-  onCloseJob: (job: JobSummary) => void;
+  onCloseJob: (job: AdminJobSummary) => void;
   /** 삭제 클릭. 확인 모달을 여는 것도 호출부가 담당한다. */
-  onDeleteJob: (job: JobSummary) => void;
+  onDeleteJob: (job: AdminJobSummary) => void;
   /**
    * 상태 변경(마감·삭제)이 진행 중인지. 하나의 뮤테이션을 공유하므로 특정 행만이 아니라 모든 행의
    * 마감·삭제 버튼을 잠근다 — A행 변경 중 B행을 눌러 A가 다시 활성화되고 재조회 전에 같은 전이를
@@ -105,43 +102,47 @@ export function AdminJobTable({
               </td>
               <td className={CELL_CLASS}>{formatJobDeadlineState(job.status) ?? EMPTY_CELL}</td>
               <td className={CELL_CLASS}>
-                {job.publishedAt ? formatDateOnly(job.publishedAt) : EMPTY_CELL}
+                {job.createdAt ? formatDateOnly(job.createdAt) : EMPTY_CELL}
               </td>
               <td className="px-[24px]">
-                <div className="flex items-center gap-[6px] text-[14px] leading-[1.4] tracking-[-0.14px]">
-                  <Link
-                    href={`/admin/jobs/${job.jobId}/edit`}
-                    className="text-primary-700 font-medium hover:underline"
-                  >
-                    수정
-                  </Link>
-                  {job.status === 'PUBLISHED' && (
-                    <>
-                      <span className="text-neutral-300" aria-hidden="true">
-                        ·
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isMutating}
-                        onClick={() => onCloseJob(job)}
-                        className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        마감
-                      </button>
-                    </>
-                  )}
-                  <span className="text-neutral-300" aria-hidden="true">
-                    ·
-                  </span>
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={() => onDeleteJob(job)}
-                    className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
-                </div>
+                {job.status === 'DELETED' ? (
+                  <span className="text-[14px] text-neutral-400">{EMPTY_CELL}</span>
+                ) : (
+                  <div className="flex items-center gap-[6px] text-[14px] leading-[1.4] tracking-[-0.14px]">
+                    <Link
+                      href={`/admin/jobs/${job.jobId}/edit`}
+                      className="text-primary-700 font-medium hover:underline"
+                    >
+                      수정
+                    </Link>
+                    {job.status === 'PUBLISHED' && (
+                      <>
+                        <span className="text-neutral-300" aria-hidden="true">
+                          ·
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isMutating}
+                          onClick={() => onCloseJob(job)}
+                          className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          마감
+                        </button>
+                      </>
+                    )}
+                    <span className="text-neutral-300" aria-hidden="true">
+                      ·
+                    </span>
+                    <button
+                      type="button"
+                      disabled={isMutating}
+                      onClick={() => onDeleteJob(job)}
+                      className="text-primary-700 font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}
@@ -151,7 +152,7 @@ export function AdminJobTable({
   );
 }
 
-function PublicStateBadge({ status }: { status: JobSummary['status'] }) {
+function PublicStateBadge({ status }: { status: AdminJobSummary['status'] }) {
   const label = formatJobPublicState(status);
   const isPublic = label === '공개';
 

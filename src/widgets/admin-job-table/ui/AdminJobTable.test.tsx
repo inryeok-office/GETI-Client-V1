@@ -1,36 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { JobSummary } from '@/entities/job';
+import type { AdminJobSummary } from '@/entities/job';
 
 import { AdminJobTable } from './AdminJobTable';
 
-function jobSummary(overrides: Partial<JobSummary> = {}): JobSummary {
+function jobSummary(overrides: Partial<AdminJobSummary> = {}): AdminJobSummary {
   return {
     jobId: 1,
     title: '프론트엔드 개발자 채용',
+    company: { companyId: 1, name: '플로우테크', logoUrl: null },
     postingType: 'GENERAL',
     applicationMethod: 'EXTERNAL',
     status: 'PUBLISHED',
-    company: { companyId: 1, name: '플로우테크', logoUrl: null },
     startDate: null,
     endDate: null,
-    targetGrade: null,
-    capacity: null,
-    location: null,
-    employmentType: null,
-    firstComeServed: false,
-    viewCount: 0,
-    publishedAt: '2026-08-01T09:00:00',
-    application: {
-      canApply: false,
-      eligibilityReason: 'JOB_NOT_PUBLISHED',
-      eligibilityMessage: '',
-      applicationId: null,
-      applicationStatus: null,
-      availableActions: [],
-    },
-    bookmarked: false,
+    createdAt: '2026-08-01T09:00:00',
+    updatedAt: '2026-08-01T09:00:00',
     ...overrides,
   };
 }
@@ -74,6 +60,23 @@ describe('AdminJobTable', () => {
     );
   });
 
+  it('DRAFT는 "비공개" 배지에 마감 상태는 빈 셀, 마감 버튼 없이 수정·삭제만 있다', () => {
+    renderTable({ jobs: [jobSummary({ status: 'DRAFT' })] });
+
+    expect(screen.getByText('비공개')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '마감' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '수정' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
+  });
+
+  it('DELETED는 "삭제됨" 배지에 관리 액션이 없다', () => {
+    renderTable({ jobs: [jobSummary({ status: 'DELETED' })] });
+
+    expect(screen.getByText('삭제됨')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '수정' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument();
+  });
+
   it('CLOSED는 마감 버튼 없이 삭제 버튼만 있다', () => {
     renderTable({ jobs: [jobSummary({ status: 'CLOSED' })] });
 
@@ -83,10 +86,17 @@ describe('AdminJobTable', () => {
   });
 
   it('기업이 없거나 등록일이 없으면 빈 셀 문자로 채운다', () => {
-    renderTable({ jobs: [jobSummary({ company: null, publishedAt: null })] });
+    renderTable({ jobs: [jobSummary({ company: null, createdAt: null })] });
 
     // 담당자 · 기업 · 등록일 세 자리가 모두 'ㅡ'
     expect(screen.getAllByText('ㅡ')).toHaveLength(3);
+  });
+
+  it('등록일 열은 createdAt을 YYYY.MM.DD로 보여준다', () => {
+    renderTable({ jobs: [jobSummary({ createdAt: '2026-07-20T10:00:00' })] });
+
+    expect(screen.getByRole('columnheader', { name: '등록일' })).toBeInTheDocument();
+    expect(screen.getByText('2026.07.20')).toBeInTheDocument();
   });
 
   it('표 시맨틱(table · columnheader)과 스크롤 영역 접근 수단을 갖춘다', () => {
@@ -94,7 +104,7 @@ describe('AdminJobTable', () => {
 
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: '공고명' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '게시일' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '등록일' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '공고 목록' })).toHaveAttribute('tabindex', '0');
   });
 
