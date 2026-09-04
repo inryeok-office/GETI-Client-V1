@@ -48,6 +48,7 @@ function fullMetrics(overrides: Partial<StaffDashboardMetrics> = {}): StaffDashb
   return {
     newApplicants: metric<number>({ data: 14 }),
     revisionRequests: metric<number>({ data: 4 }),
+    publishedPrograms: metric<number>({ data: 6 }),
     jobSummaries: metric<JobApplicationJobSummary[]>({ data: [jobSummary()] }),
     notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
     ...overrides,
@@ -71,11 +72,37 @@ describe('buildStaffDashboardContent', () => {
     expect(card(content.kpiCards, 'revision').count).toBe('4건');
   });
 
-  it('기업 전달 대기·프로그램·포트폴리오 KPI는 미지원으로 둔다', () => {
+  it('진행 중 프로그램 KPI를 PUBLISHED 건수로 채운다', () => {
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        publishedPrograms: metric<number>({ data: 6 }),
+      }),
+    );
+
+    const programs = card(content.kpiCards, 'programs');
+    expect(programs.count).toBe('6건');
+    expect(programs.unsupported).toBeUndefined();
+  });
+
+  it('진행 중 프로그램 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
+    const onRetry = vi.fn();
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({
+        publishedPrograms: metric<number>({ isError: true, onRetry }),
+      }),
+    );
+
+    expect(card(content.kpiCards, 'programs').loadState).toBe('error');
+    expect(card(content.kpiCards, 'programs').onRetry).toBe(onRetry);
+    expect(card(content.kpiCards, 'new').loadState).toBeUndefined();
+  });
+
+  it('기업 전달 대기·포트폴리오 KPI는 미지원으로 둔다', () => {
     const content = buildStaffDashboardContent(BASE, fullMetrics());
 
     expect(card(content.kpiCards, 'pending').unsupported).toBe(true);
-    expect(card(content.kpiCards, 'programs').unsupported).toBe(true);
     expect(card(content.kpiCards, 'portfolio').unsupported).toBe(true);
   });
 
