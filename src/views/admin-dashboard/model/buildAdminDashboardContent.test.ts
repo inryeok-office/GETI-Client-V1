@@ -86,6 +86,8 @@ describe('buildAdminDashboardContent', () => {
 
     expect(card(content.kpiCards, 'programs').unsupported).toBeUndefined();
     expect(card(content.kpiCards, 'programs').count).toBe('18건');
+    // status 미지정 합계라 Mock 문구 "진행/예정/종료" 대신 실제 집계 기준을 쓴다.
+    expect(card(content.kpiCards, 'programs').description).toBe('임시저장 · 게시 · 마감');
     expect(card(content.kpiCards, 'jobs').count).toBe('35건');
     expect(card(content.kpiCards, 'jobs').description).toBe('모집 · 마감');
     expect(card(content.kpiCards, 'inquiries').unsupported).toBeUndefined();

@@ -78,7 +78,12 @@ export function buildAdminDashboardContent(
         // 공개 검색 API는 비공개 공고를 안 주므로 설명에서 "비공개"를 뺀다(GETI-Server-V1 #189).
         return { ...applyCountMetric(card, metrics.jobPostings), description: '모집 · 마감' };
       case 'programs':
-        return applyCountMetric(card, metrics.programCount);
+        // status 미지정 조회라 DRAFT(임시저장)까지 더한 합계다 — Mock 문구 "진행/예정/종료"는
+        // 집계와 어긋나므로(특히 DRAFT는 "예정"이 아님) 실제 기준으로 덮어쓴다.
+        return {
+          ...applyCountMetric(card, metrics.programCount),
+          description: '임시저장 · 게시 · 마감',
+        };
       default:
         return card;
     }

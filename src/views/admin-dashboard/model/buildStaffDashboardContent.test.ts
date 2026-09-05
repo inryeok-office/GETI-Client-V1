@@ -72,7 +72,7 @@ describe('buildStaffDashboardContent', () => {
     expect(card(content.kpiCards, 'revision').count).toBe('4건');
   });
 
-  it('진행 중 프로그램 KPI를 PUBLISHED 건수로 채운다', () => {
+  it('게시 중 프로그램 KPI를 PUBLISHED 건수로 채우고 문구를 게시 기준으로 정정한다', () => {
     const content = buildStaffDashboardContent(
       BASE,
       fullMetrics({
@@ -83,9 +83,12 @@ describe('buildStaffDashboardContent', () => {
     const programs = card(content.kpiCards, 'programs');
     expect(programs.count).toBe('6건');
     expect(programs.unsupported).toBeUndefined();
+    // PUBLISHED는 게시 상태지 행사 진행 중이 아니므로 Mock 문구를 덮어쓴다.
+    expect(programs.badgeLabel).toBe('게시 중 프로그램');
+    expect(programs.description).toBe('게시 상태');
   });
 
-  it('진행 중 프로그램 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
+  it('게시 중 프로그램 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
     const onRetry = vi.fn();
     const content = buildStaffDashboardContent(
       BASE,

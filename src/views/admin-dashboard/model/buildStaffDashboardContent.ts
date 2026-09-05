@@ -12,7 +12,7 @@ export interface StaffDashboardMetrics {
   newApplicants: DashboardMetric<number>;
   /** 담당 공고의 수정 요청 상태 지원서 수. */
   revisionRequests: DashboardMetric<number>;
-  /** 게시(PUBLISHED) 상태 프로그램 수 — "진행 중 프로그램" KPI. */
+  /** 게시(PUBLISHED) 상태 프로그램 수 — "게시 중 프로그램" KPI. */
   publishedPrograms: DashboardMetric<number>;
   /** 담당 · 등록 공고별 지원 현황 요약(담당 공고 현황 표). */
   jobSummaries: DashboardMetric<JobApplicationJobSummary[]>;
@@ -59,7 +59,7 @@ function isPending(metric: DashboardMetric<unknown>): boolean {
  * Mock `DASHBOARD_CONTENT.staff`를 base로, 연동 가능한 KPI · 표 · 알림만 실데이터로 치환한다(Issue #187).
  * 신규 지원자 · 수정 요청 KPI는 지원서 목록 API로, 담당 공고 현황 표는 `job-summaries` API로 채운다
  * (Issue #197). 알림 사이드바는 `GET /api/v1/notifications` 실데이터로 채운다(Issue #199).
- * "진행 중 프로그램" KPI는 관리자 프로그램 목록 API(GETI-Server-V1 #312)의 `status=PUBLISHED` 건수로 채운다
+ * "게시 중 프로그램" KPI는 관리자 프로그램 목록 API(GETI-Server-V1 #312)의 `status=PUBLISHED` 건수로 채운다
  * (Issue #218). 기업 전달 대기(죽은 `FORWARDED` 상태) · 포트폴리오 미제출 KPI는 대응 API가 없어 "미지원"으로 둔다.
  */
 export function buildStaffDashboardContent(
@@ -74,7 +74,13 @@ export function buildStaffDashboardContent(
       case 'revision':
         return applyCountMetric(card, metrics.revisionRequests);
       case 'programs':
-        return applyCountMetric(card, metrics.publishedPrograms);
+        // 백엔드 PUBLISHED는 "게시 상태"지 행사 시간 기준 "진행 중"이 아니다(신청 전 게시분 포함,
+        // 신청 종료 시 CLOSED로 전이). Mock 문구 "진행 중 프로그램/현재 진행 중"을 게시 기준으로 정정한다.
+        return {
+          ...applyCountMetric(card, metrics.publishedPrograms),
+          badgeLabel: '게시 중 프로그램',
+          description: '게시 상태',
+        };
       case 'pending':
       case 'portfolio':
         return { ...card, unsupported: true };
