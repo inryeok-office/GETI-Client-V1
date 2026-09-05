@@ -19,6 +19,8 @@ export interface AdminDashboardMetrics {
   unansweredInquiries: DashboardMetric<number>;
   /** 공개 공고(모집 중 + 마감) 전체 수. */
   jobPostings: DashboardMetric<number>;
+  /** 삭제되지 않은 전체 프로그램 수(임시저장 · 게시 · 마감). */
+  programCount: DashboardMetric<number>;
   /** 지원서 상태별 건수. "전체 지원서" KPI와 "지원 처리 현황" 표가 함께 쓴다. */
   applicationStatusCounts: DashboardMetric<ApplicationStatusCounts>;
   /** 알림 사이드바에 표시할 로그인 사용자 알림 목록. */
@@ -55,7 +57,7 @@ function buildStatusRows(metric: DashboardMetric<ApplicationStatusCounts>): Dash
 
 /**
  * Mock `DASHBOARD_CONTENT.admin`을 base로, 연동 가능한 지표만 실데이터로 치환한다(Issue #179, #189).
- * 프로그램 상태 KPI는 관리자 프로그램 목록 API가 없어 "미지원"으로 둔다.
+ * 프로그램 상태 KPI는 관리자 프로그램 목록 API(GETI-Server-V1 #312)의 `totalElements`로 채운다(Issue #218).
  */
 export function buildAdminDashboardContent(
   base: DashboardContent,
@@ -76,7 +78,12 @@ export function buildAdminDashboardContent(
         // 공개 검색 API는 비공개 공고를 안 주므로 설명에서 "비공개"를 뺀다(GETI-Server-V1 #189).
         return { ...applyCountMetric(card, metrics.jobPostings), description: '모집 · 마감' };
       case 'programs':
-        return { ...card, unsupported: true };
+        // status 미지정 조회라 DRAFT(임시저장)까지 더한 합계다 — Mock 문구 "진행/예정/종료"는
+        // 집계와 어긋나므로(특히 DRAFT는 "예정"이 아님) 실제 기준으로 덮어쓴다.
+        return {
+          ...applyCountMetric(card, metrics.programCount),
+          description: '임시저장 · 게시 · 마감',
+        };
       default:
         return card;
     }
