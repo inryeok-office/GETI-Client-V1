@@ -2,6 +2,7 @@
 
 import { useApplicantListQuery, useJobApplicationJobSummariesQuery } from '@/entities/applicant';
 import { useNotificationListQuery } from '@/entities/notification';
+import { useAdminProgramListQuery } from '@/entities/program';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildStaffDashboardContent } from '../model/buildStaffDashboardContent';
@@ -35,11 +36,13 @@ export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDash
     size: 1,
   });
   const jobSummariesQuery = useJobApplicationJobSummariesQuery();
+  const publishedProgramsQuery = useAdminProgramListQuery({ status: 'PUBLISHED', size: 1 });
   const notificationsQuery = useNotificationListQuery({ size: NOTIFICATION_FEED_SIZE });
 
   const content = buildStaffDashboardContent(DASHBOARD_CONTENT.staff, {
     newApplicants: toMetric(newApplicantsQuery, (list) => list.totalElements),
     revisionRequests: toMetric(revisionRequestsQuery, (list) => list.totalElements),
+    publishedPrograms: toMetric(publishedProgramsQuery, (result) => result.totalElements),
     jobSummaries: toMetric(jobSummariesQuery, (page) => page.content),
     notifications: toMetric(notificationsQuery, (list) => list.content),
   });
