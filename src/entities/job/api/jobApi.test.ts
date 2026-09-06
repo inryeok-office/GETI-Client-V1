@@ -9,6 +9,7 @@ import {
   downloadJobAttachment,
   fetchAdminJobDetail,
   fetchAdminJobList,
+  fetchAllAdminJobList,
   reanalyzeAdminJob,
   updateAdminJob,
 } from './jobApi';
@@ -106,6 +107,56 @@ describe('fetchAdminJobList', () => {
     ]);
     expect(receivedParams).toEqual({ page: 0, size: 20, query: '백엔드', status: 'DRAFT' });
     expect(result).toEqual(pageResult);
+  });
+});
+
+describe('fetchAllAdminJobList', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('totalPages 끝까지 순회해 전체 공고를 모은다', async () => {
+    const job = (jobId: number) => ({
+      jobId,
+      title: `공고 ${jobId}`,
+      company: null,
+      postingType: 'GENERAL',
+      applicationMethod: 'EXTERNAL',
+      status: 'PUBLISHED',
+      startDate: null,
+      endDate: null,
+      createdAt: null,
+      updatedAt: null,
+    });
+    const requestedPages: number[] = [];
+    const stub = stubServer((config) => {
+      const page = Number(config.params.page);
+      requestedPages.push(page);
+      const content = page === 0 ? [job(1), job(2)] : [job(3)];
+      return {
+        success: true,
+        data: { content, page, size: 2, totalElements: 3, totalPages: 2 },
+      };
+    });
+    restore = stub.restore;
+
+    const result = await fetchAllAdminJobList();
+
+    expect(requestedPages).toEqual([0, 1]);
+    expect(result.map((item) => item.jobId)).toEqual([1, 2, 3]);
+  });
+
+  it('공고가 없으면 첫 페이지 조회만 하고 빈 배열을 돌려준다', async () => {
+    const stub = stubServer(() => ({
+      success: true,
+      data: { content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 },
+    }));
+    restore = stub.restore;
+
+    const result = await fetchAllAdminJobList();
+
+    expect(stub.requests).toHaveLength(1);
+    expect(result).toEqual([]);
   });
 });
 

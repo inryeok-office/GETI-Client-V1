@@ -6,9 +6,9 @@ import { useEffect, useRef, useState } from 'react';
 import {
   useExportJobApplicationsMutation,
   useJobApplicantOptionsQuery,
-  useJobPostingOptionsQuery,
 } from '@/entities/applicant';
 import type { ApplicationExportMaterialType, ExportedFile } from '@/entities/applicant';
+import { useAllAdminJobListQuery } from '@/entities/job';
 import { ApiError } from '@/shared/api';
 import { Icon } from '@/shared/ui/icon';
 
@@ -64,9 +64,10 @@ function saveExportedFile({ blob, filename }: ExportedFile) {
  * 연결된다. 기본은 3개 모두 선택이고, 하나도 안 고르면 다운로드를 막는다(빈 요청 방지).
  *
  * 공고 · 지원자 데이터는 목록 화면에 지금 로드돼 있는(페이지네이션 · 필터가 걸린) 배열을
- * 그대로 쓰지 않는다. "공고" 드롭다운은 `useJobPostingOptionsQuery`가, "지원자" 체크박스
- * 목록은 `useJobApplicantOptionsQuery`가 각각 상한 없이 전체를 모아서 만든다 — 다른 페이지 ·
- * 필터에만 있는 공고 · 지원자도 선택지에 나타나야 한다.
+ * 그대로 쓰지 않는다. "공고" 드롭다운은 `useAllAdminJobListQuery`(관리자 공고 목록,
+ * GETI-Server-V1 #304)가, "지원자" 체크박스 목록은 `useJobApplicantOptionsQuery`가 각각
+ * 상한 없이 전체를 모아서 만든다 — 다른 페이지 · 필터에만 있는 공고 · 지원자도 선택지에
+ * 나타나야 한다.
  *
  * 딤은 사이드바를 제외한 전체를 덮는다(Figma node 586:16082 그대로).
  */
@@ -74,7 +75,7 @@ export function DownloadModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const exportMutation = useExportJobApplicationsMutation();
-  const jobPostingsQuery = useJobPostingOptionsQuery();
+  const jobPostingsQuery = useAllAdminJobListQuery();
   const jobPostings = jobPostingsQuery.data ?? [];
 
   /** 아직 아무 공고도 직접 고르지 않았으면(undefined) 첫 번째 공고를 기본값으로 쓴다. */

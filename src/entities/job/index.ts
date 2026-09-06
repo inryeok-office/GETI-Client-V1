@@ -13,6 +13,7 @@ export {
   jobKeys,
   useAdminJobDetailQuery,
   useAdminJobListQuery,
+  useAllAdminJobListQuery,
   useChangeAdminJobStatusMutation,
   useCreateAdminJobMutation,
   useDownloadJobAttachmentMutation,

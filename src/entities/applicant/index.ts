@@ -8,7 +8,6 @@ export {
   useExportJobApplicationsMutation,
   useJobApplicantOptionsQuery,
   useJobApplicationJobSummariesQuery,
-  useJobPostingOptionsQuery,
   useTeacherOptionsQuery,
 } from './api/useApplicantQueries';
 export type {
@@ -23,7 +22,6 @@ export type {
   JobApplicantOption,
   JobApplicationJobSummariesResponse,
   JobApplicationJobSummary,
-  JobPostingOption,
   JobSummaryStatus,
   TeacherOption,
 } from './api/applicantApi';

@@ -4,6 +4,7 @@ import type {
   AdminJobDetail,
   AdminJobSearchResponse,
   AdminJobStatus,
+  AdminJobSummary,
   JobApplicationMethod,
   JobCreatePayload,
   JobDetail,
@@ -63,6 +64,24 @@ export async function fetchAdminJobList(
     params: { page: 0, size: 20, ...params },
   });
   return data.data;
+}
+
+const ALL_ADMIN_JOBS_PAGE_SIZE = 100;
+
+/**
+ * 지원자 관리 다운로드 모달의 "공고" 드롭다운 선택지를 만들기 위해 `GET /api/v1/admin/jobs`를
+ * `totalPages` 끝까지 순회해 전체 공고를 모은다(어드민 화면이라 트래픽 부담은 크지 않다).
+ * `status`를 지정하지 않아 `fetchAdminJobList`와 같은 기본값(DELETED만 제외)을 따른다.
+ */
+export async function fetchAllAdminJobList(): Promise<AdminJobSummary[]> {
+  const first = await fetchAdminJobList({ page: 0, size: ALL_ADMIN_JOBS_PAGE_SIZE });
+  const restPages = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      fetchAdminJobList({ page: index + 1, size: ALL_ADMIN_JOBS_PAGE_SIZE }),
+    ),
+  );
+
+  return [first, ...restPages].flatMap((response) => response.content);
 }
 
 /**

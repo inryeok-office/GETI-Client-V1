@@ -120,8 +120,8 @@ async function fetchCompanyPage(page: number): Promise<CompanySearchResponse> {
 
 /**
  * 지원자 관리 화면의 "기업" 드롭다운 선택지를 만들기 위해 `GET /api/v1/companies`를 `totalPages`
- * 끝까지 순회해 전체 기업을 모은다. entities/applicant의 `fetchAllJobPostings`와 같은 이유로
- * 페이지 크기가 아니라 상한 없이 모든 페이지를 모은다(어드민 화면이라 트래픽 부담은 크지 않다).
+ * 끝까지 순회해 전체 기업을 모은다 — 페이지 크기가 아니라 상한 없이 모든 페이지를 모아야 선택지에서
+ * 기업이 누락되지 않는다(어드민 화면이라 트래픽 부담은 크지 않다).
  */
 export async function fetchAllCompanyOptions(): Promise<CompanyOption[]> {
   const first = await fetchCompanyPage(0);
