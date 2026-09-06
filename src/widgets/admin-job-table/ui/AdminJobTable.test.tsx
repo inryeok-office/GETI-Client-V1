@@ -17,6 +17,7 @@ function jobSummary(overrides: Partial<AdminJobSummary> = {}): AdminJobSummary {
     endDate: null,
     createdAt: '2026-08-01T09:00:00',
     updatedAt: '2026-08-01T09:00:00',
+    manager: { memberId: 1, name: '김민욱' },
     ...overrides,
   };
 }
@@ -85,11 +86,17 @@ describe('AdminJobTable', () => {
     expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
   });
 
-  it('기업이 없거나 등록일이 없으면 빈 셀 문자로 채운다', () => {
-    renderTable({ jobs: [jobSummary({ company: null, createdAt: null })] });
+  it('담당자·기업이 없거나 등록일이 없으면 빈 셀 문자로 채운다', () => {
+    renderTable({ jobs: [jobSummary({ manager: null, company: null, createdAt: null })] });
 
     // 담당자 · 기업 · 등록일 세 자리가 모두 'ㅡ'
     expect(screen.getAllByText('ㅡ')).toHaveLength(3);
+  });
+
+  it('담당자가 있으면 이름을 표시한다', () => {
+    renderTable({ jobs: [jobSummary({ manager: { memberId: 7, name: '박서준' } })] });
+
+    expect(screen.getByText('박서준')).toBeInTheDocument();
   });
 
   it('등록일 열은 createdAt을 YYYY.MM.DD로 보여준다', () => {
