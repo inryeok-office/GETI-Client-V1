@@ -124,6 +124,35 @@ export interface JobSearchResponse {
 }
 
 /**
+ * `GET /api/v1/admin/jobs` 목록 항목(`JobAdminListItemResponse`, GETI-Server-V1 #304).
+ * 공개 검색 목록(`JobSummary`)과 달리 DRAFT·DELETED까지 모든 상태가 나오고, 대신 공개용
+ * 필드(`viewCount`·`publishedAt`·`targetGrade`·`capacity`·`bookmarked` 등)는 없다.
+ */
+export interface AdminJobSummary {
+  jobId: number;
+  title: string;
+  /** 공고 등록 후 기업이 삭제되면 null. */
+  company: JobCompanySummary | null;
+  postingType: JobPostingType;
+  applicationMethod: JobApplicationMethod;
+  status: AdminJobStatus;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminJobSearchResponse {
+  content: AdminJobSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+/**
  * 공고 상세에 첨부된 파일(`JobFileResponse`, GETI-Server-V1 Issue #126). `downloadUrl`은
  * presigned Storage URL이 아니라 인증이 필요한 GETI 자체 다운로드 API 경로다
  * (`/api/v1/files/{fileId}/download`, GETI-Server `JobServiceImpl`). `AttachmentList`가

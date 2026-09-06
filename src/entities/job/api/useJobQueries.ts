@@ -13,11 +13,13 @@ import {
   createAdminJob,
   downloadJobAttachment,
   fetchAdminJobDetail,
+  fetchAdminJobList,
   fetchJobDetail,
   fetchJobList,
   fetchJobSources,
   reanalyzeAdminJob,
   updateAdminJob,
+  type FetchAdminJobListParams,
   type FetchJobListParams,
 } from './jobApi';
 import type { JobCreatePayload, JobUpdatePayload } from '../model/types';
@@ -25,6 +27,7 @@ import type { JobCreatePayload, JobUpdatePayload } from '../model/types';
 export const jobKeys = {
   all: ['jobs'] as const,
   list: (params: FetchJobListParams) => [...jobKeys.all, 'list', params] as const,
+  adminList: (params: FetchAdminJobListParams) => [...jobKeys.all, 'admin-list', params] as const,
   detail: (jobId: number) => [...jobKeys.all, 'detail', jobId] as const,
   adminDetail: (jobId: number) => [...jobKeys.all, 'admin-detail', jobId] as const,
   sources: () => [...jobKeys.all, 'sources'] as const,
@@ -38,6 +41,18 @@ export function useJobListQuery(params: FetchJobListParams = {}) {
   return useQuery({
     queryKey: jobKeys.list(params),
     queryFn: () => fetchJobList(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * 관리자 공고 관리 목록 화면(`/admin/jobs`). 공개 검색과 달리 DRAFT·DELETED까지 조회한다
+ * (GETI-Server-V1 #304). 페이지·필터를 바꿀 때 이전 결과를 유지한다(`useJobListQuery`와 동일).
+ */
+export function useAdminJobListQuery(params: FetchAdminJobListParams = {}) {
+  return useQuery({
+    queryKey: jobKeys.adminList(params),
+    queryFn: () => fetchAdminJobList(params),
     placeholderData: keepPreviousData,
   });
 }

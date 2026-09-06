@@ -2,6 +2,8 @@ import { api, type ApiResponse } from '@/shared/api';
 
 import type {
   AdminJobDetail,
+  AdminJobSearchResponse,
+  AdminJobStatus,
   JobApplicationMethod,
   JobCreatePayload,
   JobDetail,
@@ -35,6 +37,29 @@ export interface FetchJobListParams {
 /** `GET /api/v1/jobs`(GETI-Server `JobSearchController`) — 공고 목록/검색 조회. */
 export async function fetchJobList(params: FetchJobListParams = {}): Promise<JobSearchResponse> {
   const { data } = await api.get<ApiResponse<JobSearchResponse>>(BASE_PATH, {
+    params: { page: 0, size: 20, ...params },
+  });
+  return data.data;
+}
+
+export interface FetchAdminJobListParams {
+  /** 제목 부분 일치. */
+  query?: string;
+  /** 미지정 시 삭제(DELETED) 공고는 제외된다. */
+  status?: AdminJobStatus;
+  page?: number;
+  size?: number;
+}
+
+/**
+ * `GET /api/v1/admin/jobs`(GETI-Server-V1 #304, `JobAdminController`) — 관리자 공고 목록.
+ * 공개 검색과 달리 DRAFT·DELETED까지 조회되고 정렬은 서버 고정(`createdAt DESC, id DESC`)이라
+ * 클라이언트 `sort`는 무시된다. 교사·개발자 권한 전용.
+ */
+export async function fetchAdminJobList(
+  params: FetchAdminJobListParams = {},
+): Promise<AdminJobSearchResponse> {
+  const { data } = await api.get<ApiResponse<AdminJobSearchResponse>>(ADMIN_BASE_PATH, {
     params: { page: 0, size: 20, ...params },
   });
   return data.data;

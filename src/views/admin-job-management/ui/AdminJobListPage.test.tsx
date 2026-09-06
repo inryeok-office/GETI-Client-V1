@@ -2,18 +2,18 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/shared/api';
-import type { JobSummary } from '@/entities/job';
+import type { AdminJobSummary } from '@/entities/job';
 
 import { AdminJobListPage } from './AdminJobListPage';
 
 const {
-  mockUseJobListQuery,
+  mockUseAdminJobListQuery,
   mockUseChangeAdminJobStatusMutation,
   mockMutate,
   mockReplace,
   mockRefetch,
 } = vi.hoisted(() => ({
-  mockUseJobListQuery: vi.fn(),
+  mockUseAdminJobListQuery: vi.fn(),
   mockUseChangeAdminJobStatusMutation: vi.fn(),
   mockMutate: vi.fn(),
   mockReplace: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock('@/entities/job', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
   return {
     ...actual,
-    useJobListQuery: mockUseJobListQuery,
+    useAdminJobListQuery: mockUseAdminJobListQuery,
     useChangeAdminJobStatusMutation: mockUseChangeAdminJobStatusMutation,
   };
 });
@@ -42,32 +42,31 @@ function lastMutateCallbacks() {
   };
 }
 
-function jobSummary(overrides: Partial<JobSummary> = {}): JobSummary {
+function jobSummary(overrides: Partial<AdminJobSummary> = {}): AdminJobSummary {
   return {
     jobId: 1,
     title: '프론트엔드 개발자 채용',
+    company: { companyId: 1, name: '플로우테크', logoUrl: null },
     postingType: 'GENERAL',
     applicationMethod: 'EXTERNAL',
     status: 'PUBLISHED',
-    company: { companyId: 1, name: '플로우테크', logoUrl: null },
     startDate: null,
     endDate: null,
-    targetGrade: null,
-    capacity: null,
-    location: null,
-    employmentType: null,
-    firstComeServed: false,
-    viewCount: 0,
-    publishedAt: '2026-08-01T09:00:00',
-    application: {
-      canApply: false,
-      eligibilityReason: 'JOB_NOT_PUBLISHED',
-      eligibilityMessage: '',
-      applicationId: null,
-      applicationStatus: null,
-      availableActions: [],
-    },
-    bookmarked: false,
+    createdAt: '2026-08-01T09:00:00',
+    updatedAt: '2026-08-01T09:00:00',
+    ...overrides,
+  };
+}
+
+function page(content: AdminJobSummary[], overrides: Record<string, unknown> = {}) {
+  return {
+    content,
+    page: 0,
+    size: 20,
+    totalElements: content.length,
+    totalPages: content.length === 0 ? 0 : 1,
+    first: true,
+    last: true,
     ...overrides,
   };
 }
@@ -78,16 +77,10 @@ function listResult(overrides: Partial<ReturnType<typeof idleList>> = {}) {
 
 function idleList() {
   return {
-    data: {
-      content: [jobSummary()],
-      page: 0,
-      size: 20,
-      totalElements: 1,
-      totalPages: 1,
-      first: true,
-      last: true,
-    },
+    data: page([jobSummary()]),
     isLoading: false,
+    isFetching: false,
+    isPlaceholderData: false,
     isError: false,
     refetch: mockRefetch,
   };
@@ -98,7 +91,7 @@ function mutationResult(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
-  mockUseJobListQuery.mockReturnValue(listResult());
+  mockUseAdminJobListQuery.mockReturnValue(listResult());
   mockUseChangeAdminJobStatusMutation.mockReturnValue(mutationResult());
 });
 
@@ -118,16 +111,42 @@ describe('AdminJobListPage', () => {
     );
   });
 
+  it('DRAFT(임시저장) 공고도 목록에 표시된다', () => {
+    mockUseAdminJobListQuery.mockReturnValue(
+      listResult({ data: page([jobSummary({ status: 'DRAFT', title: '임시저장 공고' })]) }),
+    );
+
+    render(<AdminJobListPage />);
+
+    expect(screen.getByRole('link', { name: '임시저장 공고' })).toBeInTheDocument();
+    expect(screen.getByText('비공개')).toBeInTheDocument();
+  });
+
   it('로딩 중이면 로딩 상태를 보여준다', () => {
-    mockUseJobListQuery.mockReturnValue(listResult({ isLoading: true, data: undefined }));
+    mockUseAdminJobListQuery.mockReturnValue(listResult({ isLoading: true, data: undefined }));
 
     render(<AdminJobListPage />);
 
     expect(screen.getByText('공고 목록을 불러오는 중입니다.')).toBeInTheDocument();
   });
 
+  it('조건 전환 중(placeholder)에는 이전 목록 대신 로딩을 보여준다', () => {
+    mockUseAdminJobListQuery.mockReturnValue(
+      listResult({
+        isFetching: true,
+        isPlaceholderData: true,
+        data: page([jobSummary({ title: '이전 조건 공고' })]),
+      }),
+    );
+
+    render(<AdminJobListPage />);
+
+    expect(screen.getByText('공고 목록을 불러오는 중입니다.')).toBeInTheDocument();
+    expect(screen.queryByText('이전 조건 공고')).not.toBeInTheDocument();
+  });
+
   it('조회 실패 시 다시 시도 버튼을 누르면 refetch한다', () => {
-    mockUseJobListQuery.mockReturnValue(listResult({ isError: true, data: undefined }));
+    mockUseAdminJobListQuery.mockReturnValue(listResult({ isError: true, data: undefined }));
 
     render(<AdminJobListPage />);
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
@@ -136,19 +155,7 @@ describe('AdminJobListPage', () => {
   });
 
   it('결과가 없고 필터도 없으면 기본 빈 상태 문구를 보여준다', () => {
-    mockUseJobListQuery.mockReturnValue(
-      listResult({
-        data: {
-          content: [],
-          page: 0,
-          size: 20,
-          totalElements: 0,
-          totalPages: 0,
-          first: true,
-          last: true,
-        },
-      }),
-    );
+    mockUseAdminJobListQuery.mockReturnValue(listResult({ data: page([]) }));
 
     render(<AdminJobListPage />);
 
@@ -158,15 +165,29 @@ describe('AdminJobListPage', () => {
   it('초기 검색어가 있으면 그 값으로 목록을 조회한다', () => {
     render(<AdminJobListPage initialSearchParams={{ q: '백엔드' }} />);
 
-    expect(mockUseJobListQuery).toHaveBeenCalledWith(
+    expect(mockUseAdminJobListQuery).toHaveBeenCalledWith(
       expect.objectContaining({ query: '백엔드', page: 0, size: 20 }),
     );
   });
 
-  it('초기 마감 상태 필터(closed)를 status=CLOSED로 넘긴다', () => {
-    render(<AdminJobListPage initialSearchParams={{ deadline: 'closed' }} />);
+  it('초기 공고 상태 필터를 그 값으로 넘긴다', () => {
+    render(<AdminJobListPage initialSearchParams={{ status: 'DRAFT' }} />);
 
-    expect(mockUseJobListQuery).toHaveBeenCalledWith(expect.objectContaining({ status: 'CLOSED' }));
+    expect(mockUseAdminJobListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'DRAFT' }),
+    );
+  });
+
+  it('공고 상태 필터를 바꾸면 그 값으로 다시 조회하고 URL에 반영한다', () => {
+    render(<AdminJobListPage />);
+
+    fireEvent.click(screen.getByRole('combobox', { name: '공고 상태 필터' }));
+    fireEvent.click(screen.getByRole('option', { name: '삭제' }));
+
+    expect(mockUseAdminJobListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'DELETED', page: 0 }),
+    );
+    expect(mockReplace).toHaveBeenLastCalledWith('/admin/jobs?status=DELETED', { scroll: false });
   });
 
   it('"공고 등록"은 등록 화면으로 가는 링크다', () => {
@@ -179,39 +200,22 @@ describe('AdminJobListPage', () => {
   });
 
   it('URL page가 totalPages를 벗어나면 마지막 유효 페이지로 보정한다', () => {
-    mockUseJobListQuery.mockReturnValue(
+    mockUseAdminJobListQuery.mockReturnValue(
       listResult({
-        data: {
-          content: [],
-          page: 998,
-          size: 20,
-          totalElements: 25,
-          totalPages: 2,
-          first: false,
-          last: true,
-        },
+        data: page([], { totalElements: 25, totalPages: 2, first: false, last: true }),
       }),
     );
 
     render(<AdminJobListPage initialSearchParams={{ page: '999' }} />);
 
-    // 보정 effect가 setPage(1)을 호출해 page: 1로 재조회한다.
-    const lastCall = mockUseJobListQuery.mock.calls.at(-1)?.[0];
+    const lastCall = mockUseAdminJobListQuery.mock.calls.at(-1)?.[0];
     expect(lastCall).toMatchObject({ page: 1 });
   });
 
   it('결과가 없고 페이지가 0이 아니면 "첫 페이지로" 버튼을 제공한다', () => {
-    mockUseJobListQuery.mockReturnValue(
+    mockUseAdminJobListQuery.mockReturnValue(
       listResult({
-        data: {
-          content: [],
-          page: 1,
-          size: 20,
-          totalElements: 60,
-          totalPages: 3,
-          first: false,
-          last: false,
-        },
+        data: page([], { totalElements: 60, totalPages: 3, first: false, last: false }),
       }),
     );
 
@@ -219,7 +223,7 @@ describe('AdminJobListPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '첫 페이지로' }));
 
-    const lastCall = mockUseJobListQuery.mock.calls.at(-1)?.[0];
+    const lastCall = mockUseAdminJobListQuery.mock.calls.at(-1)?.[0];
     expect(lastCall).toMatchObject({ page: 0 });
   });
 
@@ -253,30 +257,19 @@ describe('AdminJobListPage', () => {
     expect(mockMutate).toHaveBeenCalledWith({ jobId: 1, status: 'DELETED' }, expect.anything());
   });
 
-  it('상태 변경이 진행 중이면 모든 행의 마감·삭제 버튼이 잠긴다 (A행 변경 중 B행 재호출 방지)', () => {
-    mockUseJobListQuery.mockReturnValue(
+  it('상태 변경이 진행 중이면 모든 행의 마감·삭제 버튼이 잠긴다', () => {
+    mockUseAdminJobListQuery.mockReturnValue(
       listResult({
-        data: {
-          content: [
-            jobSummary({ jobId: 1 }),
-            jobSummary({ jobId: 2, title: '백엔드 개발자 채용' }),
-          ],
-          page: 0,
-          size: 20,
-          totalElements: 2,
-          totalPages: 1,
-          first: true,
-          last: true,
-        },
+        data: page([
+          jobSummary({ jobId: 1 }),
+          jobSummary({ jobId: 2, title: '백엔드 개발자 채용' }),
+        ]),
       }),
     );
-    mockUseChangeAdminJobStatusMutation.mockReturnValue(
-      mutationResult({ isPending: true, variables: { jobId: 1, status: 'CLOSED' } }),
-    );
+    mockUseChangeAdminJobStatusMutation.mockReturnValue(mutationResult({ isPending: true }));
 
     render(<AdminJobListPage />);
 
-    // variables가 가리키는 1번 행뿐 아니라 2번 행 버튼도 함께 잠겨야 한다.
     for (const button of screen.getAllByRole('button', { name: '마감' })) {
       expect(button).toBeDisabled();
     }
@@ -293,24 +286,10 @@ describe('AdminJobListPage', () => {
       screen.getAllByRole('button', { name: '삭제' }).find((el) => el.closest('[role="dialog"]'))!,
     );
 
-    // 삭제 성공 → 목록이 빈 응답으로 갱신되는 상황
-    mockUseJobListQuery.mockReturnValue(
-      listResult({
-        data: {
-          content: [],
-          page: 0,
-          size: 20,
-          totalElements: 0,
-          totalPages: 0,
-          first: true,
-          last: true,
-        },
-      }),
-    );
+    mockUseAdminJobListQuery.mockReturnValue(listResult({ data: page([]) }));
     act(() => lastMutateCallbacks().onSuccess());
 
     expect(screen.getByText('등록된 공고가 없습니다.')).toBeInTheDocument();
-    // 표(AdminJobTable)가 언마운트돼도 상위의 AppToaster가 남아 토스트가 보인다.
     expect(screen.getByText('"프론트엔드 개발자 채용" 공고를 삭제했습니다.')).toBeInTheDocument();
   });
 

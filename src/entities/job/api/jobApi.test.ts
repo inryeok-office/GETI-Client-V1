@@ -8,6 +8,7 @@ import {
   createAdminJob,
   downloadJobAttachment,
   fetchAdminJobDetail,
+  fetchAdminJobList,
   reanalyzeAdminJob,
   updateAdminJob,
 } from './jobApi';
@@ -81,6 +82,30 @@ describe('downloadJobAttachment', () => {
       status: 403,
       code: 'FILE_ACCESS_DENIED',
     });
+  });
+});
+
+describe('fetchAdminJobList', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('GET /api/v1/admin/jobs로 요청하고 필터·기본 페이지네이션을 params에 담는다', async () => {
+    const pageResult = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
+    let receivedParams: unknown;
+    const stub = stubServer((config) => {
+      receivedParams = config.params;
+      return { success: true, data: pageResult };
+    });
+    restore = stub.restore;
+
+    const result = await fetchAdminJobList({ query: '백엔드', status: 'DRAFT' });
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs', method: 'get', responseType: undefined },
+    ]);
+    expect(receivedParams).toEqual({ page: 0, size: 20, query: '백엔드', status: 'DRAFT' });
+    expect(result).toEqual(pageResult);
   });
 });
 

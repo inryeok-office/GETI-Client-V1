@@ -6,7 +6,7 @@ interface PageProps {
 }
 
 /** 목록에서 붙여 온 검색·필터·페이지 쿼리를 브레드크럼 복귀 링크에 그대로 이어 붙인다. */
-const BACK_QUERY_KEYS = ['q', 'deadline', 'page'] as const;
+const BACK_QUERY_KEYS = ['q', 'status', 'page'] as const;
 
 export default async function Page({ params, searchParams }: PageProps) {
   const { jobId } = await params;

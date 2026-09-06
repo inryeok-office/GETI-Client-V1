@@ -12,6 +12,7 @@ export { JobDetailContent } from './ui/JobDetailContent';
 export {
   jobKeys,
   useAdminJobDetailQuery,
+  useAdminJobListQuery,
   useChangeAdminJobStatusMutation,
   useCreateAdminJobMutation,
   useDownloadJobAttachmentMutation,
@@ -21,7 +22,7 @@ export {
   useReanalyzeAdminJobMutation,
   useUpdateAdminJobMutation,
 } from './api/useJobQueries';
-export type { FetchJobListParams } from './api/jobApi';
+export type { FetchAdminJobListParams, FetchJobListParams } from './api/jobApi';
 
 export { mapJobSummaryToListItem } from './model/mapJobListItem';
 export { formatDateOnly, formatDeadline } from './model/formatJobDate';
@@ -55,6 +56,8 @@ export type {
   ActiveJobApplicationStatus,
   JobSummary,
   JobSearchResponse,
+  AdminJobSummary,
+  AdminJobSearchResponse,
   JobSourceOption,
   JobDetail,
   JobAiAnalysis,
