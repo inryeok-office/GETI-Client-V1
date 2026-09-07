@@ -54,6 +54,7 @@ function jobSummary(overrides: Partial<AdminJobSummary> = {}): AdminJobSummary {
     endDate: null,
     createdAt: '2026-08-01T09:00:00',
     updatedAt: '2026-08-01T09:00:00',
+    manager: { memberId: 1, name: '김민욱' },
     ...overrides,
   };
 }

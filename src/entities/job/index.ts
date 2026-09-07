@@ -52,6 +52,7 @@ export type {
   JobSort,
   JobSortDirection,
   JobCompanySummary,
+  JobManagerSummary,
   JobApplicationEligibility,
   JobApplicationEligibilityReason,
   ActiveJobApplicationStatus,

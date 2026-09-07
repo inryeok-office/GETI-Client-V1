@@ -96,7 +96,7 @@ export function AdminJobTable({
                 </Link>
               </td>
               <td className={CELL_CLASS}>{job.company?.name ?? EMPTY_CELL}</td>
-              <td className={CELL_CLASS}>{EMPTY_CELL}</td>
+              <td className={CELL_CLASS}>{job.manager?.name ?? EMPTY_CELL}</td>
               <td className="px-[24px]">
                 <PublicStateBadge status={job.status} />
               </td>
