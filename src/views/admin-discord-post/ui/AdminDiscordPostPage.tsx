@@ -2,16 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   DISCORD_DELIVERY_STATUS_LABEL,
   DISCORD_DELIVERY_TARGET_TYPE_LABEL,
   formatDeliveryDateTime,
   formatDeliveryDateTimeShort,
+  useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
   type DiscordDelivery,
+  type DiscordDeliveryTargetType,
   type RetryableDiscordDeliveryTargetType,
 } from '@/entities/discord-delivery';
 import { ApiError } from '@/shared/api';
@@ -21,15 +23,44 @@ import { AppToaster, showToast } from '@/shared/ui/toast';
 
 const PAGE_SIZE = 20;
 
-type UnsupportedFilterKey = 'type' | 'target' | 'channel';
+/**
+ * "유형" 필터 선택지. 서버(`GET /admin/discord-deliveries?targetType=`, GETI-Server-V1 PR #317)가
+ * 대상 종류 필터를 지원한다. 라벨은 표의 "유형" 컬럼과 같은 `DISCORD_DELIVERY_TARGET_TYPE_LABEL`을
+ * 써서 필터와 결과 표기를 일치시킨다(Figma 초안의 "채용 공고 / 공지사항" 문구 대신).
+ */
+type TargetTypeFilter = DiscordDeliveryTargetType | 'ALL';
+
+const TARGET_TYPE_FILTER_OPTIONS: { value: TargetTypeFilter; label: string }[] = [
+  { value: 'ALL', label: '전체' },
+  { value: 'JOB', label: DISCORD_DELIVERY_TARGET_TYPE_LABEL.JOB },
+  { value: 'PROGRAM', label: DISCORD_DELIVERY_TARGET_TYPE_LABEL.PROGRAM },
+  { value: 'INQUIRY', label: DISCORD_DELIVERY_TARGET_TYPE_LABEL.INQUIRY },
+];
+
+function parseTargetTypeFilter(value: string | undefined): TargetTypeFilter {
+  return TARGET_TYPE_FILTER_OPTIONS.some((option) => option.value === value)
+    ? (value as TargetTypeFilter)
+    : 'ALL';
+}
+
+/** 목록 조건(`page` 1부터 · `type`)을 URL 쿼리스트링으로. 기본값이면 생략한다. */
+function buildListQueryString(page: number, targetType: TargetTypeFilter): string {
+  const params = new URLSearchParams();
+  if (page > 0) params.set('page', String(page + 1));
+  if (targetType !== 'ALL') params.set('type', targetType);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+type UnsupportedFilterKey = 'target' | 'channel';
 
 /**
- * Figma가 캡처한 필터 3개(유형 · 대상 · 채널). 백엔드(`GET /admin/discord-deliveries`)는
- * `status` 외의 필터를 지원하지 않는다 — `JobListPage`의 "직무" · "기업 유형" · "출처"와
- * 동일하게 버튼 자체를 비활성화해 뒀다. `status` 필터 UI는 Figma 원본에 없어 새로 만들지 않는다.
+ * Figma가 캡처한 필터 3개 중 "대상" · "채널"은 아직 비활성이다. "대상"은 서버에 대응 파라미터가
+ * 없고 Figma상 의미도 불명확하다. "채널"은 `channelId` 파라미터는 있지만 채널 목록 조회 API가
+ * 없어 드롭다운 선택지를 만들 수 없다 — `JobListPage`의 비활성 필터와 같은 방식으로 버튼만
+ * 남겨 둔다(Issue #233 제외 범위).
  */
 const UNSUPPORTED_FILTERS: { key: UnsupportedFilterKey; label: string }[] = [
-  { key: 'type', label: '유형' },
   { key: 'target', label: '대상' },
   { key: 'channel', label: '채널' },
 ];
@@ -70,23 +101,19 @@ interface AdminDiscordPostPageProps {
   detailId?: string;
   /** Server Component가 넘겨주는 초기 page 쿼리스트링(1부터 시작). */
   initialPage?: string;
+  /** Server Component가 넘겨주는 초기 "유형" 필터 쿼리스트링(`type`). */
+  initialType?: string;
 }
 
 /**
  * Discord 게시 관리 화면. 필터 바 + 전송 이력 테이블 + 전송 상세 패널을 조합한다.
  * `GET /admin/discord-deliveries`로 목록을 실제로 조회한다(GETI-Server-V1 #206/PR #213).
  *
- * 상세 패널은 별도 조회 API가 없다 — 목록 응답 항목이 상세에 필요한 값을 이미 전부 담고
- * 있어서(GETI-Server가 단건 조회를 따로 안 만든 이유이기도 하다), 이미 불러온 페이지의
- * `content`에서 deliveryId로 찾아 그대로 보여준다. `/admin/discord-posts/[deliveryId]`는
- * 목록 페이지와 별개의 Route라 그대로 이동하면 컴포넌트가 다시 마운트되어 `page`가 0으로
- * 리셋된다 — 2페이지 이상에서 "상세 보기"를 누르면 그 항목이 새로 불러온 0페이지
- * `content`에 없어 패널이 열리지 않는 문제가 있었다(PR #142 코드리뷰 반영). 그래서 현재
- * `page`를 URL 쿼리스트링(`?page=`)에 실어 "상세 보기"·닫기 링크에 그대로 이어 붙이고,
- * Server Component가 그 값을 `initialPage`로 되돌려줘 같은 page를 다시 조회하게 한다.
- * 그래도 페이지 범위 밖의 id로 직접 딥링크하면(예: 새로고침 전 다른 관리자가 페이지를
- * 옮긴 경우) 상세를 보여줄 수 없다 — 대상별 단건 조회 API(`/admin/jobs/{id}/discord` 등)는
- * targetId 기준이라 delivery 단위 조회를 대신할 수 없다.
+ * 상세 패널은 목록에 이미 있는 항목이면 그 값을 그대로 쓰고, 목록 범위 밖 항목(다른 페이지의
+ * id로 직접 딥링크한 경우)은 `GET /admin/discord-deliveries/{deliveryId}`로 단건 조회한다
+ * (GETI-Server-V1 PR #318). "상세 보기"·닫기 링크에는 현재 `page`·`type`을 쿼리스트링으로 이어
+ * 붙여, `/admin/discord-posts/[deliveryId]` Route로 이동해 컴포넌트가 다시 마운트돼도
+ * Server Component가 `initialPage`·`initialType`으로 같은 목록 조건을 복원한다.
  *
  * 재시도는 `canRetry`가 true인 항목에서만 노출한다. `JOB`/`PROGRAM`만 재시도 Endpoint가 있어
  * 대상 종류별로 다른 경로를 호출하고, `INQUIRY`는 버튼 자체를 보여주지 않는다. Mutation
@@ -96,41 +123,90 @@ interface AdminDiscordPostPageProps {
  * 반영). `retryMutation.variables`로 지금 재시도 중인 항목만 "재시도 중…" 문구를 보여준다.
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
- * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 사람이 읽을 채널 이름을 내려주는
- * API가 없어 Discord 채널 Snowflake(`channelId`)를 그대로 보여준다. 목록 응답의 `action`은
- * Figma에 대응하는 표시 자리가 없어 이번 라운드에서는 화면에 노출하지 않는다(Issue #141 참고).
+ * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 서버 채널 Registry의 표시 이름
+ * (`channelName`)을 보여주고, 미등록 채널이면 Discord Snowflake(`channelId`)로 폴백한다
+ * (GETI-Server-V1 PR #317). 목록 응답의 `action`은 Figma에 대응하는 표시 자리가 없어 이번
+ * 라운드에서는 화면에 노출하지 않는다(Issue #141 참고).
  *
  * 간격 · 색상은 Figma(node 586:15675, 드롭다운은 1227:14609 등, 상세 패널 실패는 586:15962,
  * 성공은 1343:14098)의 값을 그대로 옮겼다.
  */
-export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPostPageProps) {
+export function AdminDiscordPostPage({
+  detailId,
+  initialPage,
+  initialType,
+}: AdminDiscordPostPageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [page, setPage] = useState(() => {
     const raw = Number(initialPage);
     return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
   });
+  const [targetTypeFilter, setTargetTypeFilter] = useState<TargetTypeFilter>(() =>
+    parseTargetTypeFilter(initialType),
+  );
+  const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
+  const typeFilterRef = useRef<HTMLDivElement>(null);
 
-  const listQuery = useDiscordDeliveryListQuery({ page, size: PAGE_SIZE });
+  const listQuery = useDiscordDeliveryListQuery({
+    page,
+    size: PAGE_SIZE,
+    targetType: targetTypeFilter === 'ALL' ? undefined : targetTypeFilter,
+  });
   const retryMutation = useRetryDiscordDeliveryMutation();
 
-  /** page가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
+  /** page·유형 필터가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
+  const listQueryString = buildListQueryString(page, targetTypeFilter);
   useEffect(() => {
-    const queryString = page > 0 ? `?page=${page + 1}` : '';
-    router.replace(`${pathname}${queryString}`, { scroll: false });
-  }, [page, pathname, router]);
+    router.replace(`${pathname}${listQueryString}`, { scroll: false });
+  }, [listQueryString, pathname, router]);
+
+  /** "유형" 드롭다운은 바깥 클릭·Esc로 닫는다. */
+  useEffect(() => {
+    if (!isTypeFilterOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!typeFilterRef.current?.contains(event.target as Node)) setIsTypeFilterOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsTypeFilterOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isTypeFilterOpen]);
 
   const deliveries = listQuery.data?.content ?? [];
   const isListLoading = listQuery.isLoading;
   const isListError = listQuery.isError;
 
   const parsedDetailId = detailId ? Number(detailId) : NaN;
-  const detail = Number.isInteger(parsedDetailId)
+  const hasDetailId = Number.isInteger(parsedDetailId);
+  const detailFromList = hasDetailId
     ? deliveries.find((delivery) => delivery.deliveryId === parsedDetailId)
     : undefined;
+  /** 목록에 있으면 그 값을, 없으면(다른 페이지 딥링크) 단건 조회 결과를 쓴다. */
+  const detailQuery = useDiscordDeliveryDetailQuery(
+    hasDetailId && !detailFromList ? parsedDetailId : null,
+  );
+  const detail = detailFromList ?? detailQuery.data;
+  const isDetailLoading = Boolean(detailId) && !detail && detailQuery.isLoading;
+  const isDetailMissing = Boolean(detailId) && !detail && !detailQuery.isLoading;
 
-  /** "상세 보기"·닫기 링크에 이어 붙일 현재 page 쿼리스트링. */
-  const pageQueryString = page > 0 ? `?page=${page + 1}` : '';
+  const handleSelectTargetType = (value: TargetTypeFilter) => {
+    setTargetTypeFilter(value);
+    setPage(0);
+    setIsTypeFilterOpen(false);
+  };
+
+  /** "상세 보기"·닫기 링크에 이어 붙일 현재 목록 조건 쿼리스트링. */
+  const pageQueryString = listQueryString;
+  const selectedTargetTypeLabel =
+    TARGET_TYPE_FILTER_OPTIONS.find((option) => option.value === targetTypeFilter)?.label ?? '전체';
 
   function handleRetry(delivery: DiscordDelivery) {
     if (!isRetryableTargetType(delivery.targetType)) return;
@@ -180,6 +256,53 @@ export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPost
         <div className="flex w-full flex-col items-end gap-[8px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
             <div className="flex flex-wrap items-center gap-[20px]">
+              <div ref={typeFilterRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsTypeFilterOpen((open) => !open)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isTypeFilterOpen}
+                  className="flex h-[56px] w-[272px] items-center justify-between rounded-[8px] border border-[#e5e5e5] bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] font-medium tracking-[-0.14px] text-[#525252] focus-within:border-[#8cc8da]"
+                >
+                  <span className="truncate">
+                    {targetTypeFilter === 'ALL' ? '유형' : selectedTargetTypeLabel}
+                  </span>
+                  <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+                    <Icon
+                      name="chevronRight"
+                      className="h-[20px] w-[10px] rotate-90 text-[#525252]"
+                    />
+                  </span>
+                </button>
+
+                {isTypeFilterOpen && (
+                  <div
+                    role="listbox"
+                    aria-label="유형 필터"
+                    className="absolute top-full left-0 z-20 mt-[4px] flex w-[272px] flex-col gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                  >
+                    {TARGET_TYPE_FILTER_OPTIONS.map((option) => {
+                      const isSelected = option.value === targetTypeFilter;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => handleSelectTargetType(option.value)}
+                          className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] ${
+                            isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                          }`}
+                        >
+                          <span className="truncate">{option.label}</span>
+                          {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {UNSUPPORTED_FILTERS.map((filter) => (
                 <button
                   key={filter.key}
@@ -281,7 +404,7 @@ export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPost
                         </div>
                         <div className="w-[240px] shrink-0 pr-[8px] pl-[16px]">
                           <p className="truncate text-[14px] leading-[1.5] tracking-[-0.14px] text-[#262626]">
-                            {delivery.channelId}
+                            {delivery.channelName ?? delivery.channelId}
                           </p>
                         </div>
                         <div className="w-[220px] shrink-0 pr-[8px] pl-[16px]">
@@ -356,7 +479,7 @@ export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPost
         </div>
       </main>
 
-      {detailId && detail && (
+      {detailId && (
         <div className="fixed inset-0 z-50 flex">
           {/* Figma는 dim이 사이드바(220px)와 상세 패널(680px)을 덮지 않고 콘텐츠 영역에만
               적용된다. flex로 짜서 dim이 남는 공간을 자동으로 채우게 했다 — 패널 폭은 좁은
@@ -376,72 +499,92 @@ export function AdminDiscordPostPage({ detailId, initialPage }: AdminDiscordPost
               </Link>
             </div>
 
-            <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">
-              {detail.targetName ?? 'ㅡ'}
-            </p>
-            <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
-              채널 · {detail.channelId}
-            </p>
-
-            <div className="flex flex-col gap-[16px] px-[4px]">
-              <div className="flex items-center gap-[12px]">
-                <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">전송 상태</p>
-                <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
-                  {DISCORD_DELIVERY_STATUS_LABEL[detail.status]}
-                </p>
-              </div>
-              <div className="flex items-center gap-[12px]">
-                <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">요청 시각</p>
-                <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
-                  {formatDeliveryDateTime(detail.requestedAt)}
-                </p>
-              </div>
-              <div className="flex items-center gap-[12px]">
-                <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
-                  마지막 시도 시각
-                </p>
-                <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
-                  {detail.lastSyncedAt ? formatDeliveryDateTime(detail.lastSyncedAt) : 'ㅡ'}
-                </p>
-              </div>
-              <div className="flex items-center gap-[12px]">
-                <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
-                  자동 재시도
-                </p>
-                <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
-                  {detail.automaticRetryCount} / {detail.maxAutomaticRetryCount}회
-                </p>
-              </div>
-              <div className="flex items-center gap-[12px]">
-                <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
-                  수동 재시도
-                </p>
-                <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
-                  {detail.manualRetryCount} / {detail.maxManualRetryCount}회
-                </p>
-              </div>
-            </div>
-
-            {detail.failureReason && (
-              <div className="flex flex-col gap-[8px] rounded-[8px] bg-[#fafafa] p-[20px]">
+            {isDetailLoading ? (
+              <PageState
+                variant="loading"
+                title="전송 상세를 불러오는 중입니다."
+                description="잠시만 기다려 주세요."
+              />
+            ) : isDetailMissing || !detail ? (
+              <PageState
+                variant="empty"
+                title="전송 내역을 찾을 수 없습니다."
+                description="이미 삭제되었거나 잘못된 링크일 수 있습니다."
+              />
+            ) : (
+              <>
                 <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">
-                  실패 사유
+                  {detail.targetName ?? 'ㅡ'}
                 </p>
-                <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
-                  {detail.failureReason}
+                <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+                  채널 · {detail.channelName ?? detail.channelId}
                 </p>
-              </div>
-            )}
 
-            {detail.canRetry && isRetryableTargetType(detail.targetType) && (
-              <button
-                type="button"
-                disabled={retryMutation.isPending}
-                onClick={() => handleRetry(detail)}
-                className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
-              </button>
+                <div className="flex flex-col gap-[16px] px-[4px]">
+                  <div className="flex items-center gap-[12px]">
+                    <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
+                      전송 상태
+                    </p>
+                    <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+                      {DISCORD_DELIVERY_STATUS_LABEL[detail.status]}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-[12px]">
+                    <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
+                      요청 시각
+                    </p>
+                    <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+                      {formatDeliveryDateTime(detail.requestedAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-[12px]">
+                    <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
+                      마지막 시도 시각
+                    </p>
+                    <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+                      {detail.lastSyncedAt ? formatDeliveryDateTime(detail.lastSyncedAt) : 'ㅡ'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-[12px]">
+                    <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
+                      자동 재시도
+                    </p>
+                    <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+                      {detail.automaticRetryCount} / {detail.maxAutomaticRetryCount}회
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-[12px]">
+                    <p className="w-[120px] text-[12px] tracking-[-0.12px] text-[#525252]">
+                      수동 재시도
+                    </p>
+                    <p className="text-[14px] tracking-[-0.14px] text-[#262626]">
+                      {detail.manualRetryCount} / {detail.maxManualRetryCount}회
+                    </p>
+                  </div>
+                </div>
+
+                {detail.failureReason && (
+                  <div className="flex flex-col gap-[8px] rounded-[8px] bg-[#fafafa] p-[20px]">
+                    <p className="text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]">
+                      실패 사유
+                    </p>
+                    <p className="text-[12px] leading-[1.5] tracking-[-0.12px] text-[#525252]">
+                      {detail.failureReason}
+                    </p>
+                  </div>
+                )}
+
+                {detail.canRetry && isRetryableTargetType(detail.targetType) && (
+                  <button
+                    type="button"
+                    disabled={retryMutation.isPending}
+                    onClick={() => handleRetry(detail)}
+                    className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
