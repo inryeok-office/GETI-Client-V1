@@ -43,6 +43,12 @@ function parseTargetTypeFilter(value: string | undefined): TargetTypeFilter {
     : 'ALL';
 }
 
+/** `?page=`(1부터) 쿼리스트링 → 0부터 시작하는 page 인덱스. */
+function parseInitialPage(value: string | undefined): number {
+  const raw = Number(value);
+  return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
+}
+
 /** 목록 조건(`page` 1부터 · `type`)을 URL 쿼리스트링으로. 기본값이면 생략한다. */
 function buildListQueryString(page: number, targetType: TargetTypeFilter): string {
   const params = new URLSearchParams();
@@ -138,15 +144,24 @@ export function AdminDiscordPostPage({
 }: AdminDiscordPostPageProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [page, setPage] = useState(() => {
-    const raw = Number(initialPage);
-    return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
-  });
+  const [page, setPage] = useState(() => parseInitialPage(initialPage));
   const [targetTypeFilter, setTargetTypeFilter] = useState<TargetTypeFilter>(() =>
     parseTargetTypeFilter(initialType),
   );
   const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
   const typeFilterRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * 뒤로/앞으로 가기로 `?page=`·`?type=`만 바뀌면 같은 Client Component 인스턴스가 유지될 수
+   * 있어 `initial*` prop만 새로 들어온다 — 그때 상태를 그 값으로 다시 맞춘다(렌더 중 조정,
+   * effect 아님). 필터 선택으로 우리가 URL을 바꾼 경우엔 이미 같은 값이라 setState가 바로 무시된다.
+   */
+  const [restoredParams, setRestoredParams] = useState({ page: initialPage, type: initialType });
+  if (restoredParams.page !== initialPage || restoredParams.type !== initialType) {
+    setRestoredParams({ page: initialPage, type: initialType });
+    setPage(parseInitialPage(initialPage));
+    setTargetTypeFilter(parseTargetTypeFilter(initialType));
+  }
 
   const listQuery = useDiscordDeliveryListQuery({
     page,
@@ -194,8 +209,18 @@ export function AdminDiscordPostPage({
     hasDetailId && !detailFromList ? parsedDetailId : null,
   );
   const detail = detailFromList ?? detailQuery.data;
-  const isDetailLoading = Boolean(detailId) && !detail && detailQuery.isLoading;
-  const isDetailMissing = Boolean(detailId) && !detail && !detailQuery.isLoading;
+  const detailError = detailQuery.error;
+  /** 404·`DISCORD_DELIVERY_NOT_FOUND`은 "없음", 그 외 오류는 "조회 실패"로 구분한다. */
+  const isDetailNotFound =
+    detailError instanceof ApiError &&
+    (detailError.status === 404 || detailError.code === 'DISCORD_DELIVERY_NOT_FOUND');
+  const detailPanelState: 'loading' | 'error' | 'missing' | 'ready' = detail
+    ? 'ready'
+    : detailQuery.isLoading
+      ? 'loading'
+      : detailQuery.isError && !isDetailNotFound
+        ? 'error'
+        : 'missing';
 
   const handleSelectTargetType = (value: TargetTypeFilter) => {
     setTargetTypeFilter(value);
@@ -499,13 +524,28 @@ export function AdminDiscordPostPage({
               </Link>
             </div>
 
-            {isDetailLoading ? (
+            {detailPanelState === 'loading' ? (
               <PageState
                 variant="loading"
                 title="전송 상세를 불러오는 중입니다."
                 description="잠시만 기다려 주세요."
               />
-            ) : isDetailMissing || !detail ? (
+            ) : detailPanelState === 'error' ? (
+              <div className="flex flex-col items-center gap-[16px]">
+                <PageState
+                  variant="error"
+                  title="전송 상세를 불러오지 못했습니다."
+                  description="잠시 후 다시 시도해 주세요."
+                />
+                <button
+                  type="button"
+                  onClick={() => detailQuery.refetch()}
+                  className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+                >
+                  다시 시도
+                </button>
+              </div>
+            ) : detailPanelState === 'missing' || !detail ? (
               <PageState
                 variant="empty"
                 title="전송 내역을 찾을 수 없습니다."

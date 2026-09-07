@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/shared/api';
+
 import type {
   DiscordDelivery,
   DiscordDeliveryListResponse,
@@ -58,8 +60,23 @@ function emptyListResult() {
   return { data, isLoading: false, isError: false, refetch: vi.fn() };
 }
 
-function detailResult(overrides: Partial<{ data: DiscordDelivery; isLoading: boolean }> = {}) {
-  return { data: undefined, isLoading: false, isError: false, ...overrides };
+function detailResult(
+  overrides: Partial<{
+    data: DiscordDelivery;
+    isLoading: boolean;
+    isError: boolean;
+    error: unknown;
+    refetch: () => void;
+  }> = {},
+) {
+  return {
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    ...overrides,
+  };
 }
 
 interface RetryMutationResult {
@@ -238,6 +255,20 @@ describe('AdminDiscordPostPage', () => {
     );
   });
 
+  it('뒤로/앞으로 가기로 initialType prop만 바뀌면 필터 상태를 그 값으로 다시 맞춘다', () => {
+    const { rerender } = render(<AdminDiscordPostPage initialType="JOB" />);
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ targetType: 'JOB' }),
+    );
+
+    rerender(<AdminDiscordPostPage initialType={undefined} />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ targetType: undefined }),
+    );
+    expect(mockRouterReplace).toHaveBeenLastCalledWith('/admin/discord-posts', { scroll: false });
+  });
+
   it('canRetry가 true인 JOB/PROGRAM 항목에만 재시도 버튼을 보여준다', () => {
     mockUseDiscordDeliveryListQuery.mockReturnValue(
       listResult({
@@ -331,12 +362,39 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByText('전송 상세를 불러오는 중입니다.')).toBeInTheDocument();
   });
 
-  it('detailId를 어디서도 찾을 수 없으면 상세 패널에 없음 안내를 보여준다', () => {
+  it('단건 조회가 데이터 없이 끝나면 상세 패널에 없음 안내를 보여준다', () => {
     mockUseDiscordDeliveryDetailQuery.mockReturnValue(detailResult());
 
     render(<AdminDiscordPostPage detailId="999" />);
 
     expect(screen.getByText('전송 내역을 찾을 수 없습니다.')).toBeInTheDocument();
+  });
+
+  it('단건 조회가 404면 상세 패널에 없음 안내를 보여준다', () => {
+    mockUseDiscordDeliveryDetailQuery.mockReturnValue(
+      detailResult({
+        isError: true,
+        error: new ApiError('없음', 404, 'DISCORD_DELIVERY_NOT_FOUND'),
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="999" />);
+
+    expect(screen.getByText('전송 내역을 찾을 수 없습니다.')).toBeInTheDocument();
+  });
+
+  it('단건 조회가 404가 아닌 오류로 실패하면 조회 실패 상태와 다시 시도 버튼을 보여준다', () => {
+    const refetch = vi.fn();
+    mockUseDiscordDeliveryDetailQuery.mockReturnValue(
+      detailResult({ isError: true, error: new ApiError('서버 오류', 500), refetch }),
+    );
+
+    render(<AdminDiscordPostPage detailId="999" />);
+
+    expect(screen.getByText('전송 상세를 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('전송 내역을 찾을 수 없습니다.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('2페이지 이상에서 "다음"을 누르면 "상세 보기"·닫기 링크에 page 쿼리스트링이 붙는다', () => {
