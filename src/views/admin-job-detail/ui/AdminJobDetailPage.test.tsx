@@ -83,6 +83,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     },
     bookmarked: false,
     files: [],
+    manager: null,
     ...overrides,
   };
 }
