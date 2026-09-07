@@ -109,22 +109,34 @@ describe('JobListPage', () => {
     expect(lastReplacedParams().get('applyType')).toBe('외부 지원');
   });
 
-  it('"모집 상태"의 마감 임박 옵션은 비활성화되어 선택되지 않는다(서버에 대응 값이 없음)', () => {
+  it('"모집 상태"의 마감 임박을 고르면 PUBLISHED + 마감일 오름차순 정렬로 조회한다', () => {
     render(<JobListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: '모집 상태' }));
     fireEvent.click(screen.getByRole('button', { name: '마감 임박' }));
 
-    const lastParams = mockUseJobListQuery.mock.calls.at(-1)?.[0];
-    expect(lastParams.status).toBeUndefined();
-    expect(lastReplacedParams().get('status')).toBeNull();
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'PUBLISHED', sort: 'DEADLINE', direction: 'ASC' }),
+    );
+    expect(lastReplacedParams().get('status')).toBe('마감 임박');
   });
 
-  it('"직무" · "기업 유형" 버튼은 비활성화되어 있다(대응하는 조회 파라미터가 없음)', () => {
+  it('"직무" 버튼은 비활성화되어 있다(서버에 대응하는 필드가 없음)', () => {
     render(<JobListPage />);
 
     expect(screen.getByRole('button', { name: '직무' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '기업 유형' })).toBeDisabled();
+  });
+
+  it('"기업 유형"에서 공기업을 고르면 companyType으로 조회하고 URL에도 반영한다', () => {
+    render(<JobListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '기업 유형' }));
+    fireEvent.click(screen.getByRole('button', { name: '공기업' }));
+
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ companyType: 'PUBLIC_ENTERPRISE' }),
+    );
+    expect(lastReplacedParams().get('companyType')).toBe('공기업');
   });
 
   it('"출처"에서 사람인을 고르면 sourceName(sourceCode)으로 조회하고 URL에도 sourceCode를 반영한다', () => {
