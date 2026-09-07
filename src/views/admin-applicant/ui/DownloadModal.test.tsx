@@ -1,18 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { JobApplicantOption, JobPostingOption } from '@/entities/applicant';
+import type { AdminJobSummary } from '@/entities/job';
+import type { JobApplicantOption } from '@/entities/applicant';
 
 import { DownloadModal } from './DownloadModal';
 
 const {
-  mockUseJobPostingOptionsQuery,
+  mockUseAllAdminJobListQuery,
   mockUseJobApplicantOptionsQuery,
   mockUseExportJobApplicationsMutation,
   mockMutate,
   mockRouterPush,
 } = vi.hoisted(() => ({
-  mockUseJobPostingOptionsQuery: vi.fn(),
+  mockUseAllAdminJobListQuery: vi.fn(),
   mockUseJobApplicantOptionsQuery: vi.fn(),
   mockUseExportJobApplicationsMutation: vi.fn(),
   mockMutate: vi.fn(),
@@ -24,9 +25,16 @@ vi.mock('@/entities/applicant', async () => {
     await vi.importActual<typeof import('@/entities/applicant')>('@/entities/applicant');
   return {
     ...actual,
-    useJobPostingOptionsQuery: mockUseJobPostingOptionsQuery,
     useJobApplicantOptionsQuery: mockUseJobApplicantOptionsQuery,
     useExportJobApplicationsMutation: mockUseExportJobApplicationsMutation,
+  };
+});
+
+vi.mock('@/entities/job', async () => {
+  const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
+  return {
+    ...actual,
+    useAllAdminJobListQuery: mockUseAllAdminJobListQuery,
   };
 });
 
@@ -35,12 +43,29 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+function adminJobSummary(overrides: Partial<AdminJobSummary> = {}): AdminJobSummary {
+  return {
+    jobId: 1,
+    title: '프론트엔드 개발자 채용',
+    company: { companyId: 1, name: '플로우테크', logoUrl: null },
+    postingType: 'GENERAL',
+    applicationMethod: 'EXTERNAL',
+    status: 'PUBLISHED',
+    startDate: null,
+    endDate: null,
+    createdAt: '2026-08-01T09:00:00',
+    updatedAt: '2026-08-01T09:00:00',
+    manager: null,
+    ...overrides,
+  };
+}
+
 function jobPostingsResult(overrides: Partial<ReturnType<typeof idleJobPostings>> = {}) {
   return { ...idleJobPostings(), ...overrides };
 }
 
 function idleJobPostings() {
-  const data: JobPostingOption[] = [{ jobId: 1, title: '프론트엔드 개발자 채용' }];
+  const data: AdminJobSummary[] = [adminJobSummary()];
   return { data, isLoading: false, isError: false, refetch: vi.fn() };
 }
 
@@ -58,7 +83,7 @@ function idleApplicantOptions() {
 }
 
 beforeEach(() => {
-  mockUseJobPostingOptionsQuery.mockReturnValue(jobPostingsResult());
+  mockUseAllAdminJobListQuery.mockReturnValue(jobPostingsResult());
   mockUseJobApplicantOptionsQuery.mockReturnValue(applicantOptionsResult());
   mockUseExportJobApplicationsMutation.mockReturnValue({ mutate: mockMutate, isPending: false });
 });
@@ -69,7 +94,7 @@ afterEach(() => {
 
 describe('DownloadModal', () => {
   it('공고 목록 로딩 중이면 안내 문구를 보여준다', () => {
-    mockUseJobPostingOptionsQuery.mockReturnValue(
+    mockUseAllAdminJobListQuery.mockReturnValue(
       jobPostingsResult({ isLoading: true, data: undefined }),
     );
 
@@ -80,7 +105,7 @@ describe('DownloadModal', () => {
 
   it('공고 목록 조회에 실패하면 에러 문구와 다시 시도 버튼을 보여준다', () => {
     const refetch = vi.fn();
-    mockUseJobPostingOptionsQuery.mockReturnValue(
+    mockUseAllAdminJobListQuery.mockReturnValue(
       jobPostingsResult({ isError: true, data: undefined, refetch }),
     );
 
@@ -189,12 +214,27 @@ describe('DownloadModal', () => {
     expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
-  it('공고를 바꾸면 지원자 선택이 전체 선택으로 초기화된다', () => {
-    mockUseJobPostingOptionsQuery.mockReturnValue(
+  it('최신 공고가 DRAFT면 건너뛰고 PUBLISHED · CLOSED 중 최신을 기본 선택한다', () => {
+    mockUseAllAdminJobListQuery.mockReturnValue(
       jobPostingsResult({
         data: [
-          { jobId: 1, title: '프론트엔드 개발자 채용' },
-          { jobId: 2, title: '백엔드 개발자 채용' },
+          adminJobSummary({ jobId: 1, title: '임시저장 공고', status: 'DRAFT' }),
+          adminJobSummary({ jobId: 2, title: '백엔드 개발자 채용', status: 'PUBLISHED' }),
+        ],
+      }),
+    );
+
+    render(<DownloadModal />);
+
+    expect(screen.getByRole('button', { name: '백엔드 개발자 채용' })).toBeInTheDocument();
+  });
+
+  it('공고를 바꾸면 지원자 선택이 전체 선택으로 초기화된다', () => {
+    mockUseAllAdminJobListQuery.mockReturnValue(
+      jobPostingsResult({
+        data: [
+          adminJobSummary({ jobId: 1, title: '프론트엔드 개발자 채용' }),
+          adminJobSummary({ jobId: 2, title: '백엔드 개발자 채용' }),
         ],
       }),
     );

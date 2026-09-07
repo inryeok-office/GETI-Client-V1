@@ -14,6 +14,7 @@ import {
   downloadJobAttachment,
   fetchAdminJobDetail,
   fetchAdminJobList,
+  fetchAllAdminJobList,
   fetchJobDetail,
   fetchJobList,
   fetchJobSources,
@@ -28,6 +29,7 @@ export const jobKeys = {
   all: ['jobs'] as const,
   list: (params: FetchJobListParams) => [...jobKeys.all, 'list', params] as const,
   adminList: (params: FetchAdminJobListParams) => [...jobKeys.all, 'admin-list', params] as const,
+  allAdminList: () => [...jobKeys.all, 'all-admin-list'] as const,
   detail: (jobId: number) => [...jobKeys.all, 'detail', jobId] as const,
   adminDetail: (jobId: number) => [...jobKeys.all, 'admin-detail', jobId] as const,
   sources: () => [...jobKeys.all, 'sources'] as const,
@@ -54,6 +56,17 @@ export function useAdminJobListQuery(params: FetchAdminJobListParams = {}) {
     queryKey: jobKeys.adminList(params),
     queryFn: () => fetchAdminJobList(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * 지원자 관리 다운로드 모달의 "공고" 드롭다운. 페이지네이션 없이 상한 없는 전체 목록을 쓴다
+ * (`useJobSourcesQuery`와 같은 패턴).
+ */
+export function useAllAdminJobListQuery() {
+  return useQuery({
+    queryKey: jobKeys.allAdminList(),
+    queryFn: fetchAllAdminJobList,
   });
 }
 
