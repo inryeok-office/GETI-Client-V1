@@ -2,10 +2,12 @@
 
 import { useApplicantListQuery, useJobApplicationJobSummariesQuery } from '@/entities/applicant';
 import { useNotificationListQuery } from '@/entities/notification';
+import { useAllAdminPortfolioRequestListQuery } from '@/entities/portfolio-request';
 import { useAdminProgramListQuery } from '@/entities/program';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildStaffDashboardContent } from '../model/buildStaffDashboardContent';
+import { countOverduePortfolioSubmissions } from '../model/countOverduePortfolioSubmissions';
 import { toMetric } from '../model/dashboardMetric';
 import { NOTIFICATION_FEED_SIZE } from '../model/mapDashboardNotification';
 import { DASHBOARD_CONTENT } from '../model/mock';
@@ -21,8 +23,9 @@ interface StaffDashboardLiveProps {
 /**
  * 교직원 대시보드(`?variant=staff`)의 실데이터 컨테이너. `AdminDashboardLive` 패턴(Issue #187).
  * 신규 지원자·수정 요청 KPI는 지원서 목록 API로, 담당 공고 현황 표는 `job-summaries` API로 채우고
- * (Issue #197) 나머지 KPI는 "미지원", 알림 사이드바는 `GET /api/v1/notifications` 실데이터로 채운다
- * (Issue #199).
+ * (Issue #197) "게시 중 프로그램" KPI는 관리자 프로그램 목록 API로(Issue #218), 포트폴리오
+ * 미제출 KPI는 관리자 포트폴리오 수합 요청 목록으로 채운다(Issue #221). 나머지 KPI는 "미지원",
+ * 알림 사이드바는 `GET /api/v1/notifications` 실데이터로 채운다(Issue #199).
  */
 export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDashboardLiveProps) {
   const newApplicantsQuery = useApplicantListQuery({
@@ -37,6 +40,7 @@ export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDash
   });
   const jobSummariesQuery = useJobApplicationJobSummariesQuery();
   const publishedProgramsQuery = useAdminProgramListQuery({ status: 'PUBLISHED', size: 1 });
+  const portfolioRequestsQuery = useAllAdminPortfolioRequestListQuery();
   const notificationsQuery = useNotificationListQuery({ size: NOTIFICATION_FEED_SIZE });
 
   const content = buildStaffDashboardContent(DASHBOARD_CONTENT.staff, {
@@ -44,6 +48,7 @@ export function StaffDashboardLive({ navSections, newApplicantSince }: StaffDash
     revisionRequests: toMetric(revisionRequestsQuery, (list) => list.totalElements),
     publishedPrograms: toMetric(publishedProgramsQuery, (result) => result.totalElements),
     jobSummaries: toMetric(jobSummariesQuery, (page) => page.content),
+    portfolioNotSubmitted: toMetric(portfolioRequestsQuery, countOverduePortfolioSubmissions),
     notifications: toMetric(notificationsQuery, (list) => list.content),
   });
 

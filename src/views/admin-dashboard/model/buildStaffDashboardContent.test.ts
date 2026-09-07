@@ -50,6 +50,7 @@ function fullMetrics(overrides: Partial<StaffDashboardMetrics> = {}): StaffDashb
     revisionRequests: metric<number>({ data: 4 }),
     publishedPrograms: metric<number>({ data: 6 }),
     jobSummaries: metric<JobApplicationJobSummary[]>({ data: [jobSummary()] }),
+    portfolioNotSubmitted: metric<number>({ data: 9 }),
     notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
     ...overrides,
   };
@@ -70,6 +71,12 @@ describe('buildStaffDashboardContent', () => {
     expect(card(content.kpiCards, 'new').count).toBe('14건');
     expect(card(content.kpiCards, 'new').description).toBe('최근 3일 기준');
     expect(card(content.kpiCards, 'revision').count).toBe('4건');
+  });
+
+  it('기업 전달 대기 KPI는 미지원으로 둔다', () => {
+    const content = buildStaffDashboardContent(BASE, fullMetrics());
+
+    expect(card(content.kpiCards, 'pending').unsupported).toBe(true);
   });
 
   it('게시 중 프로그램 KPI를 PUBLISHED 건수로 채우고 문구를 게시 기준으로 정정한다', () => {
@@ -102,11 +109,24 @@ describe('buildStaffDashboardContent', () => {
     expect(card(content.kpiCards, 'new').loadState).toBeUndefined();
   });
 
-  it('기업 전달 대기·포트폴리오 KPI는 미지원으로 둔다', () => {
+  it('포트폴리오 미제출 KPI를 실데이터로 채운다', () => {
     const content = buildStaffDashboardContent(BASE, fullMetrics());
 
-    expect(card(content.kpiCards, 'pending').unsupported).toBe(true);
-    expect(card(content.kpiCards, 'portfolio').unsupported).toBe(true);
+    expect(card(content.kpiCards, 'portfolio').unsupported).toBeUndefined();
+    expect(card(content.kpiCards, 'portfolio').count).toBe('9건');
+    // Mock 문구 "기한 경과"는 집계 기준과 이미 일치해 그대로 둔다.
+    expect(card(content.kpiCards, 'portfolio').description).toBe('기한 경과');
+  });
+
+  it('포트폴리오 KPI 조회가 실패하면 해당 카드만 에러를 표시한다', () => {
+    const onRetry = vi.fn();
+    const content = buildStaffDashboardContent(
+      BASE,
+      fullMetrics({ portfolioNotSubmitted: metric<number>({ isError: true, onRetry }) }),
+    );
+
+    expect(card(content.kpiCards, 'portfolio').loadState).toBe('error');
+    expect(card(content.kpiCards, 'portfolio').onRetry).toBe(onRetry);
   });
 
   it('담당 공고 현황 표를 job-summaries 실데이터로 채운다', () => {
