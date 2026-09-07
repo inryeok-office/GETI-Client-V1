@@ -3,10 +3,12 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { ADMIN_COMPANY_TYPE_LABEL } from '@/entities/company';
 import {
   mapJobSummaryToListItem,
   useJobListQuery,
   type JobApplicationMethod,
+  type JobCompanyType,
   type PublicJobStatus,
 } from '@/entities/job';
 import { JobList, type FilterKey, type JobListStatus } from '@/widgets/job-list';
@@ -25,14 +27,29 @@ const APPLY_TYPE_TO_METHOD: Partial<Record<string, JobApplicationMethod>> = {
 };
 
 /**
- * "모집 상태" 선택지 → `status` 파라미터. 서버는 PUBLISHED · CLOSED만 필터로 받는다 — "마감
- * 임박"은 대응하는 상태 값이 없어 매핑하지 않는다(선택은 되지만 조회에는 반영되지 않는다,
- * PR #132 코드리뷰 반영).
+ * "모집 상태" 선택지 → `status` 파라미터. 서버는 PUBLISHED · CLOSED만 필터로 받는다. "마감
+ * 임박"은 별도 상태 값이 아니라 "모집 중"과 같은 PUBLISHED에 마감일 오름차순 정렬을 더한
+ * 것으로 본다(`sort`/`direction`은 아래에서 따로 계산, Issue #228).
  */
 const STATUS_TO_PUBLIC_STATUS: Partial<Record<string, PublicJobStatus>> = {
   '모집 중': 'PUBLISHED',
+  '마감 임박': 'PUBLISHED',
   마감: 'CLOSED',
 };
+
+/**
+ * "기업 유형" 선택 상태·URL 쿼리에 저장된 값 → `companyType` 파라미터. 저장되는 값은 표시
+ * 라벨이 아니라 `CompanyType` Enum 코드(`PUBLIC_ENTERPRISE` 등)다 — 라벨
+ * (`ADMIN_COMPANY_TYPE_LABEL`)은 공식 문구가 정해지면 바뀔 값이라(Issue #121) 키로 쓰면
+ * 문구가 바뀌는 순간 이미 공유된 필터 URL이 조용히 무효화된다. "출처"가 표시 이름이 아니라
+ * `sourceCode`를 저장하는 것과 같은 이유다(PR #149 코드리뷰 반영). 표시용 라벨은
+ * `JobFilterBar`가 코드로 역조회한다. 유효하지 않은 값이면 필터를 적용하지 않는다.
+ */
+function readCompanyType(value: string | undefined): JobCompanyType | undefined {
+  return value !== undefined && value in ADMIN_COMPANY_TYPE_LABEL
+    ? (value as JobCompanyType)
+    : undefined;
+}
 
 export interface JobListSearchParams {
   q?: string;
@@ -70,13 +87,15 @@ interface JobListPageProps {
  * 채용 공고 목록 화면. `GET /api/v1/jobs`(entities/job의 `useJobListQuery`)로 실제 데이터를
  * 불러온다(Issue #122). 인증이 필요한 API라 다른 어드민 화면과 동일하게 클라이언트에서 조회한다.
  *
- * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "모집 상태"(→ `status`,
- * "마감 임박" 제외) · "출처"(→ `sourceName`)가 실제 조회에 연결돼 있다. "출처"는 표시 이름이
- * 아니라 `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 — 이름은 관리자가
- * 자유 입력하는 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만, 안정적인
- * `sourceCode`는 그렇지 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149 코드리뷰 반영).
- * "직무" · "기업 유형"은 선택 UI만 동작하고 조회에는 반영되지 않는다 — "직무"는 대응 API
- * 파라미터가 아예 없고, "기업 유형"은 Figma 라벨이 백엔드 `CompanyType` Enum과 대응하지 않는다
+ * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "모집 상태"(→ `status`) ·
+ * "출처"(→ `sourceName`) · "기업 유형"(→ `companyType`, Issue #228)이 실제 조회에 연결돼 있다.
+ * "출처"는 표시 이름이 아니라 `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 —
+ * 이름은 관리자가 자유 입력하는 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만,
+ * 안정적인 `sourceCode`는 그렇지 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149
+ * 코드리뷰 반영). "기업 유형"도 같은 이유로 표시 라벨이 아니라 `CompanyType` Enum 코드를
+ * 선택 상태 · URL에 저장한다(`readCompanyType`). "모집 상태"의 "마감 임박"은 별도 상태 값이 아니라
+ * `status: 'PUBLISHED'` + `sort: 'DEADLINE', direction: 'ASC'` 조합으로 연결된다(Issue #228).
+ * "직무"만 서버에 구조화된 필드 자체가 없어 선택 UI만 동작하고 조회에는 반영되지 않는다
  * (`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
  *
  * 검색 · 필터 · 페이지 상태는 새로고침 · 뒤로가기에도 유지되도록 URL 쿼리스트링과 동기화한다
@@ -125,11 +144,15 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
   const status = selectedFilters.status
     ? STATUS_TO_PUBLIC_STATUS[selectedFilters.status]
     : undefined;
+  const isDeadlineSoonSelected = selectedFilters.status === '마감 임박';
   /** 선택 상태 · URL에 이미 `sourceCode`가 저장돼 있어 별도 조회 없이 그대로 쓸 수 있다(`JobFilterBar` 참고). */
   const sourceName = selectedFilters.source;
+  const companyType = readCompanyType(selectedFilters.companyType);
 
-  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 직무 · 기업 유형, "마감 임박"은 제외. */
-  const activeFilterCount = [applicationMethod, status, sourceName].filter(Boolean).length;
+  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 서버에 필드 자체가 없는 "직무"만 제외. */
+  const activeFilterCount = [applicationMethod, status, sourceName, companyType].filter(
+    Boolean,
+  ).length;
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -163,6 +186,9 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     applicationMethod,
     status,
     sourceName,
+    companyType,
+    sort: isDeadlineSoonSelected ? 'DEADLINE' : undefined,
+    direction: isDeadlineSoonSelected ? 'ASC' : undefined,
   });
 
   const listStatus: JobListStatus = listQuery.isLoading

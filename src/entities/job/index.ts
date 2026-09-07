@@ -49,6 +49,7 @@ export type {
   JobPostingType,
   JobApplicationMethod,
   PublicJobStatus,
+  JobCompanyType,
   JobSort,
   JobSortDirection,
   JobCompanySummary,

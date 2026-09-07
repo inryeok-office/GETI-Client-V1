@@ -30,6 +30,13 @@ export type JobApplicationMethod = 'INTERNAL' | 'EXTERNAL';
 export type PublicJobStatus = 'PUBLISHED' | 'CLOSED';
 
 /**
+ * 공고 목록 "기업 유형" 필터(`GET /api/v1/jobs?companyType=`). `entities/company`의
+ * `AdminCompanyType`과 값 집합이 같다 — entities 사이 직접 참조를 피하려고 여기 따로 둔다.
+ */
+export type JobCompanyType =
+  'ETC' | 'FOREIGN' | 'GENERAL' | 'PUBLIC_ENTERPRISE' | 'PUBLIC_INSTITUTION';
+
+/**
  * 관리자 상세(`GET /api/v1/admin/jobs/{jobId}`)가 반환하는 전체 상태(`JobStatus`).
  * 공개 목록·상세와 달리 임시저장·삭제 공고까지 조회된다.
  */

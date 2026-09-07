@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { ADMIN_COMPANY_TYPE_LABEL } from '@/entities/company';
 import { buildJobSourceFilterOptions, useJobSourcesQuery } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
 
@@ -17,9 +18,16 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 /**
  * 드롭다운 선택지. Figma가 캡처한 5개 드롭다운(지원 유형 1222:14465 · 직무 1222:14535 ·
- * 기업 유형 1222:14502 · 출처 1222:14569 · 모집상태 1222:14584)의 옵션을 그대로 옮겼다.
- * "전체"를 선택하면 해당 필터를 해제한 것으로 본다(직무는 "전체"가 없어 해제할 수 없다).
- * "출처"는 `GET /api/v1/job-sources`(useJobSourcesQuery)로 실제 목록을 받아 채우므로 여기 없다.
+ * 기업 유형 1222:14502 · 출처 1222:14569 · 모집상태 1222:14584) 중 "지원 유형" · "모집 상태"는
+ * Figma 옵션을 그대로 옮겼다. "전체"를 선택하면 해당 필터를 해제한 것으로 본다(직무는 "전체"가
+ * 없어 해제할 수 없다). "출처"는 `GET /api/v1/job-sources`(useJobSourcesQuery)로 실제 목록을
+ * 받아 채우므로 여기 없다.
+ *
+ * "기업 유형"은 Figma 초안 라벨(대기업 · 중견 · 중소 · 스타트업)이 백엔드 `CompanyType` Enum과
+ * 대응하지 않아, 기업 관리 화면에서 같은 문제를 이미 확정한 라벨(Issue #156,
+ * `entities/company`의 `ADMIN_COMPANY_TYPE_LABEL`)을 표시 문구로 재사용한다(Issue #228).
+ * 다만 옵션·선택 상태에는 라벨이 아니라 Enum 코드를 쓰고 표시할 때만 이 표로 역조회한다
+ * — "출처"와 같은 이유(PR #149, 아래 `toOptionLabel` 참고).
  */
 const DROPDOWN_OPTIONS: Record<Exclude<FilterKey, 'source'>, string[]> = {
   applyType: ['전체', '외부 지원', '학교 지원'],
@@ -36,7 +44,7 @@ const DROPDOWN_OPTIONS: Record<Exclude<FilterKey, 'source'>, string[]> = {
     'UX/UI 디자이너',
     '기타',
   ],
-  companyType: ['전체', '대기업', '중견 지원', '중소 지원', '스타트업', '공기업·공공기관'],
+  companyType: ['전체', ...Object.keys(ADMIN_COMPANY_TYPE_LABEL)],
   status: ['전체', '모집 중', '마감 임박', '마감'],
 };
 
@@ -44,12 +52,10 @@ const DROPDOWN_OPTIONS: Record<Exclude<FilterKey, 'source'>, string[]> = {
  * 실제 목록 조회에 연결되지 않은 필터. 버튼 자체를 비활성화해 클릭해도 선택되지 않게 한다 —
  * 예전에는 선택은 되지만 조회에는 반영되지 않아, 사용자에게는 필터가 적용된 것처럼 보이고
  * 결과는 바뀌지 않는 문제가 있었다(PR #132 코드리뷰 반영). "출처"는 GETI-Server-V1 #222로
- * `sourceCode`가 노출되면서 여기서 빠지고 아래 `useJobSourcesQuery` 결과로 실제 연동된다.
+ * `sourceCode`가 노출되면서, "기업 유형"은 `companyType` 파라미터가 이미 있다는 걸 확인하면서
+ * (Issue #228) 여기서 빠졌다. "직무"만 서버에 구조화된 필드 자체가 없어 여전히 막아 둔다.
  */
-const UNSUPPORTED_FILTERS: FilterKey[] = ['job', 'companyType'];
-
-/** "모집 상태" 안에서만 대응하는 서버 값이 없는 옵션. 드롭다운 자체는 열리지만 이 옵션만 선택할 수 없다. */
-const UNSUPPORTED_STATUS_OPTIONS = ['마감 임박'];
+const UNSUPPORTED_FILTERS: FilterKey[] = ['job'];
 
 interface JobFilterSectionProps {
   /** 필터 적용 배지 + 초기화 버튼은 정상 목록(success) 상태일 때만 보여준다. */
@@ -65,9 +71,8 @@ interface JobFilterSectionProps {
   onSelectedChange: (next: Partial<Record<FilterKey, string>>) => void;
   /**
    * 배지에 표시할 "적용 중" 필터 개수. `selected`에 값이 있어도 실제 목록 조회에 반영되지
-   * 않는 선택(직무 · 기업 유형, "모집 상태"의 "마감 임박")은 세지 않는다 — 적용되지 않는데
-   * 적용된 것처럼 보이면 안 된다(PR #132 코드리뷰 반영). 부모가 실제 쿼리 파라미터 매핑
-   * 결과를 기준으로 계산해서 넘긴다.
+   * 않는 선택("직무")은 세지 않는다 — 적용되지 않는데 적용된 것처럼 보이면 안 된다(PR #132
+   * 코드리뷰 반영). 부모가 실제 쿼리 파라미터 매핑 결과를 기준으로 계산해서 넘긴다.
    */
   activeFilterCount: number;
 }
@@ -76,18 +81,17 @@ interface JobFilterSectionProps {
  * 채용 공고 목록 필터 바 + 필터 적용 배지.
  * 검색창과 "마감 공고 포함" 토글, "지원 유형"(→ `applicationMethod`) · "모집 상태"(→
  * `status`) · "출처"(→ `sourceName`, `useJobSourcesQuery`로 `GET /api/v1/job-sources`의
- * `sourceCode`를 받아온다, GETI-Server-V1 #222)는 실제 목록 조회에 연결돼 있다(Issue #122·#148,
- * PR #132 코드리뷰 반영). "직무" · "기업 유형"만 버튼 자체를 비활성화해 선택할 수 없다 —
- * "직무"는 대응 API 파라미터가 아예 없고, "기업 유형"은 Figma 라벨(대기업 · 중견 · 중소 ·
- * 스타트업 · 공기업)이 백엔드 `CompanyType` Enum(GENERAL · PUBLIC_ENTERPRISE ·
- * PUBLIC_INSTITUTION · FOREIGN · ETC)과 대응하지 않는다. "모집 상태"의 "마감 임박"도 대응하는
- * 서버 값이 없어 그 옵션만 선택할 수 없다 — 이 셋은 선택 자체가 상태 · URL에 반영되지 않으므로
- * 부모가 넘기는 `activeFilterCount`에도 포함되지 않는다(PR #132 코드리뷰 반영).
+ * `sourceCode`를 받아온다, GETI-Server-V1 #222) · "기업 유형"(→ `companyType`, Issue #228)은
+ * 실제 목록 조회에 연결돼 있다(Issue #122·#148, PR #132 코드리뷰 반영). "모집 상태"의
+ * "마감 임박"도 별도 서버 상태 값 없이 `status: PUBLISHED` + 마감일 오름차순 정렬 조합으로
+ * 연결된다(부모 `JobListPage` 참고, Issue #228). "직무"만 서버에 구조화된 필드 자체가 없어
+ * 버튼을 비활성화해 선택할 수 없다 — 선택 자체가 상태 · URL에 반영되지 않으므로 부모가 넘기는
+ * `activeFilterCount`에도 포함되지 않는다(PR #132 코드리뷰 반영).
  *
- * "출처"는 다른 드롭다운과 달리 선택 상태(`selected.source`) · URL에 표시 이름이 아니라
- * `sourceCode`를 저장한다 — 이름은 관리자가 자유 입력하는 값이라 나중에 바뀌면 이름 기반 URL은
- * 공유된 링크를 조용히 무효화한다(PR #149 코드리뷰 반영). 그래서 "출처"만 버튼 라벨 ·
- * 드롭다운에 보여줄 "표시 이름"을 `sourceCode`로 따로 조회해야 한다(`sourceCodeToLabel`).
+ * "출처" · "기업 유형"은 다른 드롭다운과 달리 선택 상태 · URL에 표시 문구가 아니라 안정적인
+ * 코드(`sourceCode` / `CompanyType` Enum)를 저장한다 — 표시 문구는 나중에 바뀔 수 있어
+ * 문구 기반 URL은 공유된 링크를 조용히 무효화한다(PR #149 코드리뷰 반영). 그래서 이 둘은
+ * 버튼 라벨 · 드롭다운에 보여줄 표시 문구를 코드로 역조회한다(`toOptionLabel`).
  */
 export function JobFilterSection({
   showActiveFilters,
@@ -106,6 +110,13 @@ export function JobFilterSection({
   const sourceCodeToLabel = Object.fromEntries(
     sourceFilterOptions.map((option) => [option.sourceCode, option.label]),
   );
+  /** 선택 상태 · URL에 표시 문구가 아니라 안정적인 코드를 저장하는 필터의 코드 → 표시 문구 표. */
+  const optionLabelByKey: Partial<Record<FilterKey, Record<string, string>>> = {
+    source: sourceCodeToLabel,
+    companyType: ADMIN_COMPANY_TYPE_LABEL,
+  };
+  const toOptionLabel = (key: FilterKey, option: string) =>
+    optionLabelByKey[key]?.[option] ?? option;
 
   useEffect(() => {
     if (!openFilter) return;
@@ -166,10 +177,9 @@ export function JobFilterSection({
           const isFilterDisabled =
             UNSUPPORTED_FILTERS.includes(filter.key) ||
             (isSource && !isSourceError && (isSourceLoading || options.length === 0));
-          const selectedLabel =
-            isSource && selectedOption
-              ? (sourceCodeToLabel[selectedOption] ?? selectedOption)
-              : selectedOption;
+          const selectedLabel = selectedOption
+            ? toOptionLabel(filter.key, selectedOption)
+            : undefined;
           const buttonLabel = isSourceLoading
             ? '출처 불러오는 중...'
             : isSourceError
@@ -216,26 +226,18 @@ export function JobFilterSection({
               {openFilter === filter.key && !isSourceError && (
                 <div className="absolute top-full left-0 z-20 mt-[4px] flex w-[168px] flex-col gap-[2px] rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]">
                   {(isSource ? ['전체', ...options] : options).map((option) => {
-                    const optionLabel =
-                      isSource && option !== '전체'
-                        ? (sourceCodeToLabel[option] ?? option)
-                        : option;
+                    const optionLabel = toOptionLabel(filter.key, option);
                     const isSelected = selectedOption
                       ? selectedOption === option
                       : option === '전체';
-                    const isOptionDisabled =
-                      filter.key === 'status' && UNSUPPORTED_STATUS_OPTIONS.includes(option);
 
                     return (
                       <button
                         key={option}
                         type="button"
                         onClick={() => selectOption(filter.key, option)}
-                        disabled={isOptionDisabled}
-                        className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] disabled:cursor-not-allowed disabled:hover:bg-transparent ${
-                          isOptionDisabled
-                            ? 'text-[#a3a3a3]'
-                            : `hover:bg-[#f6fbfc] ${isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'}`
+                        className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] ${
+                          isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
                         }`}
                       >
                         <span className="truncate">{optionLabel}</span>

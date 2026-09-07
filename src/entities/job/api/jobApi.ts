@@ -6,6 +6,7 @@ import type {
   AdminJobStatus,
   AdminJobSummary,
   JobApplicationMethod,
+  JobCompanyType,
   JobCreatePayload,
   JobDetail,
   JobPostingType,
@@ -26,6 +27,7 @@ export interface FetchJobListParams {
   applicationMethod?: JobApplicationMethod;
   status?: PublicJobStatus;
   sourceName?: string;
+  companyType?: JobCompanyType;
   targetGrade?: number;
   /** true면 마감된 공고를 제외한다("마감 공고 포함" 토글이 꺼진 상태). */
   openOnly?: boolean;
