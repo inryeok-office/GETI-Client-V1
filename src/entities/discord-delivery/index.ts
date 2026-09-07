@@ -1,5 +1,6 @@
 export {
   discordDeliveryKeys,
+  useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
 } from './api/useDiscordDeliveryQueries';

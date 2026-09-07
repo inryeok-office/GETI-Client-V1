@@ -29,6 +29,7 @@ function delivery(overrides: Partial<DiscordDelivery> = {}): DiscordDelivery {
     targetName: '공고',
     action: 'CREATE',
     channelId: 'c',
+    channelName: null,
     messageId: null,
     status: 'FAILED',
     automaticRetryCount: 0,
