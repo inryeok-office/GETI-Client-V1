@@ -78,9 +78,12 @@ export function DownloadModal() {
   const jobPostingsQuery = useAllAdminJobListQuery();
   const jobPostings = jobPostingsQuery.data ?? [];
 
-  /** 아직 아무 공고도 직접 고르지 않았으면(undefined) 첫 번째 공고를 기본값으로 쓴다. */
+  /** 최신 공고가 DRAFT면 지원자가 있을 수 없어, 기본 선택은 PUBLISHED · CLOSED 중 우선한다(PR #226 리뷰). */
+  const defaultJob = jobPostings.find(
+    (job) => job.status === 'PUBLISHED' || job.status === 'CLOSED',
+  );
   const [pickedJobId, setPickedJobId] = useState<number | undefined>(undefined);
-  const selectedJobId = pickedJobId ?? jobPostings[0]?.jobId;
+  const selectedJobId = pickedJobId ?? defaultJob?.jobId ?? jobPostings[0]?.jobId;
   const [openField, setOpenField] = useState<OpenField | null>(null);
   const openDropdownRef = useRef<HTMLDivElement>(null);
 

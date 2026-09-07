@@ -213,6 +213,21 @@ describe('DownloadModal', () => {
     expect(screen.getByRole('button', { name: '다운로드' })).toBeDisabled();
   });
 
+  it('최신 공고가 DRAFT면 건너뛰고 PUBLISHED · CLOSED 중 최신을 기본 선택한다', () => {
+    mockUseAllAdminJobListQuery.mockReturnValue(
+      jobPostingsResult({
+        data: [
+          adminJobSummary({ jobId: 1, title: '임시저장 공고', status: 'DRAFT' }),
+          adminJobSummary({ jobId: 2, title: '백엔드 개발자 채용', status: 'PUBLISHED' }),
+        ],
+      }),
+    );
+
+    render(<DownloadModal />);
+
+    expect(screen.getByRole('button', { name: '백엔드 개발자 채용' })).toBeInTheDocument();
+  });
+
   it('공고를 바꾸면 지원자 선택이 전체 선택으로 초기화된다', () => {
     mockUseAllAdminJobListQuery.mockReturnValue(
       jobPostingsResult({
