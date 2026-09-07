@@ -1,16 +1,77 @@
+'use client';
+
 import type { ReactNode } from 'react';
 
+import { useMyProfileQuery } from '@/entities/member';
 import type { StaffSignupRequest } from '@/entities/staff-signup-request';
+import { ApiError } from '@/shared/api';
+import { PageState } from '@/shared/ui/page-state';
 
-interface StaffSignupRequestPageProps {
-  request: StaffSignupRequest;
+import { mapMyProfileToStaffSignupRequest } from '../model/mapMyProfileToStaffSignupRequest';
+
+const NO_REQUEST: StaffSignupRequest = { name: '', email: '', status: 'none' };
+
+/**
+ * `GET /api/v1/me/profile`로 로그인한 사용자의 실제 가입 승인 상태를 확인한다(Issue #225).
+ * 로그인 세션 자체가 없으면(401, refresh까지 실패) 아직 가입을 시작하지 않은 것으로 보고
+ * "요청 없음" 빈 상태를 보여준다 — 그 외 조회 실패는 재시도 가능한 에러로 구분한다.
+ */
+export function StaffSignupRequestPage() {
+  const profileQuery = useMyProfileQuery();
+
+  if (profileQuery.isLoading) {
+    return (
+      <PageShell>
+        <PageState
+          variant="loading"
+          title="승인 상태를 확인하는 중입니다."
+          description="잠시만 기다려 주세요."
+        />
+      </PageShell>
+    );
+  }
+
+  const isUnauthenticated =
+    profileQuery.isError &&
+    profileQuery.error instanceof ApiError &&
+    profileQuery.error.status === 401;
+
+  if (profileQuery.isError && !isUnauthenticated) {
+    return (
+      <PageShell>
+        <div className="flex flex-col items-center gap-[16px]">
+          <PageState
+            variant="error"
+            title="승인 상태를 불러올 수 없습니다."
+            description="잠시 후 다시 시도해 주세요."
+          />
+          <button
+            type="button"
+            onClick={() => profileQuery.refetch()}
+            className="h-[48px] rounded-[8px] border border-[#e5e5e5] px-[24px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#525252]"
+          >
+            다시 시도
+          </button>
+        </div>
+      </PageShell>
+    );
+  }
+
+  const request =
+    isUnauthenticated || !profileQuery.data
+      ? NO_REQUEST
+      : mapMyProfileToStaffSignupRequest(profileQuery.data);
+
+  return (
+    <PageShell>
+      {request.status === 'none' ? <EmptyCard /> : <StatusCard request={request} />}
+    </PageShell>
+  );
 }
 
-export function StaffSignupRequestPage({ request }: StaffSignupRequestPageProps) {
+function PageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
-      {request.status === 'none' ? <EmptyCard /> : <StatusCard request={request} />}
-    </div>
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">{children}</div>
   );
 }
 
