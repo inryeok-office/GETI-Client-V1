@@ -20,6 +20,8 @@ export interface DiscordDelivery {
   targetName: string | null;
   action: DiscordDeliveryAction;
   channelId: string;
+  /** 서버 채널 Registry의 표시 이름. 미등록 채널이면 null이라 `channelId`로 폴백한다(GETI-Server-V1 PR #317). */
+  channelName: string | null;
   /** CREATE가 아직 성공하지 못했으면 null. */
   messageId: string | null;
   status: DiscordDeliveryStatus;
