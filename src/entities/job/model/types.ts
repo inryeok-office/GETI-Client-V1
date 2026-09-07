@@ -57,6 +57,16 @@ export interface JobCompanySummary {
 }
 
 /**
+ * 관리자 공고 목록·상세의 담당자(`JobManagerResponse`, GETI-Server-V1 #313).
+ * 명시 담당자 우선, 없거나 유효하지 않으면 등록자로 대체, 둘 다 없으면 서버가 `null`을 준다 —
+ * 클라이언트는 값을 그대로 표시만 하고 별도 fallback을 두지 않는다.
+ */
+export interface JobManagerSummary {
+  memberId: number;
+  name: string;
+}
+
+/**
  * 지원 불가 사유(`JobApplicationEligibilityReason`, GETI-Server-V1
  * `domain.application.entity.type.JobApplicationEligibilityReason`). 값 8개는 백엔드 소스로 확인했다.
  */
@@ -140,6 +150,8 @@ export interface AdminJobSummary {
   endDate: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  /** 담당자. 명시 담당자·등록자 fallback 모두 없으면 null(GETI-Server-V1 #313). */
+  manager: JobManagerSummary | null;
 }
 
 export interface AdminJobSearchResponse {
@@ -232,6 +244,8 @@ export interface JobDetail {
  */
 export interface AdminJobDetail extends Omit<JobDetail, 'status'> {
   status: AdminJobStatus;
+  /** 담당자. 명시 담당자·등록자 fallback 모두 없으면 null(GETI-Server-V1 #313). */
+  manager: JobManagerSummary | null;
 }
 
 /**
