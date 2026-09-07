@@ -81,8 +81,7 @@ export interface JobApplyPageProps {
  * 검증(형식 · 용량 · 개수)에 걸린 파일은 `fileId` 없이 오류 사유만 목록에 보여주고 답변에는
  * 포함하지 않는다. 업로드 응답을 아직 못 받은 파일도 `fileId`가 없어 답변에서 빠지므로,
  * `pendingUploadCount`가 0보다 크면 임시저장 · 제출을 막는다 — 안 그러면 방금 올린 파일이
- * 조용히 빠진 채로 저장되거나 제출된다. "자기소개"(`ApplicantInfoSection`)는 API 어디에도
- * 대응 필드가 없어 여전히 입력을 막아 둔다 — 별도 사안이다.
+ * 조용히 빠진 채로 저장되거나 제출된다.
  *
  * 이미 활성 지원서가 있으면(409 `ACTIVE_APPLICATION_EXISTS`) `findActiveJobApplicationDraft`로
  * 그 공고의 기존 임시저장을 불러와 이어서 작성한다(GETI-Server-V1 #186). 그새 제출·철회로
