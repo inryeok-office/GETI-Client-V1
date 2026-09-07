@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DiscordDelivery } from '@/entities/discord-delivery';
 import type { NotificationApiItem } from '@/entities/notification';
 import type { OperationJob } from '@/entities/scheduler';
+import type { SystemHealth } from '@/entities/system-health';
 
 import {
   buildDeveloperDashboardContent,
@@ -68,6 +69,22 @@ function job(overrides: Partial<OperationJob> = {}): OperationJob {
   };
 }
 
+function health(overrides: Partial<SystemHealth> = {}): SystemHealth {
+  return {
+    healthyCount: 5,
+    totalCount: 5,
+    status: 'HEALTHY',
+    systems: [
+      { type: 'APPLICATION', status: 'UP' },
+      { type: 'DATABASE', status: 'UP' },
+      { type: 'REDIS', status: 'UP' },
+      { type: 'ELASTICSEARCH', status: 'UP' },
+      { type: 'FILE_STORAGE', status: 'UP' },
+    ],
+    ...overrides,
+  };
+}
+
 function notificationItem(overrides: Partial<NotificationApiItem> = {}): NotificationApiItem {
   return {
     notificationId: 9,
@@ -94,6 +111,7 @@ function fullMetrics(
     failedJobs: metric<FailureFeed<OperationJob>>({ data: feed(5, [job()]) }),
     collectorFailureCount: metric<number>({ data: 4 }),
     errorInquiries: metric<number>({ data: 5 }),
+    systemHealth: metric<SystemHealth>({ data: health() }),
     notifications: metric<NotificationApiItem[]>({ data: [notificationItem()] }),
     ...overrides,
   };
@@ -108,9 +126,52 @@ function card(cards: KpiCardData[], id: string): KpiCardData {
 const BASE = DASHBOARD_CONTENT.developer;
 
 describe('buildDeveloperDashboardContent', () => {
-  it('"정상 시스템" KPI는 미지원으로 둔다', () => {
+  it('"정상 시스템" KPI: 전부 정상이면 healthyCount와 성공 톤으로 채운다', () => {
     const content = buildDeveloperDashboardContent(BASE, fullMetrics());
-    expect(card(content.kpiCards, 'system').unsupported).toBe(true);
+    const systemCard = card(content.kpiCards, 'system');
+
+    expect(systemCard.unsupported).toBeUndefined();
+    expect(systemCard.count).toBe('5건');
+    expect(systemCard.tone).toBe('success');
+    expect(systemCard.description).toBe('전체 5개 정상');
+  });
+
+  it('"정상 시스템" KPI: DEGRADED면 danger 톤으로 다운된 구성요소를 안내한다', () => {
+    const content = buildDeveloperDashboardContent(
+      BASE,
+      fullMetrics({
+        systemHealth: metric<SystemHealth>({
+          data: health({
+            healthyCount: 3,
+            status: 'DEGRADED',
+            systems: [
+              { type: 'APPLICATION', status: 'UP' },
+              { type: 'DATABASE', status: 'UP' },
+              { type: 'REDIS', status: 'DOWN' },
+              { type: 'ELASTICSEARCH', status: 'DOWN' },
+              { type: 'FILE_STORAGE', status: 'UP' },
+            ],
+          }),
+        }),
+      }),
+    );
+    const systemCard = card(content.kpiCards, 'system');
+
+    expect(systemCard.count).toBe('3건');
+    expect(systemCard.tone).toBe('danger');
+    expect(systemCard.description).toBe('점검 필요 · Redis · Elasticsearch');
+  });
+
+  it('"정상 시스템" KPI: 조회 실패면 에러 상태로 둔다', () => {
+    const onRetry = vi.fn();
+    const content = buildDeveloperDashboardContent(
+      BASE,
+      fullMetrics({ systemHealth: metric<SystemHealth>({ isError: true, onRetry }) }),
+    );
+    const systemCard = card(content.kpiCards, 'system');
+
+    expect(systemCard.loadState).toBe('error');
+    expect(systemCard.onRetry).toBe(onRetry);
   });
 
   it('조회 성공 시 4개 운영 KPI를 실데이터로 채운다', () => {
