@@ -127,7 +127,7 @@ describe('JobListPage', () => {
     expect(screen.getByRole('button', { name: '직무' })).toBeDisabled();
   });
 
-  it('"기업 유형"에서 공기업을 고르면 companyType으로 조회하고 URL에도 반영한다', () => {
+  it('"기업 유형"에서 공기업을 고르면 companyType으로 조회하고 URL에는 Enum 코드를 반영한다', () => {
     render(<JobListPage />);
 
     fireEvent.click(screen.getByRole('button', { name: '기업 유형' }));
@@ -136,7 +136,24 @@ describe('JobListPage', () => {
     expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ companyType: 'PUBLIC_ENTERPRISE' }),
     );
-    expect(lastReplacedParams().get('companyType')).toBe('공기업');
+    expect(lastReplacedParams().get('companyType')).toBe('PUBLIC_ENTERPRISE');
+  });
+
+  it('URL에 이미 companyType Enum 코드가 있으면 그대로 조회하고 버튼에는 한글 라벨을 보여준다', () => {
+    render(<JobListPage initialSearchParams={{ companyType: 'PUBLIC_ENTERPRISE' }} />);
+
+    expect(mockUseJobListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ companyType: 'PUBLIC_ENTERPRISE' }),
+    );
+    expect(screen.getByRole('button', { name: '공기업' })).toBeInTheDocument();
+  });
+
+  it('URL의 companyType 값이 알 수 없는 값이면 필터를 적용하지 않는다', () => {
+    render(<JobListPage initialSearchParams={{ companyType: '공기업' }} />);
+
+    expect(mockUseJobListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ companyType: undefined }),
+    );
   });
 
   it('"출처"에서 사람인을 고르면 sourceName(sourceCode)으로 조회하고 URL에도 sourceCode를 반영한다', () => {

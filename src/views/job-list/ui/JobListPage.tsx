@@ -3,11 +3,12 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { ADMIN_COMPANY_TYPE_LABEL, type AdminCompanyType } from '@/entities/company';
+import { ADMIN_COMPANY_TYPE_LABEL } from '@/entities/company';
 import {
   mapJobSummaryToListItem,
   useJobListQuery,
   type JobApplicationMethod,
+  type JobCompanyType,
   type PublicJobStatus,
 } from '@/entities/job';
 import { JobList, type FilterKey, type JobListStatus } from '@/widgets/job-list';
@@ -37,16 +38,18 @@ const STATUS_TO_PUBLIC_STATUS: Partial<Record<string, PublicJobStatus>> = {
 };
 
 /**
- * "기업 유형" 선택지(`entities/company`의 `ADMIN_COMPANY_TYPE_LABEL`) → `companyType`
- * 파라미터. 라벨이 안정적인 Enum 기반이라 "지원 유형"·"모집 상태"와 같은 방식(표시 라벨을
- * 그대로 선택 상태·URL에 저장)을 따른다(Issue #228).
+ * "기업 유형" 선택 상태·URL 쿼리에 저장된 값 → `companyType` 파라미터. 저장되는 값은 표시
+ * 라벨이 아니라 `CompanyType` Enum 코드(`PUBLIC_ENTERPRISE` 등)다 — 라벨
+ * (`ADMIN_COMPANY_TYPE_LABEL`)은 공식 문구가 정해지면 바뀔 값이라(Issue #121) 키로 쓰면
+ * 문구가 바뀌는 순간 이미 공유된 필터 URL이 조용히 무효화된다. "출처"가 표시 이름이 아니라
+ * `sourceCode`를 저장하는 것과 같은 이유다(PR #149 코드리뷰 반영). 표시용 라벨은
+ * `JobFilterBar`가 코드로 역조회한다. 유효하지 않은 값이면 필터를 적용하지 않는다.
  */
-const COMPANY_TYPE_TO_CODE: Partial<Record<string, AdminCompanyType>> = (
-  Object.entries(ADMIN_COMPANY_TYPE_LABEL) as [AdminCompanyType, string][]
-).reduce<Partial<Record<string, AdminCompanyType>>>((map, [code, label]) => {
-  map[label] = code;
-  return map;
-}, {});
+function readCompanyType(value: string | undefined): JobCompanyType | undefined {
+  return value !== undefined && value in ADMIN_COMPANY_TYPE_LABEL
+    ? (value as JobCompanyType)
+    : undefined;
+}
 
 export interface JobListSearchParams {
   q?: string;
@@ -89,8 +92,8 @@ interface JobListPageProps {
  * "출처"는 표시 이름이 아니라 `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 —
  * 이름은 관리자가 자유 입력하는 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만,
  * 안정적인 `sourceCode`는 그렇지 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149
- * 코드리뷰 반영). "기업 유형"은 `CompanyType` Enum처럼 안정적인 값이라 "지원 유형"·"모집
- * 상태"와 같은 방식(표시 라벨 저장)을 쓴다. "모집 상태"의 "마감 임박"은 별도 상태 값이 아니라
+ * 코드리뷰 반영). "기업 유형"도 같은 이유로 표시 라벨이 아니라 `CompanyType` Enum 코드를
+ * 선택 상태 · URL에 저장한다(`readCompanyType`). "모집 상태"의 "마감 임박"은 별도 상태 값이 아니라
  * `status: 'PUBLISHED'` + `sort: 'DEADLINE', direction: 'ASC'` 조합으로 연결된다(Issue #228).
  * "직무"만 서버에 구조화된 필드 자체가 없어 선택 UI만 동작하고 조회에는 반영되지 않는다
  * (`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
@@ -144,9 +147,7 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
   const isDeadlineSoonSelected = selectedFilters.status === '마감 임박';
   /** 선택 상태 · URL에 이미 `sourceCode`가 저장돼 있어 별도 조회 없이 그대로 쓸 수 있다(`JobFilterBar` 참고). */
   const sourceName = selectedFilters.source;
-  const companyType = selectedFilters.companyType
-    ? COMPANY_TYPE_TO_CODE[selectedFilters.companyType]
-    : undefined;
+  const companyType = readCompanyType(selectedFilters.companyType);
 
   /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 서버에 필드 자체가 없는 "직무"만 제외. */
   const activeFilterCount = [applicationMethod, status, sourceName, companyType].filter(
