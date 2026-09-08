@@ -6,6 +6,7 @@ import {
   useId,
   useRef,
   useState,
+  type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 
@@ -72,7 +73,9 @@ export function InquiryTypeSelect({
 
     if (!isOpen) return;
 
-    if (event.key === 'Home' || event.key === 'End') {
+    if (event.key === 'Tab') {
+      setIsOpen(false);
+    } else if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault();
       setActiveIndex(event.key === 'Home' ? 0 : options.length - 1);
     } else if (event.key === 'Enter' || event.key === ' ') {
@@ -102,8 +105,12 @@ export function InquiryTypeSelect({
     };
   }, [isOpen]);
 
+  const handleBlur = (event: ReactFocusEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
+  };
+
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" onBlur={handleBlur}>
       <button
         id={selectId}
         type="button"

@@ -4,24 +4,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { InquiryTypeSelect, type InquiryTypeOption } from './InquiryTypeSelect';
 
 const OPTIONS: readonly InquiryTypeOption[] = [
-  { label: '오류', value: 'ERROR' },
-  { label: '불편사항', value: 'INCONVENIENCE' },
-  { label: '기능 요청', value: 'FEATURE_REQUEST' },
-  { label: '기타', value: 'ETC' },
+  { label: 'Error', value: 'ERROR' },
+  { label: 'Inconvenience', value: 'INCONVENIENCE' },
+  { label: 'Feature request', value: 'FEATURE_REQUEST' },
+  { label: 'Etc', value: 'ETC' },
 ];
 
 function renderSelect(onChange = vi.fn()) {
   render(
     <>
-      <label htmlFor="inquiry-type">문의 유형</label>
+      <label htmlFor="inquiry-type">Inquiry type</label>
       <InquiryTypeSelect id="inquiry-type" value="" options={OPTIONS} onChange={onChange} />
     </>,
   );
-  return { combobox: screen.getByRole('combobox', { name: '문의 유형' }), onChange };
+  return { combobox: screen.getByRole('combobox', { name: 'Inquiry type' }), onChange };
 }
 
 describe('InquiryTypeSelect', () => {
-  it('방향키와 Enter로 활성 옵션을 선택한다', () => {
+  it('selects the active option with arrow keys and Enter', () => {
     const { combobox, onChange } = renderSelect();
 
     fireEvent.keyDown(combobox, { key: 'ArrowDown' });
@@ -35,7 +35,7 @@ describe('InquiryTypeSelect', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('Home과 End로 처음과 마지막 옵션을 이동한다', () => {
+  it('moves to the first and last options with Home and End', () => {
     const { combobox } = renderSelect();
     fireEvent.click(combobox);
 
@@ -46,7 +46,7 @@ describe('InquiryTypeSelect', () => {
     expect(combobox).toHaveAttribute('aria-activedescendant', 'inquiry-type-listbox-option-0');
   });
 
-  it('Escape로 목록을 닫고 combobox 포커스를 유지한다', () => {
+  it('closes the listbox with Escape and keeps combobox focus', () => {
     const { combobox } = renderSelect();
     combobox.focus();
     fireEvent.click(combobox);
@@ -54,5 +54,33 @@ describe('InquiryTypeSelect', () => {
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(combobox).toHaveFocus();
+  });
+
+  it('closes the listbox when Tab leaves the combobox', () => {
+    const { combobox } = renderSelect();
+    fireEvent.click(combobox);
+
+    fireEvent.keyDown(combobox, { key: 'Tab' });
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(combobox).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes the listbox when focus moves outside the component', () => {
+    render(
+      <>
+        <label htmlFor="inquiry-type">Inquiry type</label>
+        <InquiryTypeSelect id="inquiry-type" value="" options={OPTIONS} onChange={vi.fn()} />
+        <input aria-label="Title" />
+      </>,
+    );
+    const combobox = screen.getByRole('combobox', { name: 'Inquiry type' });
+    const titleInput = screen.getByLabelText('Title');
+    fireEvent.click(combobox);
+
+    fireEvent.blur(combobox, { relatedTarget: titleInput });
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(combobox).toHaveAttribute('aria-expanded', 'false');
   });
 });
