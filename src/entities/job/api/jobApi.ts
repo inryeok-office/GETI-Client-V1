@@ -10,6 +10,7 @@ import type {
   JobCreatePayload,
   JobDetail,
   JobPostingType,
+  JobRole,
   JobSearchResponse,
   JobSort,
   JobSortDirection,
@@ -28,6 +29,8 @@ export interface FetchJobListParams {
   status?: PublicJobStatus;
   sourceName?: string;
   companyType?: JobCompanyType;
+  /** 직무 분류 필터(GETI-Server-V1 #326). */
+  jobRole?: JobRole;
   targetGrade?: number;
   /** true면 마감된 공고를 제외한다("마감 공고 포함" 토글이 꺼진 상태). */
   openOnly?: boolean;

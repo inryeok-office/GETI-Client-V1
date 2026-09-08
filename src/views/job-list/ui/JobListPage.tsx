@@ -5,10 +5,12 @@ import { useEffect, useState } from 'react';
 
 import { ADMIN_COMPANY_TYPE_LABEL } from '@/entities/company';
 import {
+  JOB_ROLE_LABEL,
   mapJobSummaryToListItem,
   useJobListQuery,
   type JobApplicationMethod,
   type JobCompanyType,
+  type JobRole,
   type PublicJobStatus,
 } from '@/entities/job';
 import { JobList, type FilterKey, type JobListStatus } from '@/widgets/job-list';
@@ -51,6 +53,14 @@ function readCompanyType(value: string | undefined): JobCompanyType | undefined 
     : undefined;
 }
 
+/**
+ * "직무" 선택 상태·URL 값 → `jobRole` 파라미터. "기업 유형"과 같은 이유로 저장되는 값은 표시
+ * 라벨이 아니라 `JobRole` Enum 코드다(GETI-Server-V1 #326). 유효하지 않은 값이면 필터를 적용하지 않는다.
+ */
+function readJobRole(value: string | undefined): JobRole | undefined {
+  return value !== undefined && value in JOB_ROLE_LABEL ? (value as JobRole) : undefined;
+}
+
 export interface JobListSearchParams {
   q?: string;
   page?: string;
@@ -87,16 +97,15 @@ interface JobListPageProps {
  * 채용 공고 목록 화면. `GET /api/v1/jobs`(entities/job의 `useJobListQuery`)로 실제 데이터를
  * 불러온다(Issue #122). 인증이 필요한 API라 다른 어드민 화면과 동일하게 클라이언트에서 조회한다.
  *
- * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "모집 상태"(→ `status`) ·
- * "출처"(→ `sourceName`) · "기업 유형"(→ `companyType`, Issue #228)이 실제 조회에 연결돼 있다.
- * "출처"는 표시 이름이 아니라 `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 —
- * 이름은 관리자가 자유 입력하는 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만,
- * 안정적인 `sourceCode`는 그렇지 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149
- * 코드리뷰 반영). "기업 유형"도 같은 이유로 표시 라벨이 아니라 `CompanyType` Enum 코드를
- * 선택 상태 · URL에 저장한다(`readCompanyType`). "모집 상태"의 "마감 임박"은 별도 상태 값이 아니라
+ * 검색어 · "마감 공고 포함" 토글 · "지원 유형"(→ `applicationMethod`) · "직무"(→ `jobRole`,
+ * GETI-Server-V1 #326) · "모집 상태"(→ `status`) · "출처"(→ `sourceName`) · "기업 유형"
+ * (→ `companyType`, Issue #228)이 모두 실제 조회에 연결돼 있다. "출처"는 표시 이름이 아니라
+ * `sourceCode`(예: "SARAMIN")를 선택 상태 · URL에 그대로 저장한다 — 이름은 관리자가 자유 입력하는
+ * 값이라 나중에 바뀌면 표시 이름 기반 URL은 조용히 무효화되지만, 안정적인 `sourceCode`는 그렇지
+ * 않다(`JobFilterBar` 참고, GETI-Server-V1 #222, PR #149 코드리뷰 반영). "직무" · "기업 유형"도
+ * 같은 이유로 표시 라벨이 아니라 `JobRole` · `CompanyType` Enum 코드를 선택 상태 · URL에
+ * 저장한다(`readJobRole` · `readCompanyType`). "모집 상태"의 "마감 임박"은 별도 상태 값이 아니라
  * `status: 'PUBLISHED'` + `sort: 'DEADLINE', direction: 'ASC'` 조합으로 연결된다(Issue #228).
- * "직무"만 서버에 구조화된 필드 자체가 없어 선택 UI만 동작하고 조회에는 반영되지 않는다
- * (`JobFilterBar` 참고, PR #132 코드리뷰 참고 사항으로 남김).
  *
  * 검색 · 필터 · 페이지 상태는 새로고침 · 뒤로가기에도 유지되도록 URL 쿼리스트링과 동기화한다
  * (새 라이브러리 없이 Next `router`/Server Component `searchParams` 범위에서 처리, PR #132
@@ -148,9 +157,10 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
   /** 선택 상태 · URL에 이미 `sourceCode`가 저장돼 있어 별도 조회 없이 그대로 쓸 수 있다(`JobFilterBar` 참고). */
   const sourceName = selectedFilters.source;
   const companyType = readCompanyType(selectedFilters.companyType);
+  const jobRole = readJobRole(selectedFilters.job);
 
-  /** 실제 목록 조회 파라미터로 변환된 필터만 센다 — 서버에 필드 자체가 없는 "직무"만 제외. */
-  const activeFilterCount = [applicationMethod, status, sourceName, companyType].filter(
+  /** 실제 목록 조회 파라미터로 변환된 필터만 센다. */
+  const activeFilterCount = [applicationMethod, status, sourceName, companyType, jobRole].filter(
     Boolean,
   ).length;
 
@@ -187,6 +197,7 @@ export function JobListPage({ initialSearchParams }: JobListPageProps) {
     status,
     sourceName,
     companyType,
+    jobRole,
     sort: isDeadlineSoonSelected ? 'DEADLINE' : undefined,
     direction: isDeadlineSoonSelected ? 'ASC' : undefined,
   });

@@ -38,6 +38,7 @@ export {
 } from './model/adminJobLabels';
 export { buildJobSourceFilterOptions } from './model/buildJobSourceFilterOptions';
 export type { JobSourceFilterOption } from './model/buildJobSourceFilterOptions';
+export { JOB_ROLE_LABEL } from './model/jobRoleLabel';
 
 export type {
   AdminJobDetail,
@@ -50,6 +51,7 @@ export type {
   JobApplicationMethod,
   PublicJobStatus,
   JobCompanyType,
+  JobRole,
   JobSort,
   JobSortDirection,
   JobCompanySummary,
