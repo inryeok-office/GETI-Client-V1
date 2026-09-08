@@ -50,6 +50,9 @@ function fillIdentity() {
   fireEvent.change(screen.getByRole('combobox', { name: /지원 방식/ }), {
     target: { value: 'EXTERNAL' },
   });
+  fireEvent.change(screen.getByRole('combobox', { name: /직무/ }), {
+    target: { value: 'BACKEND' },
+  });
 }
 
 describe('AdminJobCreatePage', () => {
@@ -73,7 +76,12 @@ describe('AdminJobCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: '임시저장' }));
 
     expect(mockMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'DRAFT', companyId: 1, title: '프론트엔드 채용' }),
+      expect.objectContaining({
+        status: 'DRAFT',
+        companyId: 1,
+        jobRole: 'BACKEND',
+        title: '프론트엔드 채용',
+      }),
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });

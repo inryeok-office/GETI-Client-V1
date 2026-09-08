@@ -17,6 +17,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     applicationMethod: 'EXTERNAL',
     status: 'PUBLISHED',
     company: { companyId: 7, name: '플로우테크', logoUrl: null },
+    jobRole: 'FRONTEND',
     content: '## 모집\n- FE',
     externalUrl: 'https://example.com/apply',
     startDate: '2026-08-01T00:00:00',
@@ -53,6 +54,7 @@ describe('toJobFormValues', () => {
       companyId: '7',
       postingType: 'MOU',
       applicationMethod: 'EXTERNAL',
+      jobRole: 'FRONTEND',
       title: '프론트엔드 개발자 채용',
       content: '## 모집\n- FE',
       externalUrl: 'https://example.com/apply',
@@ -66,10 +68,11 @@ describe('toJobFormValues', () => {
     });
   });
 
-  it('null 필드는 빈 문자열/false로 채운다', () => {
+  it('null 필드는 빈 문자열/false로 채운다(미분류 공고는 jobRole도 빈 문자열)', () => {
     const values = toJobFormValues(
       detail({
         company: null,
+        jobRole: null,
         content: null,
         externalUrl: null,
         startDate: null,
@@ -84,6 +87,7 @@ describe('toJobFormValues', () => {
 
     expect(values).toMatchObject({
       companyId: '',
+      jobRole: '',
       content: '',
       externalUrl: '',
       startDate: '',
@@ -101,6 +105,7 @@ describe('toJobCreatePayload', () => {
       companyId: '7',
       postingType: 'GENERAL' as const,
       applicationMethod: 'EXTERNAL' as const,
+      jobRole: 'BACKEND' as const,
       title: '  새 공고  ',
       content: '본문',
       startDate: '2026-09-01',
@@ -113,6 +118,7 @@ describe('toJobCreatePayload', () => {
       companyId: 7,
       postingType: 'GENERAL',
       applicationMethod: 'EXTERNAL',
+      jobRole: 'BACKEND',
       title: '새 공고',
       status: 'PUBLISHED',
       content: '본문',
@@ -134,11 +140,13 @@ describe('toJobCreatePayload', () => {
         companyId: '1',
         postingType: 'MOU',
         applicationMethod: 'INTERNAL',
+        jobRole: 'ETC',
         title: 'x',
       },
       'DRAFT',
     );
 
+    expect(payload.jobRole).toBe('ETC');
     expect(payload.content).toBeUndefined();
     expect(payload.startDate).toBeUndefined();
     expect(payload.targetGrade).toBeUndefined();
@@ -158,6 +166,7 @@ describe('toJobUpdatePayload', () => {
 
     expect(payload).toEqual({
       title: '수정 제목',
+      jobRole: undefined,
       content: undefined,
       externalUrl: undefined,
       startDate: undefined,
