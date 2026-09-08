@@ -44,6 +44,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     title: '백엔드 개발자 채용',
     postingType: 'MOU',
     applicationMethod: 'EXTERNAL',
+    jobRole: 'FRONTEND',
     status: 'PUBLISHED',
     company: { companyId: 7, name: '네오스튜디오', logoUrl: null },
     content: '본문',

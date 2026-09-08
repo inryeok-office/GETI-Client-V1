@@ -239,6 +239,8 @@ export interface JobDetail {
   applicationMethod: JobApplicationMethod;
   status: PublicJobStatus;
   company: JobCompanySummary | null;
+  /** 직무 분류. 미분류 외부 공고는 null(GETI-Server-V1 #326). */
+  jobRole: JobRole | null;
   content: string | null;
   /** EXTERNAL일 때만 값이 있을 수 있다. */
   externalUrl: string | null;
@@ -282,6 +284,8 @@ export interface JobCreatePayload {
   companyId: number;
   postingType: JobPostingType;
   applicationMethod: JobApplicationMethod;
+  /** 관리자 수동 공고 등록 시 필수(GETI-Server-V1 #326). 누락하면 서버가 400으로 거부한다. */
+  jobRole: JobRole;
   title: string;
   status: 'DRAFT' | 'PUBLISHED';
   content?: string | null;
@@ -302,6 +306,7 @@ export interface JobCreatePayload {
  */
 export interface JobUpdatePayload {
   title?: string;
+  jobRole?: JobRole;
   content?: string | null;
   externalUrl?: string | null;
   startDate?: string | null;
