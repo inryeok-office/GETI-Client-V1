@@ -1,10 +1,11 @@
 import { formatDeliveryDateTimeShort, type DiscordDelivery } from '@/entities/discord-delivery';
 import type { NotificationApiItem } from '@/entities/notification';
 import type { OperationJob } from '@/entities/scheduler';
+import { SYSTEM_HEALTH_COMPONENT_LABEL, type SystemHealth } from '@/entities/system-health';
 
-import { applyCountMetric, type DashboardMetric } from './dashboardMetric';
+import { applyCountMetric, formatCount, type DashboardMetric } from './dashboardMetric';
 import { resolveNotificationFeed } from './mapDashboardNotification';
-import type { DashboardContent, DashboardTableRow } from './types';
+import type { DashboardContent, DashboardTableRow, KpiCardData } from './types';
 
 export type { DashboardMetric } from './dashboardMetric';
 
@@ -23,6 +24,8 @@ export interface DeveloperDashboardMetrics {
   collectorFailureCount: DashboardMetric<number>;
   /** 미처리(미답변) 오류 유형 문의 건수. */
   errorInquiries: DashboardMetric<number>;
+  /** 핵심 인프라 5종의 현재 상태(`GET /admin/system/health`). */
+  systemHealth: DashboardMetric<SystemHealth>;
   /** 알림 사이드바에 표시할 로그인 사용자 알림 목록. */
   notifications: DashboardMetric<NotificationApiItem[]>;
 }
@@ -95,9 +98,45 @@ function isFeedPending(metric: DashboardMetric<unknown>): boolean {
 }
 
 /**
+ * "정상 시스템" KPI를 `GET /admin/system/health` 결과로 채운다. 건수는 `healthyCount`(N건),
+ * 전부 정상이면 success 톤·"전체 N개 정상", 하나라도 내려가면 danger 톤·다운된 구성요소 표시.
+ */
+function applySystemHealthMetric(
+  card: KpiCardData,
+  metric: DashboardMetric<SystemHealth>,
+): KpiCardData {
+  if (metric.isError) {
+    return { ...card, loadState: 'error', onRetry: metric.onRetry, count: '' };
+  }
+  if (metric.isLoading || metric.data === undefined) {
+    return { ...card, loadState: 'loading', count: '' };
+  }
+
+  const health = metric.data;
+  if (health.status === 'HEALTHY') {
+    return {
+      ...card,
+      tone: 'success',
+      count: formatCount(health.healthyCount),
+      description: `전체 ${health.totalCount}개 정상`,
+    };
+  }
+
+  const downLabels = health.systems
+    .filter((system) => system.status === 'DOWN')
+    .map((system) => SYSTEM_HEALTH_COMPONENT_LABEL[system.type]);
+  return {
+    ...card,
+    tone: 'danger',
+    count: formatCount(health.healthyCount),
+    description: `점검 필요 · ${downLabels.join(' · ')}`,
+  };
+}
+
+/**
  * Mock `DASHBOARD_CONTENT.developer`를 base로, 연동 가능한 운영 지표를 실데이터로 치환한다
- * (Issue #183). "정상 시스템" KPI는 판정 기준·API가 없어 "미지원"으로 둔다. 알림 사이드바는
- * activity-feed API가 없어 Mock 유지.
+ * (Issue #183). "정상 시스템" KPI는 `GET /admin/system/health`로 채운다(Issue #235). 알림
+ * 사이드바는 로그인 사용자 개인 알림(`GET /notifications`)으로 채운다(Issue #199).
  */
 export function buildDeveloperDashboardContent(
   base: DashboardContent,
@@ -120,7 +159,7 @@ export function buildDeveloperDashboardContent(
       case 'inquiries':
         return applyCountMetric(card, metrics.errorInquiries);
       case 'system':
-        return { ...card, unsupported: true };
+        return applySystemHealthMetric(card, metrics.systemHealth);
       default:
         return card;
     }

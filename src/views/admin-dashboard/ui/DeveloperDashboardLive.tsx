@@ -4,6 +4,7 @@ import { useDiscordDeliveryListQuery } from '@/entities/discord-delivery';
 import { useAdminInquiryListQuery } from '@/entities/inquiry';
 import { useNotificationListQuery } from '@/entities/notification';
 import { useOperationJobsQuery } from '@/entities/scheduler';
+import { useSystemHealthQuery } from '@/entities/system-health';
 import type { AdminNavSection } from '@/widgets/admin-navigation';
 
 import { buildDeveloperDashboardContent } from '../model/buildDeveloperDashboardContent';
@@ -23,7 +24,8 @@ interface DeveloperDashboardLiveProps {
 
 /**
  * 개발자 대시보드(`?variant=developer`)의 실데이터 컨테이너. `AdminDashboardLive`와 같은 패턴
- * (Issue #183). "정상 시스템" KPI와 알림 사이드바는 대응 API가 없어 Mock을 base로 둔다.
+ * (Issue #183). "정상 시스템" KPI는 `GET /admin/system/health`(Issue #235), 알림 사이드바는
+ * `GET /notifications`(Issue #199)로 채운다.
  */
 export function DeveloperDashboardLive({
   navSections,
@@ -41,6 +43,7 @@ export function DeveloperDashboardLive({
     answered: false,
     size: 1,
   });
+  const systemHealthQuery = useSystemHealthQuery();
   const notificationsQuery = useNotificationListQuery({ size: NOTIFICATION_FEED_SIZE });
 
   const content = buildDeveloperDashboardContent(DASHBOARD_CONTENT.developer, {
@@ -57,6 +60,7 @@ export function DeveloperDashboardLive({
       (list) => list.content[0]?.failureCount ?? 0,
     ),
     errorInquiries: toMetric(errorInquiriesQuery, (list) => list.totalElements),
+    systemHealth: toMetric(systemHealthQuery, (health) => health),
     notifications: toMetric(notificationsQuery, (list) => list.content),
   });
 
