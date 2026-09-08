@@ -28,7 +28,7 @@ export function InquiryPagination({ basePath, currentPage, totalPages }: Inquiry
         page === 'ellipsis' ? (
           <span
             key={`ellipsis-${index}`}
-            className="flex size-[36px] items-center justify-center text-[14px] leading-[1.5] font-bold tracking-[-0.14px] text-[#525252]"
+            className="flex size-[36px] items-center justify-center text-[14px] leading-[1.5] font-bold text-[#525252]"
           >
             …
           </span>
@@ -37,7 +37,7 @@ export function InquiryPagination({ basePath, currentPage, totalPages }: Inquiry
             key={page}
             href={hrefFor(page)}
             aria-current={page === currentPage ? 'page' : undefined}
-            className={`flex size-[36px] items-center justify-center rounded-[8px] text-[14px] leading-[1.5] font-bold tracking-[-0.14px] ${
+            className={`flex size-[36px] items-center justify-center rounded-[8px] text-[14px] leading-[1.5] font-bold ${
               page === currentPage ? 'bg-[#17627a] text-white' : 'text-[#111]'
             }`}
           >
