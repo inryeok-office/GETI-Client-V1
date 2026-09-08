@@ -121,10 +121,33 @@ describe('JobListPage', () => {
     expect(lastReplacedParams().get('status')).toBe('마감 임박');
   });
 
-  it('"직무" 버튼은 비활성화되어 있다(서버에 대응하는 필드가 없음)', () => {
+  it('"직무"에서 백엔드 개발을 고르면 jobRole로 조회하고 URL에는 Enum 코드를 반영한다', () => {
     render(<JobListPage />);
 
-    expect(screen.getByRole('button', { name: '직무' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '직무' }));
+    fireEvent.click(screen.getByRole('button', { name: '백엔드 개발' }));
+
+    expect(mockUseJobListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ jobRole: 'BACKEND' }),
+    );
+    expect(lastReplacedParams().get('job')).toBe('BACKEND');
+  });
+
+  it('URL에 이미 jobRole Enum 코드가 있으면 그대로 조회하고 버튼에는 한글 라벨을 보여준다', () => {
+    render(<JobListPage initialSearchParams={{ job: 'CLOUD_DEVOPS' }} />);
+
+    expect(mockUseJobListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ jobRole: 'CLOUD_DEVOPS' }),
+    );
+    expect(screen.getByRole('button', { name: '클라우드·DevOps' })).toBeInTheDocument();
+  });
+
+  it('URL의 job 값이 알 수 없는 값이면 필터를 적용하지 않는다', () => {
+    render(<JobListPage initialSearchParams={{ job: '백엔드 개발' }} />);
+
+    expect(mockUseJobListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ jobRole: undefined }),
+    );
   });
 
   it('"기업 유형"에서 공기업을 고르면 companyType으로 조회하고 URL에는 Enum 코드를 반영한다', () => {
