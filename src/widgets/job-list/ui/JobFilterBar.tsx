@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { ADMIN_COMPANY_TYPE_LABEL } from '@/entities/company';
-import { buildJobSourceFilterOptions, useJobSourcesQuery } from '@/entities/job';
+import { buildJobSourceFilterOptions, JOB_ROLE_LABEL, useJobSourcesQuery } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
 
 export type FilterKey = 'applyType' | 'job' | 'companyType' | 'source' | 'status';
@@ -19,43 +19,21 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 /**
  * 드롭다운 선택지. Figma가 캡처한 5개 드롭다운(지원 유형 1222:14465 · 직무 1222:14535 ·
  * 기업 유형 1222:14502 · 출처 1222:14569 · 모집상태 1222:14584) 중 "지원 유형" · "모집 상태"는
- * Figma 옵션을 그대로 옮겼다. "전체"를 선택하면 해당 필터를 해제한 것으로 본다(직무는 "전체"가
- * 없어 해제할 수 없다). "출처"는 `GET /api/v1/job-sources`(useJobSourcesQuery)로 실제 목록을
- * 받아 채우므로 여기 없다.
+ * Figma 옵션을 그대로 옮겼다. "전체"를 선택하면 해당 필터를 해제한 것으로 본다(직무는 Figma에
+ * "전체"가 없어 이미 선택한 옵션을 다시 눌러 해제한다). "출처"는 `GET /api/v1/job-sources`
+ * (useJobSourcesQuery)로 실제 목록을 받아 채우므로 여기 없다.
  *
- * "기업 유형"은 Figma 초안 라벨(대기업 · 중견 · 중소 · 스타트업)이 백엔드 `CompanyType` Enum과
- * 대응하지 않아, 기업 관리 화면에서 같은 문제를 이미 확정한 라벨(Issue #156,
- * `entities/company`의 `ADMIN_COMPANY_TYPE_LABEL`)을 표시 문구로 재사용한다(Issue #228).
- * 다만 옵션·선택 상태에는 라벨이 아니라 Enum 코드를 쓰고 표시할 때만 이 표로 역조회한다
- * — "출처"와 같은 이유(PR #149, 아래 `toOptionLabel` 참고).
+ * "직무"(→ `jobRole`, GETI-Server-V1 #326) · "기업 유형"(→ `companyType`)은 백엔드 Enum과
+ * 대응한다. 옵션·선택 상태에는 표시 문구가 아니라 Enum 코드를 쓰고, 표시할 때만 라벨 표
+ * (`entities/job`의 `JOB_ROLE_LABEL`, `entities/company`의 `ADMIN_COMPANY_TYPE_LABEL`)로
+ * 역조회한다 — "출처"와 같은 이유(PR #149, 아래 `toOptionLabel` 참고).
  */
 const DROPDOWN_OPTIONS: Record<Exclude<FilterKey, 'source'>, string[]> = {
   applyType: ['전체', '외부 지원', '학교 지원'],
-  job: [
-    '백엔드 개발',
-    '프론트엔드 개발',
-    '풀스택 개발',
-    '모바일 앱 개발',
-    'AI',
-    '데이터',
-    '임베디드·IoT',
-    '클라우드·DevOps',
-    '보안',
-    'UX/UI 디자이너',
-    '기타',
-  ],
+  job: Object.keys(JOB_ROLE_LABEL),
   companyType: ['전체', ...Object.keys(ADMIN_COMPANY_TYPE_LABEL)],
   status: ['전체', '모집 중', '마감 임박', '마감'],
 };
-
-/**
- * 실제 목록 조회에 연결되지 않은 필터. 버튼 자체를 비활성화해 클릭해도 선택되지 않게 한다 —
- * 예전에는 선택은 되지만 조회에는 반영되지 않아, 사용자에게는 필터가 적용된 것처럼 보이고
- * 결과는 바뀌지 않는 문제가 있었다(PR #132 코드리뷰 반영). "출처"는 GETI-Server-V1 #222로
- * `sourceCode`가 노출되면서, "기업 유형"은 `companyType` 파라미터가 이미 있다는 걸 확인하면서
- * (Issue #228) 여기서 빠졌다. "직무"만 서버에 구조화된 필드 자체가 없어 여전히 막아 둔다.
- */
-const UNSUPPORTED_FILTERS: FilterKey[] = ['job'];
 
 interface JobFilterSectionProps {
   /** 필터 적용 배지 + 초기화 버튼은 정상 목록(success) 상태일 때만 보여준다. */
@@ -70,28 +48,26 @@ interface JobFilterSectionProps {
   selected: Partial<Record<FilterKey, string>>;
   onSelectedChange: (next: Partial<Record<FilterKey, string>>) => void;
   /**
-   * 배지에 표시할 "적용 중" 필터 개수. `selected`에 값이 있어도 실제 목록 조회에 반영되지
-   * 않는 선택("직무")은 세지 않는다 — 적용되지 않는데 적용된 것처럼 보이면 안 된다(PR #132
-   * 코드리뷰 반영). 부모가 실제 쿼리 파라미터 매핑 결과를 기준으로 계산해서 넘긴다.
+   * 배지에 표시할 "적용 중" 필터 개수. `selected`에 값이 있어도 실제 쿼리 파라미터로 변환되지
+   * 않은 선택(알 수 없는 URL 값 등)은 세지 않는다 — 적용되지 않는데 적용된 것처럼 보이면 안
+   * 된다(PR #132 코드리뷰 반영). 부모가 실제 매핑 결과를 기준으로 계산해서 넘긴다.
    */
   activeFilterCount: number;
 }
 
 /**
  * 채용 공고 목록 필터 바 + 필터 적용 배지.
- * 검색창과 "마감 공고 포함" 토글, "지원 유형"(→ `applicationMethod`) · "모집 상태"(→
- * `status`) · "출처"(→ `sourceName`, `useJobSourcesQuery`로 `GET /api/v1/job-sources`의
- * `sourceCode`를 받아온다, GETI-Server-V1 #222) · "기업 유형"(→ `companyType`, Issue #228)은
- * 실제 목록 조회에 연결돼 있다(Issue #122·#148, PR #132 코드리뷰 반영). "모집 상태"의
- * "마감 임박"도 별도 서버 상태 값 없이 `status: PUBLISHED` + 마감일 오름차순 정렬 조합으로
- * 연결된다(부모 `JobListPage` 참고, Issue #228). "직무"만 서버에 구조화된 필드 자체가 없어
- * 버튼을 비활성화해 선택할 수 없다 — 선택 자체가 상태 · URL에 반영되지 않으므로 부모가 넘기는
- * `activeFilterCount`에도 포함되지 않는다(PR #132 코드리뷰 반영).
+ * 검색창과 "마감 공고 포함" 토글, "지원 유형"(→ `applicationMethod`) · "직무"(→ `jobRole`,
+ * GETI-Server-V1 #326) · "모집 상태"(→ `status`) · "출처"(→ `sourceName`, `useJobSourcesQuery`로
+ * `GET /api/v1/job-sources`의 `sourceCode`를 받아온다, GETI-Server-V1 #222) · "기업 유형"
+ * (→ `companyType`, Issue #228)이 모두 실제 목록 조회에 연결돼 있다(Issue #122·#148, PR #132
+ * 코드리뷰 반영). "모집 상태"의 "마감 임박"도 별도 서버 상태 값 없이 `status: PUBLISHED` +
+ * 마감일 오름차순 정렬 조합으로 연결된다(부모 `JobListPage` 참고, Issue #228).
  *
- * "출처" · "기업 유형"은 다른 드롭다운과 달리 선택 상태 · URL에 표시 문구가 아니라 안정적인
- * 코드(`sourceCode` / `CompanyType` Enum)를 저장한다 — 표시 문구는 나중에 바뀔 수 있어
- * 문구 기반 URL은 공유된 링크를 조용히 무효화한다(PR #149 코드리뷰 반영). 그래서 이 둘은
- * 버튼 라벨 · 드롭다운에 보여줄 표시 문구를 코드로 역조회한다(`toOptionLabel`).
+ * "출처" · "직무" · "기업 유형"은 다른 드롭다운과 달리 선택 상태 · URL에 표시 문구가 아니라
+ * 안정적인 코드(`sourceCode` / `JobRole` / `CompanyType` Enum)를 저장한다 — 표시 문구는 나중에
+ * 바뀔 수 있어 문구 기반 URL은 공유된 링크를 조용히 무효화한다(PR #149 코드리뷰 반영). 그래서
+ * 이 셋은 버튼 라벨 · 드롭다운에 보여줄 표시 문구를 코드로 역조회한다(`toOptionLabel`).
  */
 export function JobFilterSection({
   showActiveFilters,
@@ -114,6 +90,7 @@ export function JobFilterSection({
   const optionLabelByKey: Partial<Record<FilterKey, Record<string, string>>> = {
     source: sourceCodeToLabel,
     companyType: ADMIN_COMPANY_TYPE_LABEL,
+    job: JOB_ROLE_LABEL,
   };
   const toOptionLabel = (key: FilterKey, option: string) =>
     optionLabelByKey[key]?.[option] ?? option;
@@ -175,8 +152,7 @@ export function JobFilterSection({
             ? sourceFilterOptions.map((option) => option.sourceCode)
             : DROPDOWN_OPTIONS[filter.key as Exclude<FilterKey, 'source'>];
           const isFilterDisabled =
-            UNSUPPORTED_FILTERS.includes(filter.key) ||
-            (isSource && !isSourceError && (isSourceLoading || options.length === 0));
+            isSource && !isSourceError && (isSourceLoading || options.length === 0);
           const selectedLabel = selectedOption
             ? toOptionLabel(filter.key, selectedOption)
             : undefined;

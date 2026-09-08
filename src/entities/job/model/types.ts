@@ -37,6 +37,23 @@ export type JobCompanyType =
   'ETC' | 'FOREIGN' | 'GENERAL' | 'PUBLIC_ENTERPRISE' | 'PUBLIC_INSTITUTION';
 
 /**
+ * 공고 직무 분류 필터(`GET /api/v1/jobs?jobRole=`, GETI-Server-V1 #326). `JobSummary`·상세 응답에도
+ * 내려오며 미분류 외부 공고는 `null`이다. 표시용 한글 라벨은 `JOB_ROLE_LABEL`.
+ */
+export type JobRole =
+  | 'AI'
+  | 'BACKEND'
+  | 'CLOUD_DEVOPS'
+  | 'DATA'
+  | 'EMBEDDED_IOT'
+  | 'ETC'
+  | 'FRONTEND'
+  | 'FULLSTACK'
+  | 'MOBILE'
+  | 'SECURITY'
+  | 'UX_UI_DESIGN';
+
+/**
  * 관리자 상세(`GET /api/v1/admin/jobs/{jobId}`)가 반환하는 전체 상태(`JobStatus`).
  * 공개 목록·상세와 달리 임시저장·삭제 공고까지 조회된다.
  */
