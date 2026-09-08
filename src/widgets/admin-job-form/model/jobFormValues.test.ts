@@ -25,6 +25,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     capacity: 2,
     location: '서울특별시 중구',
     employmentType: '인턴',
+    sourceName: null,
     firstComeServed: true,
     viewCount: 0,
     publishedAt: '2026-08-01T09:00:00',
