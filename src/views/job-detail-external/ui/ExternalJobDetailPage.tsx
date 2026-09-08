@@ -7,12 +7,15 @@ import {
   ApplyInfoBox,
   AttachmentList,
   BookmarkButton,
+  JOB_APPLICATION_METHOD_LABEL,
   JobDetailContent,
   JobDetailHeader,
   OrganizationInfoBox,
   formatDateOnly,
   formatDeadline,
+  resolveJobSourceName,
   useJobDetailQuery,
+  useJobSourcesQuery,
   type ApplyInfoRow,
 } from '@/entities/job';
 import { Icon } from '@/shared/ui/icon';
@@ -24,14 +27,20 @@ interface ExternalJobDetailPageProps {
 
 /**
  * 외부 공고 상세 화면. `GET /api/v1/jobs/{jobId}`(entities/job의 `useJobDetailQuery`)로 실제
- * 데이터를 불러온다(Issue #122). "지원 유형" · "공고 출처" 행은 응답에 대응 필드가 없어 뺐다
- * (`sourceName`은 검색 필터로만 쓰이고 응답 필드로는 노출되지 않는다).
+ * 데이터를 불러온다(Issue #122). "지원 유형"은 `applicationMethod`, "공고 출처"는 `sourceName`
+ * (안정 코드)을 `GET /api/v1/job-sources` 목록으로 역조회해 표시명으로 바꿔 보여준다
+ * (Issue #240). `sourceName`이 null인 직접 등록 공고는 "공고 출처" 행을 감춘다.
  * 간격 · 색상은 Figma(node 500:3112)의 값을 그대로 옮겼다.
  */
 export function ExternalJobDetailPage({ jobId }: ExternalJobDetailPageProps) {
   const parsedJobId = Number(jobId);
   const detailQuery = useJobDetailQuery(Number.isInteger(parsedJobId) ? parsedJobId : null);
   const job = detailQuery.data;
+  /**
+   * "공고 출처" 표시명 역조회용. 실패 · 로딩 중이면 빈 배열이라 `resolveJobSourceName`이 코드
+   * 원문을 그대로 돌려준다 — 이 행 때문에 페이지 전체를 로딩/에러로 막지 않는다.
+   */
+  const jobSourcesQuery = useJobSourcesQuery();
 
   if (detailQuery.isLoading) {
     return (
@@ -98,6 +107,15 @@ export function ExternalJobDetailPage({ jobId }: ExternalJobDetailPageProps) {
       ),
       valueClassName: isClosed ? '' : 'font-semibold text-amber-500',
     },
+    { label: '지원 유형', value: JOB_APPLICATION_METHOD_LABEL[job.applicationMethod] },
+    ...(job.sourceName
+      ? [
+          {
+            label: '공고 출처',
+            value: resolveJobSourceName(job.sourceName, jobSourcesQuery.data ?? []),
+          },
+        ]
+      : []),
     {
       label: '원문 URL',
       value: job.externalUrl ? (
