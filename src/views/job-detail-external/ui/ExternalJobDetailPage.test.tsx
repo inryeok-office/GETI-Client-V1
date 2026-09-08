@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { JobDetail } from '@/entities/job';
+import type { JobDetail, JobSourceOption } from '@/entities/job';
 
 import { ExternalJobDetailPage } from './ExternalJobDetailPage';
 
@@ -18,13 +18,18 @@ function renderPage(jobId: string) {
   );
 }
 
-const { mockUseJobDetailQuery } = vi.hoisted(() => ({
+const { mockUseJobDetailQuery, mockUseJobSourcesQuery } = vi.hoisted(() => ({
   mockUseJobDetailQuery: vi.fn(),
+  mockUseJobSourcesQuery: vi.fn(),
 }));
 
 vi.mock('@/entities/job', async () => {
   const actual = await vi.importActual<typeof import('@/entities/job')>('@/entities/job');
-  return { ...actual, useJobDetailQuery: mockUseJobDetailQuery };
+  return {
+    ...actual,
+    useJobDetailQuery: mockUseJobDetailQuery,
+    useJobSourcesQuery: mockUseJobSourcesQuery,
+  };
 });
 
 vi.mock('@/widgets/site-header', () => ({
@@ -46,6 +51,7 @@ const BASE_JOB: JobDetail = {
   capacity: null,
   location: '서울',
   employmentType: '인턴',
+  sourceName: 'SARAMIN',
   firstComeServed: false,
   viewCount: 10,
   publishedAt: '2026-08-01T00:00:00Z',
@@ -75,6 +81,21 @@ function mockJob(overrides: Partial<JobDetail> = {}) {
   });
 }
 
+function mockJobSources(data: JobSourceOption[] = []) {
+  mockUseJobSourcesQuery.mockReturnValue({ data, isLoading: false, isError: false });
+}
+
+const SARAMIN_SOURCE: JobSourceOption = {
+  sourceId: 1,
+  sourceCode: 'SARAMIN',
+  name: '사람인',
+  active: true,
+};
+
+beforeEach(() => {
+  mockJobSources([SARAMIN_SOURCE]);
+});
+
 describe('ExternalJobDetailPage', () => {
   it('canApply가 false여도 마감 전이고 externalUrl이 있으면 지원 버튼을 활성화한다', () => {
     mockJob();
@@ -99,5 +120,40 @@ describe('ExternalJobDetailPage', () => {
     renderPage('1');
 
     expect(screen.getByRole('button', { name: '사이트에서 지원하기' })).toBeDisabled();
+  });
+
+  it('"지원 유형" 행에 applicationMethod 표시 문구를 보여준다', () => {
+    mockJob();
+
+    renderPage('1');
+
+    expect(screen.getByText('지원 유형')).toBeInTheDocument();
+    expect(screen.getByText('외부 지원')).toBeInTheDocument();
+  });
+
+  it('"공고 출처" 행에 sourceName을 출처 목록에서 역조회한 표시명으로 보여준다', () => {
+    mockJob({ sourceName: 'SARAMIN' });
+
+    renderPage('1');
+
+    expect(screen.getByText('공고 출처')).toBeInTheDocument();
+    expect(screen.getByText('사람인')).toBeInTheDocument();
+  });
+
+  it('출처 목록에 없거나 아직 로딩 중이면 sourceName 코드를 그대로 보여준다', () => {
+    mockJobSources([]);
+    mockJob({ sourceName: 'SARAMIN' });
+
+    renderPage('1');
+
+    expect(screen.getByText('SARAMIN')).toBeInTheDocument();
+  });
+
+  it('sourceName이 null인 직접 등록 공고는 "공고 출처" 행을 감춘다', () => {
+    mockJob({ sourceName: null });
+
+    renderPage('1');
+
+    expect(screen.queryByText('공고 출처')).not.toBeInTheDocument();
   });
 });
