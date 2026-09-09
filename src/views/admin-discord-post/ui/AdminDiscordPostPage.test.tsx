@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/shared/api';
 
 import type {
+  DiscordChannel,
   DiscordDelivery,
   DiscordDeliveryListResponse,
   RetryDiscordDeliveryParams,
@@ -14,12 +15,14 @@ import { AdminDiscordPostPage } from './AdminDiscordPostPage';
 const {
   mockUseDiscordDeliveryListQuery,
   mockUseDiscordDeliveryDetailQuery,
+  mockUseDiscordChannelsQuery,
   mockUseRetryDiscordDeliveryMutation,
   mockMutate,
   mockRouterReplace,
 } = vi.hoisted(() => ({
   mockUseDiscordDeliveryListQuery: vi.fn(),
   mockUseDiscordDeliveryDetailQuery: vi.fn(),
+  mockUseDiscordChannelsQuery: vi.fn(),
   mockUseRetryDiscordDeliveryMutation: vi.fn(),
   mockMutate: vi.fn(),
   mockRouterReplace: vi.fn(),
@@ -33,9 +36,26 @@ vi.mock('@/entities/discord-delivery', async () => {
     ...actual,
     useDiscordDeliveryListQuery: mockUseDiscordDeliveryListQuery,
     useDiscordDeliveryDetailQuery: mockUseDiscordDeliveryDetailQuery,
+    useDiscordChannelsQuery: mockUseDiscordChannelsQuery,
     useRetryDiscordDeliveryMutation: mockUseRetryDiscordDeliveryMutation,
   };
 });
+
+const CHANNELS: DiscordChannel[] = [
+  { channelKey: 'job-notice', channelId: '1000000000000000001', channelName: '#취업-공지' },
+  { channelKey: 'program-notice', channelId: '1000000000000000002', channelName: '#프로그램-공지' },
+];
+
+function channelsResult(
+  overrides: Partial<{
+    data: DiscordChannel[];
+    isLoading: boolean;
+    isError: boolean;
+    refetch: () => void;
+  }> = {},
+) {
+  return { data: CHANNELS, isLoading: false, isError: false, refetch: vi.fn(), ...overrides };
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockRouterReplace }),
@@ -143,6 +163,7 @@ const STALE_FAILED_DELIVERY: DiscordDelivery = {
 beforeEach(() => {
   mockUseDiscordDeliveryListQuery.mockReturnValue(listResult());
   mockUseDiscordDeliveryDetailQuery.mockReturnValue(detailResult());
+  mockUseDiscordChannelsQuery.mockReturnValue(channelsResult());
   mockUseRetryDiscordDeliveryMutation.mockReturnValue(retryMutationResult());
 });
 
@@ -215,12 +236,67 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByText('99999')).toBeInTheDocument();
   });
 
-  it('"대상" · "채널" 필터 버튼과 "Discord 전송" 버튼은 비활성화되어 있다(대응하는 API가 없음)', () => {
+  it('"대상" 필터와 "Discord 전송" 버튼은 비활성화되어 있다(대응하는 API가 없음)', () => {
     render(<AdminDiscordPostPage />);
 
     expect(screen.getByRole('button', { name: '대상' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '채널' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Discord 전송' })).toBeDisabled();
+  });
+
+  it('"채널" 필터에서 채널을 고르면 channelId로 조회하고 URL(channel)에 반영한다', () => {
+    render(<AdminDiscordPostPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '채널' }));
+    fireEvent.click(screen.getByRole('option', { name: '#프로그램-공지' }));
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ channelId: '1000000000000000002' }),
+    );
+    expect(mockRouterReplace).toHaveBeenLastCalledWith(
+      '/admin/discord-posts?channel=1000000000000000002',
+      { scroll: false },
+    );
+  });
+
+  it('initialChannel로 들어오면 그 channelId로 목록을 조회하고 버튼에 채널명을 보여준다', () => {
+    render(<AdminDiscordPostPage initialChannel="1000000000000000001" />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: '1000000000000000001' }),
+    );
+    expect(screen.getByRole('button', { name: '#취업-공지' })).toBeInTheDocument();
+  });
+
+  it('채널 목록을 불러오는 중이면 "채널" 버튼이 비활성화된다', () => {
+    mockUseDiscordChannelsQuery.mockReturnValue(
+      channelsResult({ data: undefined, isLoading: true }),
+    );
+
+    render(<AdminDiscordPostPage />);
+
+    expect(screen.getByRole('button', { name: '채널 불러오는 중...' })).toBeDisabled();
+  });
+
+  it('설정된 채널이 없으면 "채널" 버튼이 비활성화된다', () => {
+    mockUseDiscordChannelsQuery.mockReturnValue(channelsResult({ data: [] }));
+
+    render(<AdminDiscordPostPage />);
+
+    expect(screen.getByRole('button', { name: '등록된 채널이 없습니다' })).toBeDisabled();
+  });
+
+  it('채널 목록 조회에 실패하면 "채널" 버튼 클릭 시 refetch를 호출한다', () => {
+    const refetch = vi.fn();
+    mockUseDiscordChannelsQuery.mockReturnValue(
+      channelsResult({ data: undefined, isError: true, refetch }),
+    );
+
+    render(<AdminDiscordPostPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '채널 목록을 불러오지 못했습니다. 다시 시도' }),
+    );
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('"유형" 필터에서 대상 종류를 고르면 targetType으로 조회하고 URL(type)에 반영한다', () => {
