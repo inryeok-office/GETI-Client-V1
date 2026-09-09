@@ -148,6 +148,21 @@ describe('AdminJobDetailPage', () => {
     expect(screen.getByText('남은 재분석 2회')).toBeInTheDocument();
   });
 
+  it('공고 정보에 직무를 표시한다', () => {
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.getByText('직무')).toBeInTheDocument();
+    expect(screen.getByText('백엔드 개발')).toBeInTheDocument();
+  });
+
+  it('직무가 없는(수집) 공고는 직무를 빈 값으로 표시한다', () => {
+    mockUseAdminJobDetailQuery.mockReturnValue(queryResult({ data: detail({ jobRole: null }) }));
+
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.queryByText('백엔드 개발')).not.toBeInTheDocument();
+  });
+
   it('임시저장 공고는 부제목에서 마감 상태를 빼고 "비공개"로 표시한다', () => {
     mockUseAdminJobDetailQuery.mockReturnValue(
       queryResult({ data: detail({ status: 'DRAFT', aiAnalysis: null }) }),
