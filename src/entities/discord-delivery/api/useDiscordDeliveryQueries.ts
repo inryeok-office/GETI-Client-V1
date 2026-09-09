@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  fetchDiscordChannels,
   fetchDiscordDelivery,
   fetchDiscordDeliveryList,
   retryDiscordDelivery,
@@ -15,12 +16,21 @@ export const discordDeliveryKeys = {
   list: (params: FetchDiscordDeliveryListParams) =>
     [...discordDeliveryKeys.all, 'list', params] as const,
   detail: (deliveryId: number) => [...discordDeliveryKeys.all, 'detail', deliveryId] as const,
+  channels: () => [...discordDeliveryKeys.all, 'channels'] as const,
 };
 
 export function useDiscordDeliveryListQuery(params: FetchDiscordDeliveryListParams = {}) {
   return useQuery({
     queryKey: discordDeliveryKeys.list(params),
     queryFn: () => fetchDiscordDeliveryList(params),
+  });
+}
+
+/** "채널" 필터 드롭다운 선택지. 자주 바뀌지 않는 목록이라 그대로 캐시한다. */
+export function useDiscordChannelsQuery() {
+  return useQuery({
+    queryKey: discordDeliveryKeys.channels(),
+    queryFn: fetchDiscordChannels,
   });
 }
 

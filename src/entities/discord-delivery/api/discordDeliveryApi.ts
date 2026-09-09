@@ -1,6 +1,7 @@
 import { api, type ApiResponse } from '@/shared/api';
 
 import type {
+  DiscordChannel,
   DiscordDelivery,
   DiscordDeliveryListResponse,
   DiscordDeliveryStatus,
@@ -8,11 +9,14 @@ import type {
 } from '../model/types';
 
 const LIST_PATH = '/api/v1/admin/discord-deliveries';
+const CHANNELS_PATH = '/api/v1/admin/discord-channels';
 
 export interface FetchDiscordDeliveryListParams {
   status?: DiscordDeliveryStatus;
   /** 대상 종류 필터. 생략하면 전체(JOB/PROGRAM/INQUIRY)를 조회한다(GETI-Server-V1 PR #317). */
   targetType?: DiscordDeliveryTargetType;
+  /** Discord 채널 Snowflake 필터. `GET /admin/discord-channels`의 `channelId`와 같은 값이다(GETI-Server-V1 PR #317/#330). */
+  channelId?: string;
   /** 최근 시도 시각(`lastAttemptAt`) 하한, 포함. `LocalDateTime`이라 KST 로컬 문자열로 보낸다. GETI-Server-V1 #283. */
   startAt?: string;
   /** 최근 시도 시각(`lastAttemptAt`) 상한, 미포함. GETI-Server-V1 #283. */
@@ -43,6 +47,20 @@ export async function fetchDiscordDeliveryList(
 export async function fetchDiscordDelivery(deliveryId: number): Promise<DiscordDelivery> {
   const { data } = await api.get<ApiResponse<DiscordDelivery>>(`${LIST_PATH}/${deliveryId}`);
   return data.data;
+}
+
+interface DiscordChannelListResponse {
+  channels: DiscordChannel[];
+}
+
+/**
+ * `GET /admin/discord-channels` — 전달 내역 "채널" 필터 드롭다운 선택지. 개발자 전용.
+ * 서버 채널 Registry에서 `channelId`·표시 이름이 모두 설정된 채널만 반환하며, 설정 전이면
+ * 빈 배열이다(GETI-Server-V1 PR #330).
+ */
+export async function fetchDiscordChannels(): Promise<DiscordChannel[]> {
+  const { data } = await api.get<ApiResponse<DiscordChannelListResponse>>(CHANNELS_PATH);
+  return data.data.channels;
 }
 
 /** 재시도 Endpoint가 있는 대상 종류만 담는다 — `INQUIRY`는 백엔드에 재시도 API 자체가 없다. */

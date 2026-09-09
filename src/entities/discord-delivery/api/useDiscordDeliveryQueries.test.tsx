@@ -8,10 +8,11 @@ import { api } from '@/shared/api';
 
 import {
   discordDeliveryKeys,
+  useDiscordChannelsQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
 } from './useDiscordDeliveryQueries';
-import type { DiscordDeliveryListResponse } from '../model/types';
+import type { DiscordChannel, DiscordDeliveryListResponse } from '../model/types';
 
 /** `discordDeliveryApi.test.ts`와 같은 방식으로 실제 요청을 캡처한다 — Query Hook이 그 위에서
  * params를 그대로 전달하는지, 성공 시 실제로 무효화하는지까지 함께 고정한다. */
@@ -74,6 +75,33 @@ describe('useDiscordDeliveryListQuery', () => {
       },
     ]);
     expect(result.current.data).toEqual(LIST_RESPONSE);
+  });
+});
+
+describe('useDiscordChannelsQuery', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  const CHANNELS: DiscordChannel[] = [
+    { channelKey: 'job-notice', channelId: '1000000000000000001', channelName: '#취업-공지' },
+  ];
+
+  it('GET /admin/discord-channels를 조회해 채널 목록을 돌려준다', async () => {
+    const stub = stubServer(() => ({ success: true, data: { channels: CHANNELS } }));
+    restore = stub.restore;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    const { result } = renderHook(() => useDiscordChannelsQuery(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/discord-channels', method: 'get', params: undefined },
+    ]);
+    expect(result.current.data).toEqual(CHANNELS);
   });
 });
 

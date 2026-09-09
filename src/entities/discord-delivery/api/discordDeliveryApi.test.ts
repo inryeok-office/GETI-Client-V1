@@ -3,8 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { api } from '@/shared/api';
 
-import { fetchDiscordDeliveryList, retryDiscordDelivery } from './discordDeliveryApi';
-import type { DiscordDeliveryListResponse } from '../model/types';
+import {
+  fetchDiscordChannels,
+  fetchDiscordDeliveryList,
+  retryDiscordDelivery,
+} from './discordDeliveryApi';
+import type { DiscordChannel, DiscordDeliveryListResponse } from '../model/types';
 
 /**
  * `axiosInstance.test.ts`와 같은 방식으로 실제 `api` 인스턴스의 adapter를 갈아 끼운다 —
@@ -68,6 +72,21 @@ describe('fetchDiscordDeliveryList', () => {
     ]);
   });
 
+  it('channelId 필터를 그대로 전달한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: LIST_RESPONSE }));
+    restore = stub.restore;
+
+    await fetchDiscordDeliveryList({ channelId: '1000000000000000002' });
+
+    expect(stub.requests).toEqual([
+      {
+        url: '/api/v1/admin/discord-deliveries',
+        method: 'get',
+        params: { page: 0, size: 20, channelId: '1000000000000000002' },
+      },
+    ]);
+  });
+
   it('startAt/endAt 기간 필터를 그대로 전달한다', async () => {
     const stub = stubServer(() => ({ success: true, data: LIST_RESPONSE }));
     restore = stub.restore;
@@ -92,6 +111,33 @@ describe('fetchDiscordDeliveryList', () => {
     restore = stub.restore;
 
     await expect(fetchDiscordDeliveryList()).resolves.toEqual(LIST_RESPONSE);
+  });
+});
+
+describe('fetchDiscordChannels', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  const CHANNELS: DiscordChannel[] = [
+    { channelKey: 'job-notice', channelId: '1000000000000000001', channelName: '#취업-공지' },
+  ];
+
+  it('GET /admin/discord-channels를 호출하고 data.data.channels를 돌려준다', async () => {
+    const stub = stubServer(() => ({ success: true, data: { channels: CHANNELS } }));
+    restore = stub.restore;
+
+    await expect(fetchDiscordChannels()).resolves.toEqual(CHANNELS);
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/discord-channels', method: 'get', params: undefined },
+    ]);
+  });
+
+  it('설정된 채널이 없으면 빈 배열을 돌려준다', async () => {
+    const stub = stubServer(() => ({ success: true, data: { channels: [] } }));
+    restore = stub.restore;
+
+    await expect(fetchDiscordChannels()).resolves.toEqual([]);
   });
 });
 
