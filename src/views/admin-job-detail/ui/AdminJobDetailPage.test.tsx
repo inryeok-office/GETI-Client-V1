@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/shared/api';
-import type { AdminJobDetail } from '@/entities/job';
+import { EMPTY_CELL, type AdminJobDetail } from '@/entities/job';
 
 import { AdminJobDetailPage } from './AdminJobDetailPage';
 
@@ -151,15 +151,15 @@ describe('AdminJobDetailPage', () => {
   it('공고 정보에 직무를 표시한다', () => {
     render(<AdminJobDetailPage jobId="1" />);
 
-    expect(screen.getByText('직무')).toBeInTheDocument();
-    expect(screen.getByText('백엔드 개발')).toBeInTheDocument();
+    expect(screen.getByText('직무').nextElementSibling).toHaveTextContent('백엔드 개발');
   });
 
-  it('직무가 없는(수집) 공고는 직무를 빈 값으로 표시한다', () => {
+  it(`직무가 없는(수집) 공고는 직무 필드를 빈 값(${EMPTY_CELL})으로 표시한다`, () => {
     mockUseAdminJobDetailQuery.mockReturnValue(queryResult({ data: detail({ jobRole: null }) }));
 
     render(<AdminJobDetailPage jobId="1" />);
 
+    expect(screen.getByText('직무').nextElementSibling).toHaveTextContent(EMPTY_CELL);
     expect(screen.queryByText('백엔드 개발')).not.toBeInTheDocument();
   });
 
