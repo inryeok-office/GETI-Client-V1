@@ -55,6 +55,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     capacity: null,
     location: null,
     employmentType: null,
+    sourceName: null,
     firstComeServed: false,
     viewCount: 0,
     publishedAt: '2026-08-01T09:00:00',

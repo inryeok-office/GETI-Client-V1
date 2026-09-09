@@ -250,6 +250,13 @@ export interface JobDetail {
   capacity: number | null;
   location: string | null;
   employmentType: string | null;
+  /**
+   * 공고 출처의 안정 식별자(`JobDetailResponse.sourceName`, GETI-Server-V1 `bd98868`).
+   * 수집 공고는 `JobSource.sourceCode`(예: `"SARAMIN"`)와 같고 직접 등록 공고는 `null`이다 —
+   * `GET /api/v1/jobs`의 `sourceName` 파라미터와 이름은 같지만 이쪽은 응답 코드다.
+   * 사람이 읽는 이름은 `resolveJobSourceName`으로 `GET /api/v1/job-sources`에서 역조회한다.
+   */
+  sourceName: string | null;
   firstComeServed: boolean;
   viewCount: number;
   publishedAt: string | null;

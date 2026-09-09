@@ -38,6 +38,8 @@ export {
 } from './model/adminJobLabels';
 export { buildJobSourceFilterOptions } from './model/buildJobSourceFilterOptions';
 export type { JobSourceFilterOption } from './model/buildJobSourceFilterOptions';
+export { resolveJobSourceName } from './model/resolveJobSourceName';
+export { JOB_APPLICATION_METHOD_LABEL } from './model/jobLabels';
 export { JOB_ROLE_LABEL } from './model/jobRoleLabel';
 
 export type {
