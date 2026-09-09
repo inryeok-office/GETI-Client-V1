@@ -267,6 +267,15 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByRole('button', { name: '#취업-공지' })).toBeInTheDocument();
   });
 
+  it('initialChannel에 앞뒤 공백이 있으면 정규화해 조회한다', () => {
+    render(<AdminDiscordPostPage initialChannel="  1000000000000000001  " />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: '1000000000000000001' }),
+    );
+    expect(screen.getByRole('button', { name: '#취업-공지' })).toBeInTheDocument();
+  });
+
   it('채널 목록을 불러오는 중이면 "채널" 버튼이 비활성화된다', () => {
     mockUseDiscordChannelsQuery.mockReturnValue(
       channelsResult({ data: undefined, isLoading: true }),

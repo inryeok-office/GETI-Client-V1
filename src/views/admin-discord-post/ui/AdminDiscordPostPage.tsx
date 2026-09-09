@@ -53,10 +53,12 @@ function parseInitialPage(value: string | undefined): number {
 /**
  * `?channel=` 쿼리스트링 → 채널 필터 값. `channelId`(Snowflake)를 그대로 저장·조회에 쓴다 —
  * `channelName`은 관리자가 바꿀 수 있어 문구 기반 URL은 공유 링크를 조용히 무효화한다
- * (`JobFilterBar`의 "출처"와 같은 이유). 선택 안 함은 빈 문자열이다.
+ * (`JobFilterBar`의 "출처"와 같은 이유). 선택 안 함은 빈 문자열이며, 앞뒤 공백은 제거해
+ * 정규화한 값을 그대로 저장·조회·URL에 쓴다(`?channel=%20...%20` 같은 링크가 목록 API에
+ * 공백 붙은 `channelId`를 흘려보내지 않도록).
  */
 function parseChannelFilter(value: string | undefined): string {
-  return value?.trim() ? value : '';
+  return value?.trim() ?? '';
 }
 
 /** 목록 조건(`page` 1부터 · `type` · `channel`)을 URL 쿼리스트링으로. 기본값이면 생략한다. */
