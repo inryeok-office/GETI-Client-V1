@@ -31,6 +31,7 @@ const FILLED: AdminJobFormValues = {
   companyId: '1',
   postingType: 'GENERAL',
   applicationMethod: 'EXTERNAL',
+  jobRole: 'BACKEND',
   title: '프론트엔드 채용',
   content: '본문',
   externalUrl: 'https://example.com/apply',
@@ -42,6 +43,15 @@ describe('AdminJobForm', () => {
 
     expect(screen.getByRole('button', { name: '임시저장' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '게시하기' })).toBeDisabled();
+  });
+
+  it('직무를 고르지 않으면 임시저장·게시가 막히고, 수정 모드에서도 마찬가지다', () => {
+    renderForm({ initialValues: { ...FILLED, jobRole: '' } });
+    expect(screen.getByRole('button', { name: '임시저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '게시하기' })).toBeDisabled();
+
+    renderForm({ mode: 'edit', initialValues: { ...FILLED, jobRole: '' } });
+    expect(screen.getByRole('button', { name: '수정하기' })).toBeDisabled();
   });
 
   it('identity만 채우면 임시저장은 가능하지만, 본문이 없으면 게시는 막힌다', () => {

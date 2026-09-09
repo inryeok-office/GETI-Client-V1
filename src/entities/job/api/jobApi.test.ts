@@ -221,6 +221,7 @@ describe('createAdminJob', () => {
       companyId: 1,
       postingType: 'GENERAL' as const,
       applicationMethod: 'EXTERNAL' as const,
+      jobRole: 'BACKEND' as const,
       title: '새 공고',
       status: 'DRAFT' as const,
     };

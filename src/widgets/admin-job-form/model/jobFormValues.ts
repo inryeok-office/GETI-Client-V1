@@ -3,6 +3,7 @@ import type {
   JobApplicationMethod,
   JobCreatePayload,
   JobPostingType,
+  JobRole,
   JobUpdatePayload,
 } from '@/entities/job';
 
@@ -11,6 +12,8 @@ export interface AdminJobFormValues {
   companyId: string;
   postingType: JobPostingType | '';
   applicationMethod: JobApplicationMethod | '';
+  /** '' 또는 `JobRole` 코드. 등록·수정 모두 필수(GETI-Server-V1 #326). */
+  jobRole: JobRole | '';
   title: string;
   content: string;
   externalUrl: string;
@@ -31,6 +34,7 @@ export const EMPTY_JOB_FORM_VALUES: AdminJobFormValues = {
   companyId: '',
   postingType: '',
   applicationMethod: '',
+  jobRole: '',
   title: '',
   content: '',
   externalUrl: '',
@@ -49,6 +53,7 @@ export function toJobFormValues(detail: AdminJobDetail): AdminJobFormValues {
     companyId: detail.company ? String(detail.company.companyId) : '',
     postingType: detail.postingType,
     applicationMethod: detail.applicationMethod,
+    jobRole: detail.jobRole ?? '',
     title: detail.title,
     content: detail.content ?? '',
     externalUrl: detail.externalUrl ?? '',
@@ -82,7 +87,7 @@ function optionalNumber(value: string): number | undefined {
 
 /**
  * 등록 폼 값 → `POST /api/v1/admin/jobs` payload. 빈 선택 필드는 보내지 않는다.
- * 호출부에서 identity 필드(companyId·postingType·applicationMethod)가 채워졌음을 이미 검증한다.
+ * 호출부에서 필수 필드(companyId·postingType·applicationMethod·jobRole)가 채워졌음을 이미 검증한다.
  */
 export function toJobCreatePayload(
   values: AdminJobFormValues,
@@ -92,6 +97,7 @@ export function toJobCreatePayload(
     companyId: Number(values.companyId),
     postingType: values.postingType as JobPostingType,
     applicationMethod: values.applicationMethod as JobApplicationMethod,
+    jobRole: values.jobRole as JobRole,
     title: values.title.trim(),
     status,
     content: optionalText(values.content),
@@ -108,11 +114,13 @@ export function toJobCreatePayload(
 
 /**
  * 수정 폼 값 → `PATCH /api/v1/admin/jobs/{jobId}` payload. 서버가 "값 비우기"를 지원하지 않아,
- * 빈 선택 필드는 생략(=기존 값 유지)한다. 제목·본문·선착순은 항상 보낸다.
+ * 빈 선택 필드는 생략(=기존 값 유지)한다. 제목·본문·선착순은 항상 보낸다. 직무는 폼에서 필수라
+ * 값이 있으면 보내고, (이론상) 비어 있으면 생략한다.
  */
 export function toJobUpdatePayload(values: AdminJobFormValues): JobUpdatePayload {
   return {
     title: values.title.trim(),
+    jobRole: values.jobRole || undefined,
     content: optionalText(values.content),
     externalUrl: optionalText(values.externalUrl),
     startDate: toDateTime(values.startDate, 'start'),

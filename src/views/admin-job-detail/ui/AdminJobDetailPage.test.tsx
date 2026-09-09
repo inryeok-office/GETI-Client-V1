@@ -41,6 +41,7 @@ function detail(overrides: Partial<AdminJobDetail> = {}): AdminJobDetail {
     title: '프론트엔드 개발자 채용',
     postingType: 'GENERAL',
     applicationMethod: 'EXTERNAL',
+    jobRole: 'BACKEND',
     status: 'PUBLISHED',
     company: { companyId: 1, name: '플로우테크', logoUrl: null },
     content: 'GETI 웹 서비스의 프론트엔드 기능을 설계하고 구현합니다.',

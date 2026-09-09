@@ -41,6 +41,7 @@ const BASE_JOB: JobDetail = {
   title: '백엔드 개발 인턴',
   postingType: 'GENERAL',
   applicationMethod: 'EXTERNAL',
+  jobRole: 'BACKEND',
   status: 'PUBLISHED',
   company: { companyId: 1, name: '카카오', logoUrl: null },
   content: '본문',

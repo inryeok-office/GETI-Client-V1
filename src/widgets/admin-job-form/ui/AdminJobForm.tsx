@@ -3,7 +3,12 @@
 import { useState, type ReactNode } from 'react';
 
 import type { CompanyOption } from '@/entities/company';
-import type { JobApplicationMethod, JobPostingType } from '@/entities/job';
+import {
+  JOB_ROLE_LABEL,
+  type JobApplicationMethod,
+  type JobPostingType,
+  type JobRole,
+} from '@/entities/job';
 
 import { EMPTY_JOB_FORM_VALUES, type AdminJobFormValues } from '../model/jobFormValues';
 
@@ -17,6 +22,11 @@ const APPLICATION_METHOD_OPTIONS: { value: JobApplicationMethod; label: string }
   { value: 'EXTERNAL', label: '외부 지원(외부 채용 페이지)' },
   { value: 'INTERNAL', label: 'GETI 지원서(학교 내부)' },
 ];
+
+/** 직무 선택지. `JobRole` Enum과 1:1, GETI-Server-V1 #326에서 등록 시 필수로 바뀌었다. */
+const JOB_ROLE_OPTIONS = (Object.entries(JOB_ROLE_LABEL) as [JobRole, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
 
 const INPUT_CLASS_NAME =
   'focus:border-primary-300 w-full rounded-lg border border-neutral-200 p-4 text-base leading-[1.6] tracking-[-0.16px] text-neutral-900 outline-none placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500';
@@ -46,8 +56,10 @@ interface AdminJobFormProps {
  * - "지원 조건" 자유 텍스트 대신 대상 학년·모집 인원·근무지역·고용형태·선착순을 구조화해 받는다.
  * - "공개 상태" 드롭다운 대신 "임시저장"/"게시하기" 버튼이 `status`를 정한다.
  * - Discord 채널 선택·첨부파일 업로드·마크다운 툴바는 뺐다(본문은 일반 textarea).
+ * - "직무" 필수 선택을 추가했다 — 서버가 등록 시 `jobRole`을 필수로 받는다(GETI-Server-V1 #326).
  *
- * 수정 모드에서는 기업·공고 유형·지원 방식이 서버에서 변경 불가라 읽기 전용으로 보여준다.
+ * 수정 모드에서는 기업·공고 유형·지원 방식이 서버에서 변경 불가라 읽기 전용으로 보여준다
+ * (직무는 수정 가능하고 필수다).
  * 클라이언트 검증은 최소한(제목 공백, 기업 미선택, 외부 URL 형식)만 하고, 게시 필수값(본문 등)
  * 위반은 서버 응답 메시지를 그대로 노출한다.
  */
@@ -75,9 +87,13 @@ export function AdminJobForm({
     trimmedTitle !== '' &&
     values.companyId !== '' &&
     values.postingType !== '' &&
-    values.applicationMethod !== '';
+    values.applicationMethod !== '' &&
+    values.jobRole !== '';
 
-  const canSaveDraft = !isSubmitting && (isEdit || isIdentityValid) && isUrlFormatValid;
+  // 직무는 수정 모드에서도 필수다 — 서버가 미분류 legacy 공고를 허용하지만, 관리자가 손대는
+  // 김에 분류를 채우게 한다(GETI-Server-V1 #326).
+  const canSaveDraft =
+    !isSubmitting && (isEdit || isIdentityValid) && values.jobRole !== '' && isUrlFormatValid;
   const canPublish =
     canSaveDraft && values.content.trim() !== '' && (!isExternal || trimmedUrl !== '');
 
@@ -231,6 +247,26 @@ export function AdminJobForm({
                   ))}
                 </select>
               </Field>
+            </div>
+
+            <div className="flex flex-col gap-[16px] md:flex-row">
+              <Field label="직무" required className="flex-1">
+                <select
+                  value={values.jobRole}
+                  onChange={(event) => update('jobRole', event.target.value as JobRole | '')}
+                  className={`${INPUT_CLASS_NAME} ${values.jobRole === '' ? 'text-neutral-400' : ''}`}
+                >
+                  <option value="" disabled>
+                    직무를 선택해 주세요.
+                  </option>
+                  {JOB_ROLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <div className="flex-1" />
             </div>
 
             {isExternal && (
