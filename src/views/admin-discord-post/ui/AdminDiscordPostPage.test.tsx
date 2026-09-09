@@ -276,6 +276,15 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByRole('button', { name: '#취업-공지' })).toBeInTheDocument();
   });
 
+  it('initialChannel이 현재 채널 목록에 없으면(설정 변경·오래된 링크) 버튼에 원본 ID를 그대로 보여준다', () => {
+    render(<AdminDiscordPostPage initialChannel="9999999999999999999" />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: '9999999999999999999' }),
+    );
+    expect(screen.getByRole('button', { name: '9999999999999999999' })).toBeInTheDocument();
+  });
+
   it('채널 목록을 불러오는 중이면 "채널" 버튼이 비활성화된다', () => {
     mockUseDiscordChannelsQuery.mockReturnValue(
       channelsResult({ data: undefined, isLoading: true }),
@@ -350,6 +359,22 @@ describe('AdminDiscordPostPage', () => {
 
     expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ targetType: undefined }),
+    );
+    expect(mockRouterReplace).toHaveBeenLastCalledWith('/admin/discord-posts', { scroll: false });
+  });
+
+  it('뒤로/앞으로 가기로 initialChannel prop만 바뀌면 채널 필터 상태를 그 값으로 다시 맞춘다', () => {
+    const { rerender } = render(
+      <AdminDiscordPostPage initialChannel="1000000000000000001" />,
+    );
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ channelId: '1000000000000000001' }),
+    );
+
+    rerender(<AdminDiscordPostPage initialChannel={undefined} />);
+
+    expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ channelId: undefined }),
     );
     expect(mockRouterReplace).toHaveBeenLastCalledWith('/admin/discord-posts', { scroll: false });
   });
