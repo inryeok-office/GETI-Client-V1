@@ -364,9 +364,7 @@ describe('AdminDiscordPostPage', () => {
   });
 
   it('뒤로/앞으로 가기로 initialChannel prop만 바뀌면 채널 필터 상태를 그 값으로 다시 맞춘다', () => {
-    const { rerender } = render(
-      <AdminDiscordPostPage initialChannel="1000000000000000001" />,
-    );
+    const { rerender } = render(<AdminDiscordPostPage initialChannel="1000000000000000001" />);
     expect(mockUseDiscordDeliveryListQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ channelId: '1000000000000000001' }),
     );
