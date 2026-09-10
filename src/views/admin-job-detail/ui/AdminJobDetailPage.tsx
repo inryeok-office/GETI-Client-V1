@@ -11,6 +11,7 @@ import {
   formatDateTimeMinute,
   formatJobDeadlineState,
   formatJobPublicState,
+  JOB_ROLE_LABEL,
   useAdminJobDetailQuery,
   useReanalyzeAdminJobMutation,
   type AdminJobDetail,
@@ -157,6 +158,11 @@ function AdminJobDetailContent({
           <h2 className="text-[20px] leading-[1.4] font-semibold tracking-[-0.2px] text-neutral-900">
             공고 정보
           </h2>
+          <DetailField label="직무">
+            <p className="text-[14px] leading-[1.5] text-neutral-700">
+              {detail.jobRole ? JOB_ROLE_LABEL[detail.jobRole] : EMPTY_CELL}
+            </p>
+          </DetailField>
           <DetailField label="공고 내용">
             <p className="text-[14px] leading-[1.5] whitespace-pre-wrap text-neutral-700">
               {detail.content?.trim() || '등록된 공고 내용이 없습니다.'}

@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/shared/api';
-import type { AdminJobDetail } from '@/entities/job';
+import { EMPTY_CELL, type AdminJobDetail } from '@/entities/job';
 
 import { AdminJobDetailPage } from './AdminJobDetailPage';
 
@@ -146,6 +146,21 @@ describe('AdminJobDetailPage', () => {
     expect(screen.getByText('2026.08.01 08:58')).toBeInTheDocument();
     expect(screen.getByText('분석 완료 · 2026.08.01 09:12')).toBeInTheDocument();
     expect(screen.getByText('남은 재분석 2회')).toBeInTheDocument();
+  });
+
+  it('공고 정보에 직무를 표시한다', () => {
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.getByText('직무').nextElementSibling).toHaveTextContent('백엔드 개발');
+  });
+
+  it(`직무가 없는(수집) 공고는 직무 필드를 빈 값(${EMPTY_CELL})으로 표시한다`, () => {
+    mockUseAdminJobDetailQuery.mockReturnValue(queryResult({ data: detail({ jobRole: null }) }));
+
+    render(<AdminJobDetailPage jobId="1" />);
+
+    expect(screen.getByText('직무').nextElementSibling).toHaveTextContent(EMPTY_CELL);
+    expect(screen.queryByText('백엔드 개발')).not.toBeInTheDocument();
   });
 
   it('임시저장 공고는 부제목에서 마감 상태를 빼고 "비공개"로 표시한다', () => {
