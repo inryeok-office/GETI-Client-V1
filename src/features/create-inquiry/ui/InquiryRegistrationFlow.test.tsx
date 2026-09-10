@@ -43,6 +43,19 @@ beforeEach(() => {
 });
 
 describe('InquiryRegistrationFlow', () => {
+  it('keeps the registration dialog open when Escape closes the inquiry type listbox', () => {
+    renderFlow();
+    fireEvent.click(screen.getAllByRole('button')[0]);
+    fillRequiredFields();
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.click(combobox);
+    fireEvent.keyDown(combobox, { key: 'Escape' });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
   it('문의 등록 버튼으로 모달을 열고 취소할 수 있다', () => {
     renderFlow();
 

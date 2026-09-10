@@ -83,6 +83,8 @@ export function InquiryTypeSelect({
       selectOption(activeIndex);
     } else if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation();
       setIsOpen(false);
     }
   };
@@ -93,15 +95,10 @@ export function InquiryTypeSelect({
     const handlePointerDown = (event: MouseEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
-    };
 
     document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
