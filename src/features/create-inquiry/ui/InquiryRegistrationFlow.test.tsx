@@ -43,6 +43,19 @@ beforeEach(() => {
 });
 
 describe('InquiryRegistrationFlow', () => {
+  it('keeps the registration dialog open when Escape closes the inquiry type listbox', () => {
+    renderFlow();
+    fireEvent.click(screen.getAllByRole('button')[0]);
+    fillRequiredFields();
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.click(combobox);
+    fireEvent.keyDown(combobox, { key: 'Escape' });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
   it('문의 등록 버튼으로 모달을 열고 취소할 수 있다', () => {
     renderFlow();
 
@@ -66,6 +79,21 @@ describe('InquiryRegistrationFlow', () => {
     expect(screen.getByLabelText('제목')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('문의 내용')).toHaveAttribute('aria-invalid', 'true');
     expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('입력값을 수정하면 해당 필드의 오류 상태를 제거한다', () => {
+    renderFlow();
+    fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
+    fireEvent.click(screen.getByRole('button', { name: '등록' }));
+
+    fireEvent.click(screen.getByLabelText('문의 유형'));
+    fireEvent.click(screen.getByRole('option', { name: '오류' }));
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '서비스 문의' } });
+    fireEvent.change(screen.getByLabelText('문의 내용'), { target: { value: '문의 내용' } });
+
+    expect(screen.getByLabelText('문의 유형')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('제목')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('문의 내용')).not.toHaveAttribute('aria-invalid');
   });
 
   it('제목은 Backend 계약의 최대 500자로 제한한다', () => {
@@ -125,7 +153,7 @@ describe('InquiryRegistrationFlow', () => {
     expect(onRegistrationSuccess).toHaveBeenCalledOnce();
   });
 
-  it('등록 실패 배너를 표시하고 다시 열었을 때 입력값을 유지한다', async () => {
+  it('등록 실패 시 모달과 입력값을 유지하고 바로 다시 시도할 수 있다', async () => {
     mockMutateAsync.mockRejectedValueOnce(new Error('network error'));
     renderFlow();
     fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
@@ -138,9 +166,17 @@ describe('InquiryRegistrationFlow', () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '문의 등록' }));
+    expect(screen.getByRole('dialog', { name: '문의 등록' })).toBeInTheDocument();
     expect(screen.getByLabelText('문의 유형')).toHaveTextContent('오류');
     expect(screen.getByLabelText('제목')).toHaveValue('서비스 문의');
     expect(screen.getByLabelText('문의 내용')).toHaveValue('서비스 이용 방법이 궁금합니다.');
+
+    fireEvent.click(screen.getByRole('button', { name: '등록' }));
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.queryByRole('dialog', { name: '문의 등록' })).not.toBeInTheDocument();
+    expect(screen.getByText('문의가 성공적으로 등록되었습니다.')).toBeInTheDocument();
   });
 });

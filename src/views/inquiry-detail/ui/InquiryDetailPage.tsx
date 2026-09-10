@@ -40,14 +40,14 @@ export function InquiryDetailPage({ inquiryId, returnPage }: InquiryDetailPagePr
       <main className="mx-auto max-w-[1280px] px-4 pt-[40px] pb-[120px]">
         <Link
           href={listHref}
-          className="inline-flex items-center gap-[4px] rounded-sm text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#17627a]"
+          className="inline-flex items-center gap-[4px] rounded-sm text-[16px] leading-[1.6] text-[#525252] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#17627a]"
         >
           <span className="flex size-[20px] items-center justify-center" aria-hidden="true">
             <Icon name="arrowUp" className="h-[14.83px] w-[11.5px] -rotate-90" />
           </span>
           문의 목록
         </Link>
-        <h1 className="mt-[24px] px-[4px] text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
+        <h1 className="mt-[24px] px-[4px] text-[32px] leading-[1.3] font-semibold text-[#111]">
           문의 상세
         </h1>
 
@@ -96,17 +96,15 @@ function InquiryDetailError({ onRetry }: InquiryDetailErrorProps) {
       <Icon name="alertCircleLarge" className="size-[58px] text-[#525252]" />
       <div className="flex flex-col items-center gap-[16px]">
         <div className="flex flex-col gap-[12px]">
-          <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-[#111]">
+          <p className="text-[16px] leading-[1.6] font-semibold text-[#111]">
             문의 내용을 불러오지 못했습니다.
           </p>
-          <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
-            잠시 후 다시 시도해 주세요.
-          </p>
+          <p className="text-[14px] leading-[1.5] text-[#525252]">잠시 후 다시 시도해 주세요.</p>
         </div>
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-white"
+          className="rounded-[8px] bg-[#17627a] px-[24px] py-[12px] text-[14px] leading-[1.4] font-medium text-white"
         >
           다시 시도
         </button>
@@ -120,10 +118,10 @@ function InquiryDetailNotFound() {
     <div className="flex min-h-[430px] flex-col items-center justify-center gap-[24px] text-center">
       <Icon name="message" className="size-[64px] text-[#666]" />
       <div className="flex flex-col gap-[12px]">
-        <p className="text-[16px] leading-[1.6] font-semibold tracking-[-0.16px] text-[#111]">
+        <p className="text-[16px] leading-[1.6] font-semibold text-[#111]">
           문의를 찾을 수 없습니다.
         </p>
-        <p className="text-[14px] leading-[1.5] tracking-[-0.14px] text-[#525252]">
+        <p className="text-[14px] leading-[1.5] text-[#525252]">
           삭제되었거나 접근할 수 없는 문의입니다.
         </p>
       </div>

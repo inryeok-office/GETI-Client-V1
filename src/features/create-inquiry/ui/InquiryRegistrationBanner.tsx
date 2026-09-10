@@ -42,9 +42,7 @@ export function InquiryRegistrationBanner({ feedback, onClose }: InquiryRegistra
             }
           />
         </span>
-        <p className="text-[14px] leading-[1.4] font-medium tracking-[-0.14px] text-[#111]">
-          {content.message}
-        </p>
+        <p className="text-[14px] leading-[1.4] font-medium text-[#111]">{content.message}</p>
       </div>
       <button
         type="button"

@@ -51,7 +51,13 @@ export function InquiryRegistrationFlow({
   const closeDialog = useCallback(() => {
     setIsOpen(false);
     setErrors({});
+    setFeedback(null);
   }, []);
+
+  const openDialog = () => {
+    setFeedback(null);
+    setIsOpen(true);
+  };
 
   const resetForm = () => {
     setInquiryType('');
@@ -76,6 +82,8 @@ export function InquiryRegistrationFlow({
     setErrors(nextErrors);
     if (!inquiryType || Object.values(nextErrors).some(Boolean)) return;
 
+    setFeedback(null);
+
     try {
       await createInquiryMutation.mutateAsync({
         inquiryType,
@@ -85,10 +93,9 @@ export function InquiryRegistrationFlow({
       setFeedback('success');
       resetForm();
       onRegistrationSuccess?.();
+      setIsOpen(false);
     } catch {
       setFeedback('error');
-    } finally {
-      setIsOpen(false);
     }
   };
 
@@ -96,11 +103,11 @@ export function InquiryRegistrationFlow({
     <>
       <div className="flex items-center justify-between">
         {children}
-        <Button onClick={() => setIsOpen(true)}>문의 등록</Button>
+        <Button onClick={openDialog}>문의 등록</Button>
       </div>
 
       <div className="mt-[32px] flex flex-col gap-[16px]">
-        {feedback ? (
+        {feedback === 'success' ? (
           <InquiryRegistrationBanner feedback={feedback} onClose={() => setFeedback(null)} />
         ) : null}
         {list}
@@ -110,16 +117,21 @@ export function InquiryRegistrationFlow({
         isOpen={isOpen}
         onClose={closeDialog}
         title="문의 등록"
-        panelClassName="w-full max-w-[600px] rounded-[16px] bg-white p-[40px] shadow-[0px_16px_40px_-8px_rgba(23,37,45,0.16)]"
-        titleClassName="border-b border-[#e5e5e5] pb-[32px] text-[24px] leading-[1.4] font-semibold tracking-[-0.24px] text-[#111]"
+        panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-[600px] overflow-y-auto rounded-[16px] bg-white p-[40px] shadow-[0px_16px_40px_-8px_rgba(23,37,45,0.16)]"
+        titleClassName="border-b border-[#e5e5e5] pb-[32px] text-[24px] leading-[1.4] font-semibold text-[#111]"
         contentClassName="mt-[40px]"
       >
+        {feedback === 'error' ? (
+          <div className="mb-[24px]">
+            <InquiryRegistrationBanner feedback={feedback} onClose={() => setFeedback(null)} />
+          </div>
+        ) : null}
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col gap-[40px]">
             <div className="flex flex-col gap-[8px]">
               <label
                 htmlFor="inquiry-type"
-                className="px-[4px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#17262e]"
+                className="px-[4px] text-[16px] leading-[1.6] text-[#17262e]"
               >
                 문의 유형
               </label>
@@ -128,7 +140,10 @@ export function InquiryRegistrationFlow({
                 value={inquiryType}
                 disabled={createInquiryMutation.isPending}
                 errorMessage={errors.inquiryType}
-                onChange={setInquiryType}
+                onChange={(value) => {
+                  setInquiryType(value);
+                  setErrors((current) => ({ ...current, inquiryType: undefined }));
+                }}
                 options={INQUIRY_TYPE_OPTIONS}
               />
             </div>
@@ -136,7 +151,7 @@ export function InquiryRegistrationFlow({
             <div className="flex flex-col gap-[8px]">
               <label
                 htmlFor="inquiry-title"
-                className="px-[4px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]"
+                className="px-[4px] text-[16px] leading-[1.6] text-[#111]"
               >
                 제목
               </label>
@@ -146,7 +161,10 @@ export function InquiryRegistrationFlow({
                 maxLength={MAX_INQUIRY_TITLE_LENGTH}
                 disabled={createInquiryMutation.isPending}
                 errorMessage={errors.title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  setErrors((current) => ({ ...current, title: undefined }));
+                }}
                 className="h-[56px] px-[16px]"
               />
             </div>
@@ -154,7 +172,7 @@ export function InquiryRegistrationFlow({
             <div className="flex flex-col gap-[8px]">
               <label
                 htmlFor="inquiry-content"
-                className="px-[4px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#111]"
+                className="px-[4px] text-[16px] leading-[1.6] text-[#111]"
               >
                 문의 내용
               </label>
@@ -163,7 +181,10 @@ export function InquiryRegistrationFlow({
                 value={content}
                 disabled={createInquiryMutation.isPending}
                 errorMessage={errors.content}
-                onChange={(event) => setContent(event.target.value)}
+                onChange={(event) => {
+                  setContent(event.target.value);
+                  setErrors((current) => ({ ...current, content: undefined }));
+                }}
                 className="h-[168px] px-[16px] py-[16px]"
               />
             </div>

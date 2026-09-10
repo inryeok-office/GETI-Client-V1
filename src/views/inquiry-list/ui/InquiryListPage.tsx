@@ -61,10 +61,8 @@ export function InquiryListPage({ page }: InquiryListPageProps) {
           }
         >
           <div>
-            <h1 className="text-[32px] leading-[1.3] font-semibold tracking-[-0.32px] text-[#111]">
-              문의
-            </h1>
-            <p className="mt-[8px] text-[16px] leading-[1.6] tracking-[-0.16px] text-[#525252]">
+            <h1 className="text-[32px] leading-[1.3] font-semibold text-[#111]">문의</h1>
+            <p className="mt-[8px] text-[16px] leading-[1.6] text-[#525252]">
               문의 내역을 확인하고 새로운 문의를 등록할 수 있습니다.
             </p>
           </div>
