@@ -50,3 +50,14 @@ export interface DiscordDeliveryListResponse {
   first: boolean;
   last: boolean;
 }
+
+/**
+ * `GET /api/v1/admin/discord-channels` 항목(GETI-Server-V1 PR #330). 전달 내역 "채널" 필터
+ * 드롭다운의 선택지다. 서버 채널 Registry에서 `channelId`·표시 이름이 모두 설정된 채널만
+ * 내려오며, 설정 전이면 목록이 빈 배열이다.
+ */
+export interface DiscordChannel {
+  channelKey: string;
+  channelId: string;
+  channelName: string;
+}

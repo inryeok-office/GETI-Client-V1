@@ -1,5 +1,6 @@
 export {
   discordDeliveryKeys,
+  useDiscordChannelsQuery,
   useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
@@ -16,6 +17,7 @@ export {
 } from './model/statusLabel';
 export { formatDeliveryDateTime, formatDeliveryDateTimeShort } from './model/formatDeliveryDate';
 export type {
+  DiscordChannel,
   DiscordDelivery,
   DiscordDeliveryAction,
   DiscordDeliveryListResponse,

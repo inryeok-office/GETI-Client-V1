@@ -9,6 +9,7 @@ import {
   DISCORD_DELIVERY_TARGET_TYPE_LABEL,
   formatDeliveryDateTime,
   formatDeliveryDateTimeShort,
+  useDiscordChannelsQuery,
   useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
@@ -49,27 +50,37 @@ function parseInitialPage(value: string | undefined): number {
   return Number.isInteger(raw) && raw > 1 ? raw - 1 : 0;
 }
 
-/** 목록 조건(`page` 1부터 · `type`)을 URL 쿼리스트링으로. 기본값이면 생략한다. */
-function buildListQueryString(page: number, targetType: TargetTypeFilter): string {
+/**
+ * `?channel=` 쿼리스트링 → 채널 필터 값. `channelId`(Snowflake)를 그대로 저장·조회에 쓴다 —
+ * `channelName`은 관리자가 바꿀 수 있어 문구 기반 URL은 공유 링크를 조용히 무효화한다
+ * (`JobFilterBar`의 "출처"와 같은 이유). 선택 안 함은 빈 문자열이며, 앞뒤 공백은 제거해
+ * 정규화한 값을 그대로 저장·조회·URL에 쓴다(`?channel=%20...%20` 같은 링크가 목록 API에
+ * 공백 붙은 `channelId`를 흘려보내지 않도록).
+ */
+function parseChannelFilter(value: string | undefined): string {
+  return value?.trim() ?? '';
+}
+
+/** 목록 조건(`page` 1부터 · `type` · `channel`)을 URL 쿼리스트링으로. 기본값이면 생략한다. */
+function buildListQueryString(
+  page: number,
+  targetType: TargetTypeFilter,
+  channelId: string,
+): string {
   const params = new URLSearchParams();
   if (page > 0) params.set('page', String(page + 1));
   if (targetType !== 'ALL') params.set('type', targetType);
+  if (channelId) params.set('channel', channelId);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
 
-type UnsupportedFilterKey = 'target' | 'channel';
-
 /**
- * Figma가 캡처한 필터 3개 중 "대상" · "채널"은 아직 비활성이다. "대상"은 서버에 대응 파라미터가
- * 없고 Figma상 의미도 불명확하다. "채널"은 `channelId` 파라미터는 있지만 채널 목록 조회 API가
- * 없어 드롭다운 선택지를 만들 수 없다 — `JobListPage`의 비활성 필터와 같은 방식으로 버튼만
- * 남겨 둔다(Issue #233 제외 범위).
+ * Figma가 캡처한 필터 3개 중 "대상"만 아직 비활성이다 — 서버에 대응 파라미터가 없고 Figma상
+ * 의미도 불명확하다(Issue #233 제외 범위). "채널"은 `GET /admin/discord-channels`(GETI-Server-V1
+ * PR #330)로 선택지를 만들 수 있게 돼 Issue #244에서 활성화했다.
  */
-const UNSUPPORTED_FILTERS: { key: UnsupportedFilterKey; label: string }[] = [
-  { key: 'target', label: '대상' },
-  { key: 'channel', label: '채널' },
-];
+const UNSUPPORTED_FILTERS: { key: 'target'; label: string }[] = [{ key: 'target', label: '대상' }];
 
 const TABLE_COLUMNS = [
   { label: '대상', widthClass: 'w-[430px]' },
@@ -109,17 +120,26 @@ interface AdminDiscordPostPageProps {
   initialPage?: string;
   /** Server Component가 넘겨주는 초기 "유형" 필터 쿼리스트링(`type`). */
   initialType?: string;
+  /** Server Component가 넘겨주는 초기 "채널" 필터 쿼리스트링(`channel`, `channelId`). */
+  initialChannel?: string;
 }
 
 /**
  * Discord 게시 관리 화면. 필터 바 + 전송 이력 테이블 + 전송 상세 패널을 조합한다.
  * `GET /admin/discord-deliveries`로 목록을 실제로 조회한다(GETI-Server-V1 #206/PR #213).
  *
+ * "유형"(`targetType`)·"채널"(`channelId`) 필터를 지원한다. "채널" 선택지는
+ * `GET /admin/discord-channels`(GETI-Server-V1 PR #330)에서 받아오며, 선택 상태·URL에는
+ * 표시 이름이 아니라 안정적인 `channelId`를 저장한다(`channelName`은 관리자가 바꿀 수 있어
+ * 문구 기반 URL이 공유 링크를 무효화한다 — `JobFilterBar` "출처"와 같은 이유). 설정된 채널이
+ * 없으면(백엔드 config 미배선) 목록이 빈 배열이라 "채널" 버튼은 비활성으로 남는다.
+ *
  * 상세 패널은 목록에 이미 있는 항목이면 그 값을 그대로 쓰고, 목록 범위 밖 항목(다른 페이지의
  * id로 직접 딥링크한 경우)은 `GET /admin/discord-deliveries/{deliveryId}`로 단건 조회한다
- * (GETI-Server-V1 PR #318). "상세 보기"·닫기 링크에는 현재 `page`·`type`을 쿼리스트링으로 이어
- * 붙여, `/admin/discord-posts/[deliveryId]` Route로 이동해 컴포넌트가 다시 마운트돼도
- * Server Component가 `initialPage`·`initialType`으로 같은 목록 조건을 복원한다.
+ * (GETI-Server-V1 PR #318). "상세 보기"·닫기 링크에는 현재 `page`·`type`·`channel`을
+ * 쿼리스트링으로 이어 붙여, `/admin/discord-posts/[deliveryId]` Route로 이동해 컴포넌트가 다시
+ * 마운트돼도 Server Component가 `initialPage`·`initialType`·`initialChannel`으로 같은 목록
+ * 조건을 복원한다.
  *
  * 재시도는 `canRetry`가 true인 항목에서만 노출한다. `JOB`/`PROGRAM`만 재시도 Endpoint가 있어
  * 대상 종류별로 다른 경로를 호출하고, `INQUIRY`는 버튼 자체를 보여주지 않는다. Mutation
@@ -141,6 +161,7 @@ export function AdminDiscordPostPage({
   detailId,
   initialPage,
   initialType,
+  initialChannel,
 }: AdminDiscordPostPageProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -148,43 +169,59 @@ export function AdminDiscordPostPage({
   const [targetTypeFilter, setTargetTypeFilter] = useState<TargetTypeFilter>(() =>
     parseTargetTypeFilter(initialType),
   );
-  const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
-  const typeFilterRef = useRef<HTMLDivElement>(null);
+  /** 선택한 채널 `channelId`. 빈 문자열이면 전체. */
+  const [channelFilter, setChannelFilter] = useState(() => parseChannelFilter(initialChannel));
+  const [openFilterMenu, setOpenFilterMenu] = useState<'type' | 'channel' | null>(null);
+  const filterBarRef = useRef<HTMLDivElement>(null);
 
   /**
-   * 뒤로/앞으로 가기로 `?page=`·`?type=`만 바뀌면 같은 Client Component 인스턴스가 유지될 수
-   * 있어 `initial*` prop만 새로 들어온다 — 그때 상태를 그 값으로 다시 맞춘다(렌더 중 조정,
-   * effect 아님). 필터 선택으로 우리가 URL을 바꾼 경우엔 이미 같은 값이라 setState가 바로 무시된다.
+   * 뒤로/앞으로 가기로 `?page=`·`?type=`·`?channel=`만 바뀌면 같은 Client Component 인스턴스가
+   * 유지될 수 있어 `initial*` prop만 새로 들어온다 — 그때 상태를 그 값으로 다시 맞춘다(렌더 중
+   * 조정, effect 아님). 필터 선택으로 우리가 URL을 바꾼 경우엔 이미 같은 값이라 setState가 바로
+   * 무시된다.
    */
-  const [restoredParams, setRestoredParams] = useState({ page: initialPage, type: initialType });
-  if (restoredParams.page !== initialPage || restoredParams.type !== initialType) {
-    setRestoredParams({ page: initialPage, type: initialType });
+  const [restoredParams, setRestoredParams] = useState({
+    page: initialPage,
+    type: initialType,
+    channel: initialChannel,
+  });
+  if (
+    restoredParams.page !== initialPage ||
+    restoredParams.type !== initialType ||
+    restoredParams.channel !== initialChannel
+  ) {
+    setRestoredParams({ page: initialPage, type: initialType, channel: initialChannel });
     setPage(parseInitialPage(initialPage));
     setTargetTypeFilter(parseTargetTypeFilter(initialType));
+    setChannelFilter(parseChannelFilter(initialChannel));
   }
+
+  const channelsQuery = useDiscordChannelsQuery();
+  const channels = channelsQuery.data ?? [];
 
   const listQuery = useDiscordDeliveryListQuery({
     page,
     size: PAGE_SIZE,
     targetType: targetTypeFilter === 'ALL' ? undefined : targetTypeFilter,
+    channelId: channelFilter || undefined,
   });
   const retryMutation = useRetryDiscordDeliveryMutation();
 
-  /** page·유형 필터가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
-  const listQueryString = buildListQueryString(page, targetTypeFilter);
+  /** page·필터가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
+  const listQueryString = buildListQueryString(page, targetTypeFilter, channelFilter);
   useEffect(() => {
     router.replace(`${pathname}${listQueryString}`, { scroll: false });
   }, [listQueryString, pathname, router]);
 
-  /** "유형" 드롭다운은 바깥 클릭·Esc로 닫는다. */
+  /** 열린 필터 드롭다운은 바깥 클릭·Esc로 닫는다. */
   useEffect(() => {
-    if (!isTypeFilterOpen) return;
+    if (!openFilterMenu) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!typeFilterRef.current?.contains(event.target as Node)) setIsTypeFilterOpen(false);
+      if (!filterBarRef.current?.contains(event.target as Node)) setOpenFilterMenu(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsTypeFilterOpen(false);
+      if (event.key === 'Escape') setOpenFilterMenu(null);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -193,7 +230,7 @@ export function AdminDiscordPostPage({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isTypeFilterOpen]);
+  }, [openFilterMenu]);
 
   const deliveries = listQuery.data?.content ?? [];
   const isListLoading = listQuery.isLoading;
@@ -225,13 +262,40 @@ export function AdminDiscordPostPage({
   const handleSelectTargetType = (value: TargetTypeFilter) => {
     setTargetTypeFilter(value);
     setPage(0);
-    setIsTypeFilterOpen(false);
+    setOpenFilterMenu(null);
+  };
+
+  const handleSelectChannel = (channelId: string) => {
+    setChannelFilter(channelId);
+    setPage(0);
+    setOpenFilterMenu(null);
   };
 
   /** "상세 보기"·닫기 링크에 이어 붙일 현재 목록 조건 쿼리스트링. */
   const pageQueryString = listQueryString;
   const selectedTargetTypeLabel =
     TARGET_TYPE_FILTER_OPTIONS.find((option) => option.value === targetTypeFilter)?.label ?? '전체';
+
+  /**
+   * "채널" 필터 버튼 문구·상태. `JobFilterBar`의 "출처" 필터와 같은 방식이다 — 로딩·빈 목록이면
+   * 비활성, 에러면 클릭 시 다시 조회한다. 선택된 채널은 `channelName`으로 보여주고, 목록에 없는
+   * `channelId`(설정 변경·오래된 링크)면 값 그대로 노출한다.
+   */
+  const isChannelsLoading = channelsQuery.isLoading;
+  const isChannelsError = channelsQuery.isError;
+  const hasNoChannel = !isChannelsLoading && !isChannelsError && channels.length === 0;
+  const isChannelFilterDisabled = isChannelsLoading || hasNoChannel;
+  const selectedChannelLabel = channelFilter
+    ? (channels.find((channel) => channel.channelId === channelFilter)?.channelName ??
+      channelFilter)
+    : undefined;
+  const channelButtonLabel = isChannelsLoading
+    ? '채널 불러오는 중...'
+    : isChannelsError
+      ? '채널 목록을 불러오지 못했습니다. 다시 시도'
+      : hasNoChannel
+        ? '등록된 채널이 없습니다'
+        : (selectedChannelLabel ?? '채널');
 
   function handleRetry(delivery: DiscordDelivery) {
     if (!isRetryableTargetType(delivery.targetType)) return;
@@ -280,13 +344,13 @@ export function AdminDiscordPostPage({
 
         <div className="flex w-full flex-col items-end gap-[8px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
-            <div className="flex flex-wrap items-center gap-[20px]">
-              <div ref={typeFilterRef} className="relative">
+            <div ref={filterBarRef} className="flex flex-wrap items-center gap-[20px]">
+              <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setIsTypeFilterOpen((open) => !open)}
+                  onClick={() => setOpenFilterMenu((menu) => (menu === 'type' ? null : 'type'))}
                   aria-haspopup="listbox"
-                  aria-expanded={isTypeFilterOpen}
+                  aria-expanded={openFilterMenu === 'type'}
                   className="flex h-[56px] w-[272px] items-center justify-between rounded-[8px] border border-[#e5e5e5] bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] font-medium tracking-[-0.14px] text-[#525252] focus-within:border-[#8cc8da]"
                 >
                   <span className="truncate">
@@ -300,7 +364,7 @@ export function AdminDiscordPostPage({
                   </span>
                 </button>
 
-                {isTypeFilterOpen && (
+                {openFilterMenu === 'type' && (
                   <div
                     role="listbox"
                     aria-label="유형 필터"
@@ -320,6 +384,56 @@ export function AdminDiscordPostPage({
                           }`}
                         >
                           <span className="truncate">{option.label}</span>
+                          {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled={isChannelFilterDisabled}
+                  onClick={() =>
+                    isChannelsError
+                      ? channelsQuery.refetch()
+                      : setOpenFilterMenu((menu) => (menu === 'channel' ? null : 'channel'))
+                  }
+                  aria-haspopup="listbox"
+                  aria-expanded={openFilterMenu === 'channel'}
+                  className="flex h-[56px] w-[272px] items-center justify-between rounded-[8px] border border-[#e5e5e5] bg-white py-[16px] pr-[8px] pl-[16px] text-[14px] font-medium tracking-[-0.14px] text-[#525252] focus-within:border-[#8cc8da] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="truncate">{channelButtonLabel}</span>
+                  <span className="flex h-[10px] w-[20px] shrink-0 items-center justify-center">
+                    <Icon
+                      name="chevronRight"
+                      className="h-[20px] w-[10px] rotate-90 text-[#525252]"
+                    />
+                  </span>
+                </button>
+
+                {openFilterMenu === 'channel' && (
+                  <div
+                    role="listbox"
+                    aria-label="채널 필터"
+                    className="absolute top-full left-0 z-20 mt-[4px] flex max-h-[264px] w-[272px] flex-col gap-[2px] overflow-y-auto rounded-[8px] border border-[#e5e5e5] bg-white p-[8px] shadow-[0px_8px_24px_-4px_rgba(23,37,45,0.1)]"
+                  >
+                    {[{ channelId: '', channelName: '전체' }, ...channels].map((channel) => {
+                      const isSelected = channel.channelId === channelFilter;
+                      return (
+                        <button
+                          key={channel.channelId || 'ALL'}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => handleSelectChannel(channel.channelId)}
+                          className={`flex h-[44px] w-full items-center justify-between rounded-[8px] px-[16px] text-left text-[14px] leading-[21px] tracking-[-0.14px] hover:bg-[#f6fbfc] ${
+                            isSelected ? 'bg-[#f6fbfc] text-[#17627a]' : 'text-[#111]'
+                          }`}
+                        >
+                          <span className="truncate">{channel.channelName}</span>
                           {isSelected && <Icon name="check" className="size-[20px] shrink-0" />}
                         </button>
                       );
