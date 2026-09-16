@@ -8,6 +8,7 @@ import type {
   DiscordDelivery,
   DiscordDeliveryListResponse,
   RetryDiscordDeliveryParams,
+  SendDiscordDeliveryParams,
 } from '@/entities/discord-delivery';
 
 import { AdminDiscordPostPage } from './AdminDiscordPostPage';
@@ -17,14 +18,18 @@ const {
   mockUseDiscordDeliveryDetailQuery,
   mockUseDiscordChannelsQuery,
   mockUseRetryDiscordDeliveryMutation,
+  mockUseSendDiscordDeliveryMutation,
   mockMutate,
+  mockSendMutate,
   mockRouterReplace,
 } = vi.hoisted(() => ({
   mockUseDiscordDeliveryListQuery: vi.fn(),
   mockUseDiscordDeliveryDetailQuery: vi.fn(),
   mockUseDiscordChannelsQuery: vi.fn(),
   mockUseRetryDiscordDeliveryMutation: vi.fn(),
+  mockUseSendDiscordDeliveryMutation: vi.fn(),
   mockMutate: vi.fn(),
+  mockSendMutate: vi.fn(),
   mockRouterReplace: vi.fn(),
 }));
 
@@ -38,6 +43,7 @@ vi.mock('@/entities/discord-delivery', async () => {
     useDiscordDeliveryDetailQuery: mockUseDiscordDeliveryDetailQuery,
     useDiscordChannelsQuery: mockUseDiscordChannelsQuery,
     useRetryDiscordDeliveryMutation: mockUseRetryDiscordDeliveryMutation,
+    useSendDiscordDeliveryMutation: mockUseSendDiscordDeliveryMutation,
   };
 });
 
@@ -113,6 +119,20 @@ function idleRetryMutation(): RetryMutationResult {
   return { mutate: mockMutate, isPending: false, variables: undefined };
 }
 
+interface SendMutationResult {
+  mutate: typeof mockSendMutate;
+  isPending: boolean;
+  variables: SendDiscordDeliveryParams | undefined;
+}
+
+function sendMutationResult(overrides: Partial<SendMutationResult> = {}): SendMutationResult {
+  return { ...idleSendMutation(), ...overrides };
+}
+
+function idleSendMutation(): SendMutationResult {
+  return { mutate: mockSendMutate, isPending: false, variables: undefined };
+}
+
 const JOB_DELIVERY: DiscordDelivery = {
   deliveryId: 1,
   targetType: 'JOB',
@@ -165,6 +185,7 @@ beforeEach(() => {
   mockUseDiscordDeliveryDetailQuery.mockReturnValue(detailResult());
   mockUseDiscordChannelsQuery.mockReturnValue(channelsResult());
   mockUseRetryDiscordDeliveryMutation.mockReturnValue(retryMutationResult());
+  mockUseSendDiscordDeliveryMutation.mockReturnValue(sendMutationResult());
 });
 
 afterEach(() => {
@@ -236,11 +257,10 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByText('99999')).toBeInTheDocument();
   });
 
-  it('"대상" 필터와 "Discord 전송" 버튼은 비활성화되어 있다(대응하는 API가 없음)', () => {
+  it('"대상" 필터는 비활성화되어 있다(대응하는 API가 없음)', () => {
     render(<AdminDiscordPostPage />);
 
     expect(screen.getByRole('button', { name: '대상' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Discord 전송' })).toBeDisabled();
   });
 
   it('"채널" 필터에서 채널을 고르면 channelId로 조회하고 URL(channel)에 반영한다', () => {
@@ -429,6 +449,63 @@ describe('AdminDiscordPostPage', () => {
     expect(retryButtons).toHaveLength(2);
     expect(screen.getByRole('button', { name: '재시도 중…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '재시도' })).toBeDisabled();
+  });
+
+  it('상세 패널에서 canRetry가 false인 JOB/PROGRAM 항목은 "Discord 전송" 버튼을 보여준다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="3" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discord 전송' })).toBeInTheDocument();
+  });
+
+  it('상세 패널의 "Discord 전송" 버튼을 클릭하면 targetType/targetId로 전송 Mutation을 호출한다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="3" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Discord 전송' }));
+
+    expect(mockSendMutate).toHaveBeenCalledWith(
+      { targetType: 'JOB', targetId: 10 },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it('전송 중이면 "Discord 전송" 버튼이 "전송 중…"으로 바뀌고 비활성화된다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+      }),
+    );
+    mockUseSendDiscordDeliveryMutation.mockReturnValue(
+      sendMutationResult({ isPending: true, variables: { targetType: 'JOB', targetId: 10 } }),
+    );
+
+    render(<AdminDiscordPostPage detailId="3" />);
+
+    expect(screen.getByRole('button', { name: '전송 중…' })).toBeDisabled();
+  });
+
+  it('상세 패널에서 INQUIRY 항목은 재시도·전송 버튼을 모두 보여주지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [INQUIRY_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="2" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();
   });
 
   it('detailId가 이미 불러온 목록에 있으면 상세 패널에 targetName과 재시도 여부를 보여준다', () => {

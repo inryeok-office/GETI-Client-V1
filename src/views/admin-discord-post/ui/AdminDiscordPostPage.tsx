@@ -13,6 +13,7 @@ import {
   useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
+  useSendDiscordDeliveryMutation,
   type DiscordDelivery,
   type DiscordDeliveryTargetType,
   type RetryableDiscordDeliveryTargetType,
@@ -92,8 +93,8 @@ const TABLE_COLUMNS = [
   { label: '관리', widthClass: 'w-[250px]' },
 ];
 
-/** JOB/PROGRAM만 수동 재시도 Endpoint가 있다(`entities/discord-delivery` 참고). */
-function isRetryableTargetType(
+/** JOB/PROGRAM만 수동 재시도·전송 Endpoint가 있다(`entities/discord-delivery` 참고). */
+function isDiscordActionTargetType(
   targetType: DiscordDelivery['targetType'],
 ): targetType is RetryableDiscordDeliveryTargetType {
   return targetType === 'JOB' || targetType === 'PROGRAM';
@@ -111,6 +112,20 @@ function getRetryErrorMessage(error: unknown): string {
   }
 
   return '재시도에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
+function getSendErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === 'DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED') {
+      return '이미 전달 이력이 있어 새로 전송할 수 없습니다. 새로고침 후 다시 확인해 주세요.';
+    }
+    if (error.code === 'DISCORD_DELIVERY_MANUAL_SEND_UNSUPPORTED') {
+      return '이 유형은 Discord로 전송할 수 없습니다.';
+    }
+    if (error.status === 403) return '전송할 권한이 없습니다.';
+  }
+
+  return '전송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
 }
 
 interface AdminDiscordPostPageProps {
@@ -147,6 +162,12 @@ interface AdminDiscordPostPageProps {
  * 행마다 로컬 상태로 관리하면 A를 재시도하는 중 B를 눌러 두 요청이 동시에 나갈 수 있고,
  * 이후 콜백 순서가 어긋나 A 버튼이 요청 중인데도 다시 활성화될 수 있었다(PR #142 코드리뷰
  * 반영). `retryMutation.variables`로 지금 재시도 중인 항목만 "재시도 중…" 문구를 보여준다.
+ *
+ * 상세 패널 하단 액션은 `canRetry`로 갈린다 — true면 기존 "다시 전송"(재시도 API), false면
+ * "Discord 전송"(`POST .../discord/send`, GETI-Server-V1 PR #341 — 대상에 아직 첫 Delivery가
+ * 없을 때만 수동 enqueue, 이미 있으면 409). `INQUIRY`는 어느 쪽 버튼도 보여주지 않는다.
+ * 목록 없이 상세 패널에서만 쓰는 액션이라 재시도처럼 여러 행이 동시에 눌릴 수 없어, 자체
+ * `isPending`만으로 버튼을 비활성화한다(Issue #248).
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
  * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 서버 채널 Registry의 표시 이름
@@ -206,6 +227,7 @@ export function AdminDiscordPostPage({
     channelId: channelFilter || undefined,
   });
   const retryMutation = useRetryDiscordDeliveryMutation();
+  const sendMutation = useSendDiscordDeliveryMutation();
 
   /** page·필터가 바뀔 때마다 URL 쿼리스트링을 갱신한다 — 새로고침·상세 이동 후에도 유지된다. */
   const listQueryString = buildListQueryString(page, targetTypeFilter, channelFilter);
@@ -298,7 +320,7 @@ export function AdminDiscordPostPage({
         : (selectedChannelLabel ?? '채널');
 
   function handleRetry(delivery: DiscordDelivery) {
-    if (!isRetryableTargetType(delivery.targetType)) return;
+    if (!isDiscordActionTargetType(delivery.targetType)) return;
 
     retryMutation.mutate(
       { targetType: delivery.targetType, targetId: delivery.targetId },
@@ -314,6 +336,26 @@ export function AdminDiscordPostPage({
       retryMutation.isPending &&
       retryMutation.variables?.targetType === delivery.targetType &&
       retryMutation.variables?.targetId === delivery.targetId
+    );
+  }
+
+  function handleSend(delivery: DiscordDelivery) {
+    if (!isDiscordActionTargetType(delivery.targetType)) return;
+
+    sendMutation.mutate(
+      { targetType: delivery.targetType, targetId: delivery.targetId },
+      {
+        onSuccess: () => showToast({ tone: 'success', message: 'Discord 전송을 요청했습니다.' }),
+        onError: (error) => showToast({ tone: 'error', message: getSendErrorMessage(error) }),
+      },
+    );
+  }
+
+  function isSendingDelivery(delivery: DiscordDelivery) {
+    return (
+      sendMutation.isPending &&
+      sendMutation.variables?.targetType === delivery.targetType &&
+      sendMutation.variables?.targetId === delivery.targetId
     );
   }
 
@@ -459,16 +501,6 @@ export function AdminDiscordPostPage({
                 </button>
               ))}
             </div>
-
-            {/* 신규 게시를 수동으로 트리거하는 API가 없다 — Discord 전달은 공고 · 프로그램 · 문의
-                이벤트에서 자동 생성된다. */}
-            <button
-              type="button"
-              disabled
-              className="flex h-[56px] items-center justify-center rounded-[8px] bg-[#17627a] px-[32px] py-[16px] text-[14px] font-medium tracking-[-0.14px] text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Discord 전송
-            </button>
           </div>
         </div>
 
@@ -526,7 +558,7 @@ export function AdminDiscordPostPage({
                   </div>
                   {deliveries.map((delivery) => {
                     const canShowRetryButton =
-                      delivery.canRetry && isRetryableTargetType(delivery.targetType);
+                      delivery.canRetry && isDiscordActionTargetType(delivery.targetType);
                     const isRetrying = isRetryingDelivery(delivery);
 
                     return (
@@ -728,16 +760,26 @@ export function AdminDiscordPostPage({
                   </div>
                 )}
 
-                {detail.canRetry && isRetryableTargetType(detail.targetType) && (
-                  <button
-                    type="button"
-                    disabled={retryMutation.isPending}
-                    onClick={() => handleRetry(detail)}
-                    className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
-                  </button>
-                )}
+                {isDiscordActionTargetType(detail.targetType) &&
+                  (detail.canRetry ? (
+                    <button
+                      type="button"
+                      disabled={retryMutation.isPending}
+                      onClick={() => handleRetry(detail)}
+                      className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={sendMutation.isPending}
+                      onClick={() => handleSend(detail)}
+                      className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSendingDelivery(detail) ? '전송 중…' : 'Discord 전송'}
+                    </button>
+                  ))}
               </>
             )}
           </div>
