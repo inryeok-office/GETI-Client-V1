@@ -7,6 +7,7 @@ import {
   fetchDiscordChannels,
   fetchDiscordDeliveryList,
   retryDiscordDelivery,
+  sendDiscordDelivery,
 } from './discordDeliveryApi';
 import type { DiscordChannel, DiscordDeliveryListResponse } from '../model/types';
 
@@ -187,6 +188,59 @@ describe('retryDiscordDelivery', () => {
     await expect(retryDiscordDelivery({ targetType: 'JOB', targetId: 10 })).rejects.toMatchObject({
       status: 409,
       code: 'DISCORD_DELIVERY_NOT_RETRYABLE',
+    });
+  });
+});
+
+describe('sendDiscordDelivery', () => {
+  let restore: () => void;
+
+  afterEach(() => restore());
+
+  it('JOB은 /admin/jobs/{jobId}/discord/send로 POST한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: null }));
+    restore = stub.restore;
+
+    await sendDiscordDelivery({ targetType: 'JOB', targetId: 10 });
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/jobs/10/discord/send', method: 'post', params: undefined },
+    ]);
+  });
+
+  it('PROGRAM은 /admin/programs/{programId}/discord/send로 POST한다', async () => {
+    const stub = stubServer(() => ({ success: true, data: null }));
+    restore = stub.restore;
+
+    await sendDiscordDelivery({ targetType: 'PROGRAM', targetId: 40 });
+
+    expect(stub.requests).toEqual([
+      { url: '/api/v1/admin/programs/40/discord/send', method: 'post', params: undefined },
+    ]);
+  });
+
+  it('409(이미 Delivery 존재) 응답을 그대로 올려보낸다', async () => {
+    const stub = stubServer(
+      () =>
+        new AxiosError('Request failed', 'ERR_BAD_REQUEST', { headers: new AxiosHeaders() }, null, {
+          status: 409,
+          data: {
+            success: false,
+            error: {
+              code: 'DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED',
+              message: '이미 전달 이력이 있습니다.',
+            },
+          },
+          statusText: '',
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+        }),
+    );
+    restore = stub.restore;
+
+    await expect(sendDiscordDelivery({ targetType: 'JOB', targetId: 10 })).rejects.toMatchObject({
+      status: 409,
+      code: 'DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED',
     });
   });
 });

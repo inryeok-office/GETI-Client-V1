@@ -7,8 +7,10 @@ import {
   fetchDiscordDelivery,
   fetchDiscordDeliveryList,
   retryDiscordDelivery,
+  sendDiscordDelivery,
   type FetchDiscordDeliveryListParams,
   type RetryDiscordDeliveryParams,
+  type SendDiscordDeliveryParams,
 } from './discordDeliveryApi';
 
 export const discordDeliveryKeys = {
@@ -52,6 +54,18 @@ export function useRetryDiscordDeliveryMutation() {
 
   return useMutation({
     mutationFn: (params: RetryDiscordDeliveryParams) => retryDiscordDelivery(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: discordDeliveryKeys.all });
+    },
+  });
+}
+
+/** 전송 성공 시 목록을 다시 불러온다 — 새로 생긴 Delivery의 status·canRetry를 반영해야 한다. */
+export function useSendDiscordDeliveryMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: SendDiscordDeliveryParams) => sendDiscordDelivery(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: discordDeliveryKeys.all });
     },
