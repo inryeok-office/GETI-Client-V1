@@ -180,6 +180,16 @@ const STALE_FAILED_DELIVERY: DiscordDelivery = {
   canRetry: false,
 };
 
+/** DELIVERED(전송 성공) + canRetry false — Figma 시안의 "전송 성공 상태 → Discord 전송" 케이스. */
+const DELIVERED_JOB_DELIVERY: DiscordDelivery = {
+  ...JOB_DELIVERY,
+  deliveryId: 5,
+  status: 'DELIVERED',
+  canRetry: false,
+  failureCode: null,
+  failureReason: null,
+};
+
 beforeEach(() => {
   mockUseDiscordDeliveryListQuery.mockReturnValue(listResult());
   mockUseDiscordDeliveryDetailQuery.mockReturnValue(detailResult());
@@ -451,14 +461,14 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByRole('button', { name: '재시도' })).toBeDisabled();
   });
 
-  it('상세 패널에서 canRetry가 false인 JOB/PROGRAM 항목은 "Discord 전송" 버튼을 보여준다', () => {
+  it('상세 패널에서 DELIVERED(전송 성공) 상태인 JOB/PROGRAM 항목은 "Discord 전송" 버튼을 보여준다', () => {
     mockUseDiscordDeliveryListQuery.mockReturnValue(
       listResult({
-        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+        data: { ...emptyListResult().data, content: [DELIVERED_JOB_DELIVERY], totalElements: 1 },
       }),
     );
 
-    render(<AdminDiscordPostPage detailId="3" />);
+    render(<AdminDiscordPostPage detailId="5" />);
 
     expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Discord 전송' })).toBeInTheDocument();
@@ -467,11 +477,11 @@ describe('AdminDiscordPostPage', () => {
   it('상세 패널의 "Discord 전송" 버튼을 클릭하면 targetType/targetId로 전송 Mutation을 호출한다', () => {
     mockUseDiscordDeliveryListQuery.mockReturnValue(
       listResult({
-        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+        data: { ...emptyListResult().data, content: [DELIVERED_JOB_DELIVERY], totalElements: 1 },
       }),
     );
 
-    render(<AdminDiscordPostPage detailId="3" />);
+    render(<AdminDiscordPostPage detailId="5" />);
     fireEvent.click(screen.getByRole('button', { name: 'Discord 전송' }));
 
     expect(mockSendMutate).toHaveBeenCalledWith(
@@ -483,14 +493,14 @@ describe('AdminDiscordPostPage', () => {
   it('전송 중이면 "Discord 전송" 버튼이 "전송 중…"으로 바뀌고 비활성화된다', () => {
     mockUseDiscordDeliveryListQuery.mockReturnValue(
       listResult({
-        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+        data: { ...emptyListResult().data, content: [DELIVERED_JOB_DELIVERY], totalElements: 1 },
       }),
     );
     mockUseSendDiscordDeliveryMutation.mockReturnValue(
       sendMutationResult({ isPending: true, variables: { targetType: 'JOB', targetId: 10 } }),
     );
 
-    render(<AdminDiscordPostPage detailId="3" />);
+    render(<AdminDiscordPostPage detailId="5" />);
 
     expect(screen.getByRole('button', { name: '전송 중…' })).toBeDisabled();
   });
@@ -503,6 +513,19 @@ describe('AdminDiscordPostPage', () => {
     );
 
     render(<AdminDiscordPostPage detailId="2" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();
+  });
+
+  it('canRetry가 false여도 재시도 상한을 넘긴 FAILED(이미 Delivery 존재)는 재시도·전송 버튼을 모두 보여주지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="3" />);
 
     expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();

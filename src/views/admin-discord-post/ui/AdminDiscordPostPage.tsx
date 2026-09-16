@@ -163,11 +163,14 @@ interface AdminDiscordPostPageProps {
  * 이후 콜백 순서가 어긋나 A 버튼이 요청 중인데도 다시 활성화될 수 있었다(PR #142 코드리뷰
  * 반영). `retryMutation.variables`로 지금 재시도 중인 항목만 "재시도 중…" 문구를 보여준다.
  *
- * 상세 패널 하단 액션은 `canRetry`로 갈린다 — true면 기존 "다시 전송"(재시도 API), false면
+ * 상세 패널 하단 액션은 Figma 시안 그대로 두 상태에서만 노출한다 — `canRetry`가 true(=FAILED,
+ * 재시도 가능)면 기존 "다시 전송"(재시도 API), `status`가 DELIVERED(전송 성공)면 새
  * "Discord 전송"(`POST .../discord/send`, GETI-Server-V1 PR #341 — 대상에 아직 첫 Delivery가
- * 없을 때만 수동 enqueue, 이미 있으면 409). `INQUIRY`는 어느 쪽 버튼도 보여주지 않는다.
- * 목록 없이 상세 패널에서만 쓰는 액션이라 재시도처럼 여러 행이 동시에 눌릴 수 없어, 자체
- * `isPending`만으로 버튼을 비활성화한다(Issue #248).
+ * 없을 때만 수동 enqueue, 이미 있으면 409). PENDING·PROCESSING이거나 수동 재시도 상한을 넘긴
+ * FAILED처럼 이미 Delivery가 있지만 두 조건 다 아닌 상태는 버튼을 보여주지 않는다 — `canRetry`는
+ * "재시도 가능 여부"일 뿐이라 그 부정(false)이 "신규 발송 가능"을 뜻하지 않는다(PR #249 리뷰
+ * 반영). `INQUIRY`는 어느 쪽 버튼도 보여주지 않는다. 목록 없이 상세 패널에서만 쓰는 액션이라
+ * 재시도처럼 여러 행이 동시에 눌릴 수 없어, 자체 `isPending`만으로 버튼을 비활성화한다(Issue #248).
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
  * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 서버 채널 Registry의 표시 이름
@@ -770,7 +773,7 @@ export function AdminDiscordPostPage({
                     >
                       {isRetryingDelivery(detail) ? '재시도 중…' : '다시 전송'}
                     </button>
-                  ) : (
+                  ) : detail.status === 'DELIVERED' ? (
                     <button
                       type="button"
                       disabled={sendMutation.isPending}
@@ -779,7 +782,7 @@ export function AdminDiscordPostPage({
                     >
                       {isSendingDelivery(detail) ? '전송 중…' : 'Discord 전송'}
                     </button>
-                  ))}
+                  ) : null)}
               </>
             )}
           </div>
