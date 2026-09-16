@@ -100,32 +100,50 @@ function isDiscordActionTargetType(
   return targetType === 'JOB' || targetType === 'PROGRAM';
 }
 
-function getRetryErrorMessage(error: unknown): string {
+/**
+ * 재시도·전송 두 액션의 에러 토스트 문구를 만든다. 서버 코드별 문구 → 403 권한 문구 → 기본
+ * 문구 순으로 찾는다(inryeok-office/GETI-Client-V1#249 리뷰 반영 — 두 함수가 이 순서만 같고
+ * 문구만 다른 채 중복돼 있었다).
+ */
+function buildActionErrorMessage(
+  error: unknown,
+  {
+    codeMessages,
+    permissionMessage,
+    fallbackMessage,
+  }: { codeMessages: Record<string, string>; permissionMessage: string; fallbackMessage: string },
+): string {
   if (error instanceof ApiError) {
-    if (error.code === 'DISCORD_DELIVERY_RETRY_LIMIT_EXCEEDED') {
-      return '수동 재시도 횟수를 모두 사용했습니다.';
-    }
-    if (error.code === 'DISCORD_DELIVERY_NOT_RETRYABLE') {
-      return '이미 처리되었거나 최신 전달이 아니라 재시도할 수 없습니다. 새로고침 후 다시 확인해 주세요.';
-    }
-    if (error.status === 403) return '재시도할 권한이 없습니다.';
+    const codeMessage = error.code ? codeMessages[error.code] : undefined;
+    if (codeMessage) return codeMessage;
+    if (error.status === 403) return permissionMessage;
   }
 
-  return '재시도에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  return fallbackMessage;
+}
+
+function getRetryErrorMessage(error: unknown): string {
+  return buildActionErrorMessage(error, {
+    codeMessages: {
+      DISCORD_DELIVERY_RETRY_LIMIT_EXCEEDED: '수동 재시도 횟수를 모두 사용했습니다.',
+      DISCORD_DELIVERY_NOT_RETRYABLE:
+        '이미 처리되었거나 최신 전달이 아니라 재시도할 수 없습니다. 새로고침 후 다시 확인해 주세요.',
+    },
+    permissionMessage: '재시도할 권한이 없습니다.',
+    fallbackMessage: '재시도에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  });
 }
 
 function getSendErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.code === 'DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED') {
-      return '이미 전달 이력이 있어 새로 전송할 수 없습니다. 새로고침 후 다시 확인해 주세요.';
-    }
-    if (error.code === 'DISCORD_DELIVERY_MANUAL_SEND_UNSUPPORTED') {
-      return '이 유형은 Discord로 전송할 수 없습니다.';
-    }
-    if (error.status === 403) return '전송할 권한이 없습니다.';
-  }
-
-  return '전송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  return buildActionErrorMessage(error, {
+    codeMessages: {
+      DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED:
+        '이미 전달 이력이 있어 새로 전송할 수 없습니다. 새로고침 후 다시 확인해 주세요.',
+      DISCORD_DELIVERY_MANUAL_SEND_UNSUPPORTED: '이 유형은 Discord로 전송할 수 없습니다.',
+    },
+    permissionMessage: '전송할 권한이 없습니다.',
+    fallbackMessage: '전송에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  });
 }
 
 interface AdminDiscordPostPageProps {
@@ -169,8 +187,13 @@ interface AdminDiscordPostPageProps {
  * 없을 때만 수동 enqueue, 이미 있으면 409). PENDING·PROCESSING이거나 수동 재시도 상한을 넘긴
  * FAILED처럼 이미 Delivery가 있지만 두 조건 다 아닌 상태는 버튼을 보여주지 않는다 — `canRetry`는
  * "재시도 가능 여부"일 뿐이라 그 부정(false)이 "신규 발송 가능"을 뜻하지 않는다(PR #249 리뷰
- * 반영). `INQUIRY`는 어느 쪽 버튼도 보여주지 않는다. 목록 없이 상세 패널에서만 쓰는 액션이라
- * 재시도처럼 여러 행이 동시에 눌릴 수 없어, 자체 `isPending`만으로 버튼을 비활성화한다(Issue #248).
+ * 반영). `INQUIRY`는 어느 쪽 버튼도 보여주지 않는다. 두 버튼 모두 `isRetryingDelivery`/
+ * `isSendingDelivery`(variables가 지금 이 `detail`과 일치하는지)로만 비활성화한다 — 목록의
+ * 재시도 버튼과 달리 여기서는 Mutation의 `isPending`을 그대로 쓰면 안 된다: 상세 패널은
+ * `/admin/discord-posts/[deliveryId]` Route라 A 항목에서 액션을 누른 뒤 응답이 오기 전에
+ * B 항목 상세로 이동하면(같은 Client Component 인스턴스가 유지된 채 `detailId`만 바뀜) 전역
+ * `isPending`은 여전히 true라 B의 버튼이 "왜 비활성인지" 알 수 없는 채로 잠겨 있었다(PR #249
+ * 리뷰 반영).
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
  * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 서버 채널 Registry의 표시 이름
@@ -767,7 +790,7 @@ export function AdminDiscordPostPage({
                   (detail.canRetry ? (
                     <button
                       type="button"
-                      disabled={retryMutation.isPending}
+                      disabled={isRetryingDelivery(detail)}
                       onClick={() => handleRetry(detail)}
                       className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -776,7 +799,7 @@ export function AdminDiscordPostPage({
                   ) : detail.status === 'DELIVERED' ? (
                     <button
                       type="button"
-                      disabled={sendMutation.isPending}
+                      disabled={isSendingDelivery(detail)}
                       onClick={() => handleSend(detail)}
                       className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >

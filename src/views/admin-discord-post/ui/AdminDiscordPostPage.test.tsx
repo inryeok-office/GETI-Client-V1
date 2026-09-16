@@ -461,6 +461,21 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByRole('button', { name: '재시도' })).toBeDisabled();
   });
 
+  it('다른 항목의 재시도가 진행 중이어도, 지금 보는 상세 패널의 "다시 전송" 버튼은 비활성화하지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [JOB_DELIVERY], totalElements: 1 },
+      }),
+    );
+    mockUseRetryDiscordDeliveryMutation.mockReturnValue(
+      retryMutationResult({ isPending: true, variables: { targetType: 'PROGRAM', targetId: 40 } }),
+    );
+
+    render(<AdminDiscordPostPage detailId="1" />);
+
+    expect(screen.getByRole('button', { name: '다시 전송' })).not.toBeDisabled();
+  });
+
   it('상세 패널에서 DELIVERED(전송 성공) 상태인 JOB/PROGRAM 항목은 "Discord 전송" 버튼을 보여준다', () => {
     mockUseDiscordDeliveryListQuery.mockReturnValue(
       listResult({
@@ -503,6 +518,21 @@ describe('AdminDiscordPostPage', () => {
     render(<AdminDiscordPostPage detailId="5" />);
 
     expect(screen.getByRole('button', { name: '전송 중…' })).toBeDisabled();
+  });
+
+  it('다른 항목의 전송이 진행 중이어도, 지금 보는 상세 패널의 "Discord 전송" 버튼은 비활성화하지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [DELIVERED_JOB_DELIVERY], totalElements: 1 },
+      }),
+    );
+    mockUseSendDiscordDeliveryMutation.mockReturnValue(
+      sendMutationResult({ isPending: true, variables: { targetType: 'PROGRAM', targetId: 40 } }),
+    );
+
+    render(<AdminDiscordPostPage detailId="5" />);
+
+    expect(screen.getByRole('button', { name: 'Discord 전송' })).not.toBeDisabled();
   });
 
   it('상세 패널에서 INQUIRY 항목은 재시도·전송 버튼을 모두 보여주지 않는다', () => {
