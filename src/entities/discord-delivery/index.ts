@@ -4,11 +4,13 @@ export {
   useDiscordDeliveryDetailQuery,
   useDiscordDeliveryListQuery,
   useRetryDiscordDeliveryMutation,
+  useSendDiscordDeliveryMutation,
 } from './api/useDiscordDeliveryQueries';
 export type {
   FetchDiscordDeliveryListParams,
   RetryableDiscordDeliveryTargetType,
   RetryDiscordDeliveryParams,
+  SendDiscordDeliveryParams,
 } from './api/discordDeliveryApi';
 
 export {

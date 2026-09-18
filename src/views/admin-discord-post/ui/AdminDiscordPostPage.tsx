@@ -92,25 +92,45 @@ const TABLE_COLUMNS = [
   { label: '관리', widthClass: 'w-[250px]' },
 ];
 
-/** JOB/PROGRAM만 수동 재시도 Endpoint가 있다(`entities/discord-delivery` 참고). */
-function isRetryableTargetType(
+/** JOB/PROGRAM만 수동 재시도·전송 Endpoint가 있다(`entities/discord-delivery` 참고). */
+function isDiscordActionTargetType(
   targetType: DiscordDelivery['targetType'],
 ): targetType is RetryableDiscordDeliveryTargetType {
   return targetType === 'JOB' || targetType === 'PROGRAM';
 }
 
-function getRetryErrorMessage(error: unknown): string {
+/**
+ * 액션 실패 시 에러 토스트 문구를 만든다. 서버 코드별 문구 → 403 권한 문구 → 기본 문구 순으로
+ * 찾는다(inryeok-office/GETI-Client-V1#249 리뷰 반영). 지금은 재시도만 쓰지만, "Discord 전송"
+ * 트리거가 (아래 참고) 제대로 된 화면에 다시 생기면 그 에러 문구도 같은 헬퍼로 만들 것이다.
+ */
+function buildActionErrorMessage(
+  error: unknown,
+  {
+    codeMessages,
+    permissionMessage,
+    fallbackMessage,
+  }: { codeMessages: Record<string, string>; permissionMessage: string; fallbackMessage: string },
+): string {
   if (error instanceof ApiError) {
-    if (error.code === 'DISCORD_DELIVERY_RETRY_LIMIT_EXCEEDED') {
-      return '수동 재시도 횟수를 모두 사용했습니다.';
-    }
-    if (error.code === 'DISCORD_DELIVERY_NOT_RETRYABLE') {
-      return '이미 처리되었거나 최신 전달이 아니라 재시도할 수 없습니다. 새로고침 후 다시 확인해 주세요.';
-    }
-    if (error.status === 403) return '재시도할 권한이 없습니다.';
+    const codeMessage = error.code ? codeMessages[error.code] : undefined;
+    if (codeMessage) return codeMessage;
+    if (error.status === 403) return permissionMessage;
   }
 
-  return '재시도에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  return fallbackMessage;
+}
+
+function getRetryErrorMessage(error: unknown): string {
+  return buildActionErrorMessage(error, {
+    codeMessages: {
+      DISCORD_DELIVERY_RETRY_LIMIT_EXCEEDED: '수동 재시도 횟수를 모두 사용했습니다.',
+      DISCORD_DELIVERY_NOT_RETRYABLE:
+        '이미 처리되었거나 최신 전달이 아니라 재시도할 수 없습니다. 새로고침 후 다시 확인해 주세요.',
+    },
+    permissionMessage: '재시도할 권한이 없습니다.',
+    fallbackMessage: '재시도에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  });
 }
 
 interface AdminDiscordPostPageProps {
@@ -147,6 +167,24 @@ interface AdminDiscordPostPageProps {
  * 행마다 로컬 상태로 관리하면 A를 재시도하는 중 B를 눌러 두 요청이 동시에 나갈 수 있고,
  * 이후 콜백 순서가 어긋나 A 버튼이 요청 중인데도 다시 활성화될 수 있었다(PR #142 코드리뷰
  * 반영). `retryMutation.variables`로 지금 재시도 중인 항목만 "재시도 중…" 문구를 보여준다.
+ *
+ * 상세 패널 하단에는 `canRetry`가 true(=FAILED, 재시도 가능)인 항목에서만 기존 "다시 전송"
+ * (재시도 API)을 보여준다. `isRetryingDelivery`(variables가 지금 이 `detail`과 일치하는지)로만
+ * 비활성화한다 — 목록의 재시도 버튼과 달리 여기서는 Mutation의 `isPending`을 그대로 쓰면 안
+ * 된다: 상세 패널은 `/admin/discord-posts/[deliveryId]` Route라 A 항목에서 재시도를 누른 뒤
+ * 응답이 오기 전에 B 항목 상세로 이동하면(같은 Client Component 인스턴스가 유지된 채 `detailId`만
+ * 바뀜) 전역 `isPending`은 여전히 true라 B의 버튼이 "왜 비활성인지" 알 수 없는 채로 잠겨 있었다
+ * (PR #249 리뷰 반영).
+ *
+ * Issue #248은 원래 이 자리에 "Discord 전송"(신규 발송, `POST .../discord/send`,
+ * GETI-Server-V1 PR #341) 버튼도 `canRetry`가 false일 때 보여주도록 요청했지만 **뺐다**: 그
+ * API는 대상에 Delivery가 하나도 없을 때만 성공하는데, 이 화면은 `GET /admin/discord-deliveries`
+ * 목록에서 상세를 여는 구조라 여기 뜨는 모든 항목은 이미 Delivery가 있다(성공·대기·실패 불문).
+ * 즉 이 화면 안에서는 그 버튼이 성공할 수 있는 경우가 구조적으로 존재하지 않는다(PR #249 리뷰
+ * 재지적 — `status === 'DELIVERED'`로 좁혀도 DELIVERED 자체가 이미 Delivery 있음을 뜻해 해결이
+ * 안 됨). `entities/discord-delivery`의 `sendDiscordDelivery`/`useSendDiscordDeliveryMutation`은
+ * 그대로 남겨뒀다 — Delivery 유무와 상관없이 대상을 나열하는 새 API가 생기면(백엔드에 요청 중)
+ * 그 화면에서 재사용할 것이다.
  *
  * `messageBody`는 서버가 제공하지 않고(전송 당시 Payload 미저장 + 개인정보 최소화 정책),
  * 기존 `messageTitle`은 `targetName`으로 대체됐다. "채널"은 서버 채널 Registry의 표시 이름
@@ -298,7 +336,7 @@ export function AdminDiscordPostPage({
         : (selectedChannelLabel ?? '채널');
 
   function handleRetry(delivery: DiscordDelivery) {
-    if (!isRetryableTargetType(delivery.targetType)) return;
+    if (!isDiscordActionTargetType(delivery.targetType)) return;
 
     retryMutation.mutate(
       { targetType: delivery.targetType, targetId: delivery.targetId },
@@ -459,16 +497,6 @@ export function AdminDiscordPostPage({
                 </button>
               ))}
             </div>
-
-            {/* 신규 게시를 수동으로 트리거하는 API가 없다 — Discord 전달은 공고 · 프로그램 · 문의
-                이벤트에서 자동 생성된다. */}
-            <button
-              type="button"
-              disabled
-              className="flex h-[56px] items-center justify-center rounded-[8px] bg-[#17627a] px-[32px] py-[16px] text-[14px] font-medium tracking-[-0.14px] text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Discord 전송
-            </button>
           </div>
         </div>
 
@@ -526,7 +554,7 @@ export function AdminDiscordPostPage({
                   </div>
                   {deliveries.map((delivery) => {
                     const canShowRetryButton =
-                      delivery.canRetry && isRetryableTargetType(delivery.targetType);
+                      delivery.canRetry && isDiscordActionTargetType(delivery.targetType);
                     const isRetrying = isRetryingDelivery(delivery);
 
                     return (
@@ -728,10 +756,10 @@ export function AdminDiscordPostPage({
                   </div>
                 )}
 
-                {detail.canRetry && isRetryableTargetType(detail.targetType) && (
+                {isDiscordActionTargetType(detail.targetType) && detail.canRetry && (
                   <button
                     type="button"
-                    disabled={retryMutation.isPending}
+                    disabled={isRetryingDelivery(detail)}
                     onClick={() => handleRetry(detail)}
                     className="w-fit text-[14px] font-medium tracking-[-0.14px] text-[#17627a] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                   >

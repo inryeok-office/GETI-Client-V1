@@ -63,13 +63,13 @@ export async function fetchDiscordChannels(): Promise<DiscordChannel[]> {
   return data.data.channels;
 }
 
-/** 재시도 Endpoint가 있는 대상 종류만 담는다 — `INQUIRY`는 백엔드에 재시도 API 자체가 없다. */
+/** 재시도·수동 전송 Endpoint가 있는 대상 종류만 담는다 — `INQUIRY`는 둘 다 백엔드에 없다. */
 export type RetryableDiscordDeliveryTargetType = Extract<
   DiscordDeliveryTargetType,
   'JOB' | 'PROGRAM'
 >;
 
-const RETRY_BASE_PATH: Record<RetryableDiscordDeliveryTargetType, string> = {
+const DISCORD_TARGET_BASE_PATH: Record<RetryableDiscordDeliveryTargetType, string> = {
   JOB: '/api/v1/admin/jobs',
   PROGRAM: '/api/v1/admin/programs',
 };
@@ -88,5 +88,20 @@ export async function retryDiscordDelivery({
   targetType,
   targetId,
 }: RetryDiscordDeliveryParams): Promise<void> {
-  await api.post(`${RETRY_BASE_PATH[targetType]}/${targetId}/discord/retry`);
+  await api.post(`${DISCORD_TARGET_BASE_PATH[targetType]}/${targetId}/discord/retry`);
+}
+
+export type SendDiscordDeliveryParams = RetryDiscordDeliveryParams;
+
+/**
+ * `POST /admin/jobs/{jobId}/discord/send` · `POST /admin/programs/{programId}/discord/send` —
+ * PUBLISHED 대상에 아직 첫 Discord CREATE Delivery가 없을 때만 수동으로 enqueue한다(GETI-Server-V1
+ * PR #341). 이미 Delivery가 있으면(성공·실패·대기 불문) 409 `DISCORD_DELIVERY_MANUAL_SEND_NOT_ALLOWED`로
+ * 거절되므로, 호출부는 `canRetry`가 false인 항목(=아직 Delivery 없음)에서만 호출해야 한다.
+ */
+export async function sendDiscordDelivery({
+  targetType,
+  targetId,
+}: SendDiscordDeliveryParams): Promise<void> {
+  await api.post(`${DISCORD_TARGET_BASE_PATH[targetType]}/${targetId}/discord/send`);
 }

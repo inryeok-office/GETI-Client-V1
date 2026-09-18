@@ -160,6 +160,20 @@ const STALE_FAILED_DELIVERY: DiscordDelivery = {
   canRetry: false,
 };
 
+/**
+ * DELIVERED(전송 성공) + canRetry false. 이 화면의 모든 항목은 이미 Delivery가 있어 신규
+ * 발송 API는 항상 409로 거절된다(PR #249 리뷰 반영) — 그래서 DELIVERED도 재시도/전송 버튼을
+ * 아예 보여주지 않는 것이 맞다.
+ */
+const DELIVERED_JOB_DELIVERY: DiscordDelivery = {
+  ...JOB_DELIVERY,
+  deliveryId: 5,
+  status: 'DELIVERED',
+  canRetry: false,
+  failureCode: null,
+  failureReason: null,
+};
+
 beforeEach(() => {
   mockUseDiscordDeliveryListQuery.mockReturnValue(listResult());
   mockUseDiscordDeliveryDetailQuery.mockReturnValue(detailResult());
@@ -236,11 +250,10 @@ describe('AdminDiscordPostPage', () => {
     expect(screen.getByText('99999')).toBeInTheDocument();
   });
 
-  it('"대상" 필터와 "Discord 전송" 버튼은 비활성화되어 있다(대응하는 API가 없음)', () => {
+  it('"대상" 필터는 비활성화되어 있다(대응하는 API가 없음)', () => {
     render(<AdminDiscordPostPage />);
 
     expect(screen.getByRole('button', { name: '대상' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Discord 전송' })).toBeDisabled();
   });
 
   it('"채널" 필터에서 채널을 고르면 channelId로 조회하고 URL(channel)에 반영한다', () => {
@@ -429,6 +442,60 @@ describe('AdminDiscordPostPage', () => {
     expect(retryButtons).toHaveLength(2);
     expect(screen.getByRole('button', { name: '재시도 중…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '재시도' })).toBeDisabled();
+  });
+
+  it('다른 항목의 재시도가 진행 중이어도, 지금 보는 상세 패널의 "다시 전송" 버튼은 비활성화하지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [JOB_DELIVERY], totalElements: 1 },
+      }),
+    );
+    mockUseRetryDiscordDeliveryMutation.mockReturnValue(
+      retryMutationResult({ isPending: true, variables: { targetType: 'PROGRAM', targetId: 40 } }),
+    );
+
+    render(<AdminDiscordPostPage detailId="1" />);
+
+    expect(screen.getByRole('button', { name: '다시 전송' })).not.toBeDisabled();
+  });
+
+  it('상세 패널에서 DELIVERED(전송 성공) 상태인 항목은 재시도·전송 버튼을 모두 보여주지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [DELIVERED_JOB_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="5" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();
+  });
+
+  it('상세 패널에서 INQUIRY 항목은 재시도·전송 버튼을 모두 보여주지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [INQUIRY_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="2" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();
+  });
+
+  it('canRetry가 false여도 재시도 상한을 넘긴 FAILED(이미 Delivery 존재)는 재시도·전송 버튼을 모두 보여주지 않는다', () => {
+    mockUseDiscordDeliveryListQuery.mockReturnValue(
+      listResult({
+        data: { ...emptyListResult().data, content: [STALE_FAILED_DELIVERY], totalElements: 1 },
+      }),
+    );
+
+    render(<AdminDiscordPostPage detailId="3" />);
+
+    expect(screen.queryByRole('button', { name: '다시 전송' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discord 전송' })).not.toBeInTheDocument();
   });
 
   it('detailId가 이미 불러온 목록에 있으면 상세 패널에 targetName과 재시도 여부를 보여준다', () => {
